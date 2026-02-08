@@ -12,7 +12,7 @@
 - [x] Integrate yfinance for stock/ETF market data (prices, historical data, indicators)
 - [x] Integrate CoinGecko API for cryptocurrency data (prices, market cap, volume)
 - [x] Integrate Anthropic Claude API for AI reasoning, chat interface, and signal synthesis
-- [ ] Integrate Telegram Bot API for alert/notification delivery
+- [x] Integrate Telegram Bot API for alert/notification delivery
 - [ ] Connect Supabase as primary database (replace in-memory store with PostgreSQL)
 - [x] Add pip dependencies: yfinance, numpy
 
@@ -90,6 +90,11 @@
 - [x] Macro schemas: MacroIndicatorDetail, MacroSummary, MacroIntelligenceResponse
 - [x] TypeScript types: MacroIndicatorDetail, MacroSummary, MacroIntelligenceResponse, PriceUpdate
 - [x] Test suite: 115 tests passing (added 25 macro + 5 WebSocket tests)
+- [x] Telegram notification service: send_message, send_alert, send_test, get_bot_info
+- [x] Notifications router: GET /status, POST /send, POST /send-alert, POST /test
+- [x] NotificationsPanel frontend: status display, test button, custom message send
+- [x] TypeScript types: NotificationStatus, NotificationResponse
+- [x] Test suite: 131 tests passing (added 16 notification tests)
 
 ## API Configuration
 - **Market Data**: yfinance (stocks/ETFs) + CoinGecko (crypto) - both free, no API key needed
