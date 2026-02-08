@@ -9,6 +9,7 @@ import logging
 import anthropic
 
 from app.config import settings
+from app.services.store import store
 
 logger = logging.getLogger(__name__)
 
@@ -63,6 +64,15 @@ class AIService:
         client = self._get_client()
 
         system = SYSTEM_PROMPT
+
+        # Inject AI memory for personalized context
+        memories = store.get_memories(limit=20)
+        if memories:
+            memory_lines = []
+            for m in memories:
+                memory_lines.append(f"- [{m['category']}] {m['content']}")
+            system += "\n\nYour memory (previous interactions and user preferences):\n" + "\n".join(memory_lines)
+
         if context:
             system += f"\n\nCurrent context:\n{context}"
 

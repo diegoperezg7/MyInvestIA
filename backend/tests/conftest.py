@@ -3,18 +3,26 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from httpx import ASGITransport, AsyncClient
 
-from app.main import app
-from app.services.store import store
+# Force InMemoryStore for all tests (regardless of Supabase .env config)
+import app.services.store as store_module
+from app.services.store import InMemoryStore
+
+_test_store = InMemoryStore()
+store_module.store = _test_store
+
+from app.main import app  # noqa: E402 — import after store override
 
 
 @pytest.fixture(autouse=True)
 def reset_store():
     """Reset in-memory store before each test to ensure isolation."""
-    store.holdings.clear()
-    store.watchlists.clear()
+    _test_store.holdings.clear()
+    _test_store.watchlists.clear()
+    _test_store._ai_memories.clear()
     yield
-    store.holdings.clear()
-    store.watchlists.clear()
+    _test_store.holdings.clear()
+    _test_store.watchlists.clear()
+    _test_store._ai_memories.clear()
 
 
 @pytest.fixture

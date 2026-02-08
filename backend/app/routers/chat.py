@@ -7,6 +7,7 @@ from app.schemas.asset import (
 )
 from app.services.ai_service import ai_service
 from app.services.market_data import market_data_service
+from app.services.store import store
 from app.services.technical_analysis import compute_all_indicators
 
 router = APIRouter(prefix="/chat", tags=["chat"])
@@ -40,6 +41,18 @@ async def chat(req: ChatRequest):
             messages=messages,
             context=req.context,
         )
+
+        # Auto-save last user message as interaction memory
+        last_user = next(
+            (m.content for m in reversed(req.messages) if m.role == "user"), None,
+        )
+        if last_user:
+            store.save_memory(
+                category="interaction",
+                content=last_user[:500],
+                metadata={"response_preview": response_text[:200]},
+            )
+
         return ChatResponse(response=response_text)
     except ValueError as e:
         raise HTTPException(status_code=503, detail=str(e))
