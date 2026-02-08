@@ -32,7 +32,7 @@
 - [x] Build AI Decision Synthesizer - fuses technical + sentiment + macro signals via Claude
 - [x] Implement chat interface backend (Claude-powered conversational Q&A about portfolio/market)
 - [ ] Add AI memory/context system in Supabase for personalized insights
-- [ ] Create alert scoring system (multi-factor: price + technical + sentiment + macro)
+- [x] Create alert scoring system (multi-factor: price + technical + sentiment + macro)
 
 ## Low Priority - Advanced Features
 - [ ] Implement macro intelligence module (interest rates, inflation, DXY, central bank events)
@@ -78,6 +78,10 @@
 - [x] Chat frontend: ChatPanel component with multi-turn conversation UI
 - [x] AI status indicator with connected/not configured badge
 - [x] Test suite: 68 tests passing (added 9 chat/AI tests)
+- [x] Alert scoring service: multi-factor detection (price spikes, RSI extremes, multi-indicator convergence)
+- [x] Alerts router: GET /alerts/?scan=true (portfolio+watchlist scan), GET /alerts/scan/{symbol}
+- [x] AlertsPanel frontend: expandable alert cards with severity coloring and scan button
+- [x] Test suite: 80 tests passing (added 12 alert scoring + router tests)
 
 ## API Configuration
 - **Market Data**: yfinance (stocks/ETFs) + CoinGecko (crypto) - both free, no API key needed

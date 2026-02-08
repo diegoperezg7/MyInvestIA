@@ -5,6 +5,7 @@ import TechnicalAnalysisCard from "@/components/dashboard/TechnicalAnalysisCard"
 import PriceChart from "@/components/dashboard/PriceChart";
 import QuoteLookup from "@/components/dashboard/QuoteLookup";
 import ChatPanel from "@/components/dashboard/ChatPanel";
+import AlertsPanel from "@/components/dashboard/AlertsPanel";
 
 export default function Home() {
   return (
@@ -29,15 +30,7 @@ export default function Home() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
         <WatchlistCard />
-        <div className="bg-oracle-panel border border-oracle-border rounded-lg p-6">
-          <h3 className="text-oracle-muted text-sm font-medium mb-3 uppercase tracking-wide">
-            Active Alerts
-          </h3>
-          <p className="text-oracle-muted text-sm">
-            No alerts configured. Alerts will appear here once the alert scoring
-            system is implemented.
-          </p>
-        </div>
+        <AlertsPanel />
       </div>
 
       <div className="grid grid-cols-1 gap-4">
