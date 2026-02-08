@@ -23,7 +23,7 @@
 - [x] Add configuration management
 - [x] Implement market data service (use yfinance + CoinGecko to fetch real prices)
 - [x] Implement technical analysis indicators (RSI, MACD, EMA, SMA, Bollinger Bands) using real market data
-- [ ] Add sentiment analysis service (use Claude API to analyze news/social sentiment)
+- [x] Add sentiment analysis service (use Claude API to analyze news/social sentiment)
 - [x] Create WebSocket support for real-time price updates
 - [x] Build frontend dashboard components (charts, portfolio view, watchlist view)
 - [x] Connect frontend to real backend API data
@@ -95,6 +95,12 @@
 - [x] NotificationsPanel frontend: status display, test button, custom message send
 - [x] TypeScript types: NotificationStatus, NotificationResponse
 - [x] Test suite: 131 tests passing (added 16 notification tests)
+- [x] Sentiment analysis service: Claude-powered sentiment scoring with JSON-structured output
+- [x] Sentiment endpoint: GET /api/v1/market/sentiment/{symbol} with auto quote + technical context
+- [x] SentimentCard frontend: symbol search, score bar visualization, narrative, key factors
+- [x] Sentiment schema: SentimentAnalysisResponse with score, label, narrative, key_factors
+- [x] TypeScript type: SentimentAnalysis
+- [x] Test suite: 144 tests passing (added 13 sentiment tests)
 
 ## API Configuration
 - **Market Data**: yfinance (stocks/ETFs) + CoinGecko (crypto) - both free, no API key needed

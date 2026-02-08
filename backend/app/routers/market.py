@@ -16,10 +16,12 @@ from app.schemas.asset import (
     MarketOverview,
     RSIIndicator,
     SMAIndicator,
+    SentimentAnalysisResponse,
     TechnicalAnalysis,
 )
 from app.services.macro_intelligence import get_all_macro_indicators, get_macro_summary
 from app.services.market_data import market_data_service
+from app.services.sentiment_service import analyze_sentiment
 from app.services.technical_analysis import compute_all_indicators
 
 router = APIRouter(prefix="/market", tags=["market"])
@@ -140,3 +142,34 @@ async def get_macro_intelligence():
         indicators=indicators,
         summary=MacroSummary(**summary),
     )
+
+
+@router.get("/sentiment/{symbol}", response_model=SentimentAnalysisResponse)
+async def get_sentiment(
+    symbol: str,
+    asset_type: AssetType | None = Query(default=None, description="Asset type hint"),
+):
+    """Get AI-powered sentiment analysis for an asset.
+
+    Uses Claude to analyze market sentiment based on available price data
+    and technical indicators. Requires ANTHROPIC_API_KEY to be configured.
+    """
+    # Fetch quote and technical data to provide context
+    quote = await market_data_service.get_quote(symbol, asset_type)
+    quote_data = dict(quote) if quote else None
+
+    technical_data = None
+    records = market_data_service.get_history(symbol, period="6mo", interval="1d")
+    if records and len(records) >= 30:
+        closes = [r["close"] for r in records]
+        technical_data = compute_all_indicators(closes)
+
+    asset_type_str = asset_type.value if asset_type else "stock"
+    result = await analyze_sentiment(
+        symbol=symbol.upper(),
+        asset_type=asset_type_str,
+        quote_data=quote_data,
+        technical_data=technical_data,
+    )
+
+    return SentimentAnalysisResponse(**result)

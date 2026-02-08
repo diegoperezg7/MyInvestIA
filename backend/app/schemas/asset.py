@@ -284,3 +284,15 @@ class MacroSummary(BaseModel):
 class MacroIntelligenceResponse(BaseModel):
     indicators: list[MacroIndicatorDetail] = []
     summary: MacroSummary = MacroSummary()
+
+
+# --- Sentiment Analysis Schemas ---
+
+
+class SentimentAnalysisResponse(BaseModel):
+    symbol: str
+    score: float = Field(ge=-1.0, le=1.0, default=0.0)
+    label: SentimentLabel = SentimentLabel.NEUTRAL
+    sources_count: int = 0
+    narrative: str = ""
+    key_factors: list[str] = []
