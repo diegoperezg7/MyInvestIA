@@ -1,16 +1,28 @@
-"""In-memory data store for portfolio and watchlists.
+"""Data store for portfolio, watchlists, and AI memory.
 
-This will be replaced by Supabase integration once connected.
-Provides a simple dict-based store with CRUD operations.
+Supports two backends:
+- InMemoryStore: Default, no external dependencies (dict-based, non-persistent)
+- SupabaseStore: PostgreSQL-backed persistent storage via Supabase
+
+The active backend is selected automatically based on whether SUPABASE_URL
+and SUPABASE_KEY are configured in the environment.
 """
 
+import logging
 import uuid
+
+from app.config import settings
+
+logger = logging.getLogger(__name__)
 
 
 class InMemoryStore:
+    """In-memory data store (default when Supabase is not configured)."""
+
     def __init__(self):
         self.holdings: dict[str, dict] = {}  # keyed by symbol
         self.watchlists: dict[str, dict] = {}  # keyed by watchlist id
+        self._ai_memories: list[dict] = []
 
     # --- Portfolio ---
 
@@ -107,6 +119,43 @@ class InMemoryStore:
         watchlist["assets"] = [a for a in watchlist["assets"] if a["symbol"] != symbol]
         return watchlist
 
+    # --- AI Memory ---
 
-# Singleton store instance
-store = InMemoryStore()
+    def save_memory(self, category: str, content: str, metadata: dict | None = None) -> dict:
+        entry = {
+            "id": str(uuid.uuid4()),
+            "category": category,
+            "content": content,
+            "metadata": metadata or {},
+        }
+        self._ai_memories.insert(0, entry)
+        return entry
+
+    def get_memories(self, category: str | None = None, limit: int = 50) -> list[dict]:
+        memories = self._ai_memories
+        if category:
+            memories = [m for m in memories if m["category"] == category]
+        return memories[:limit]
+
+    def delete_memory(self, memory_id: str) -> bool:
+        for i, m in enumerate(self._ai_memories):
+            if m["id"] == memory_id:
+                self._ai_memories.pop(i)
+                return True
+        return False
+
+
+def _create_store() -> InMemoryStore:
+    """Create the appropriate store backend based on configuration."""
+    if settings.supabase_url and settings.supabase_key:
+        try:
+            from app.services.supabase_store import SupabaseStore
+            logger.info("Supabase configured — using SupabaseStore for persistence")
+            return SupabaseStore()
+        except Exception as e:
+            logger.warning("Failed to initialize SupabaseStore, falling back to InMemoryStore: %s", e)
+    return InMemoryStore()
+
+
+# Singleton store instance — automatically selects backend
+store = _create_store()

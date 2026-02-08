@@ -13,7 +13,7 @@
 - [x] Integrate CoinGecko API for cryptocurrency data (prices, market cap, volume)
 - [x] Integrate Anthropic Claude API for AI reasoning, chat interface, and signal synthesis
 - [x] Integrate Telegram Bot API for alert/notification delivery
-- [ ] Connect Supabase as primary database (replace in-memory store with PostgreSQL)
+- [x] Connect Supabase as primary database (replace in-memory store with PostgreSQL)
 - [x] Add pip dependencies: yfinance, numpy
 
 ## Medium Priority - Core Features
@@ -31,7 +31,7 @@
 ## Medium Priority - AI Features
 - [x] Build AI Decision Synthesizer - fuses technical + sentiment + macro signals via Claude
 - [x] Implement chat interface backend (Claude-powered conversational Q&A about portfolio/market)
-- [ ] Add AI memory/context system in Supabase for personalized insights
+- [x] Add AI memory/context system in Supabase for personalized insights
 - [x] Create alert scoring system (multi-factor: price + technical + sentiment + macro)
 
 ## Low Priority - Advanced Features
@@ -107,6 +107,14 @@
 - [x] Schemas: NotifiedAlert, ScanAndNotifyResponse
 - [x] TypeScript types: NotifiedAlert, ScanAndNotifyResponse
 - [x] Test suite: 157 tests passing (added 13 alerts engine tests)
+- [x] Supabase SupabaseStore: full PostgreSQL-backed store (holdings, watchlists, watchlist_assets, ai_memory)
+- [x] Store factory: auto-selects SupabaseStore when configured, falls back to InMemoryStore
+- [x] AI memory system: save_memory, get_memories, delete_memory in both store backends
+- [x] Memory router: GET /api/v1/memory/, POST /api/v1/memory/, DELETE /api/v1/memory/{id}
+- [x] AI context injection: chat service auto-loads recent memories into system prompt
+- [x] Chat auto-memory: user interactions saved to memory for personalization
+- [x] Test conftest updated: forces InMemoryStore for tests (ignores .env Supabase config)
+- [x] Test suite: 174 tests passing (added 17 memory tests)
 
 ## API Configuration
 - **Market Data**: yfinance (stocks/ETFs) + CoinGecko (crypto) - both free, no API key needed
