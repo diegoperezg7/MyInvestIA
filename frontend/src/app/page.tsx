@@ -6,6 +6,7 @@ import PriceChart from "@/components/dashboard/PriceChart";
 import QuoteLookup from "@/components/dashboard/QuoteLookup";
 import ChatPanel from "@/components/dashboard/ChatPanel";
 import AlertsPanel from "@/components/dashboard/AlertsPanel";
+import MacroPanel from "@/components/dashboard/MacroPanel";
 
 export default function Home() {
   return (
@@ -33,7 +34,8 @@ export default function Home() {
         <AlertsPanel />
       </div>
 
-      <div className="grid grid-cols-1 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+        <MacroPanel />
         <ChatPanel />
       </div>
 
