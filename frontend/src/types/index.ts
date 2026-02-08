@@ -72,3 +72,51 @@ export interface AlertList {
   alerts: Alert[];
   total: number;
 }
+
+export interface AssetQuote {
+  symbol: string;
+  name: string;
+  price: number;
+  change_percent: number;
+  volume: number;
+  previous_close: number;
+  market_cap: number;
+}
+
+export interface HistoricalDataPoint {
+  date: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+}
+
+export interface HistoricalData {
+  symbol: string;
+  period: string;
+  interval: string;
+  data: HistoricalDataPoint[];
+}
+
+export interface TechnicalAnalysis {
+  symbol: string;
+  rsi: { value: number | null; signal: string };
+  macd: {
+    macd_line: number | null;
+    signal_line: number | null;
+    histogram: number | null;
+    signal: string;
+  };
+  sma: { sma_20: number | null; sma_50: number | null; signal: string };
+  ema: { ema_12: number | null; ema_26: number | null; signal: string };
+  bollinger_bands: {
+    upper: number | null;
+    middle: number | null;
+    lower: number | null;
+    bandwidth: number | null;
+    signal: string;
+  };
+  overall_signal: string;
+  signal_counts: { bullish: number; bearish: number; neutral: number };
+}

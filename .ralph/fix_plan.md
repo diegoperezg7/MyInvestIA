@@ -25,8 +25,8 @@
 - [x] Implement technical analysis indicators (RSI, MACD, EMA, SMA, Bollinger Bands) using real market data
 - [ ] Add sentiment analysis service (use Claude API to analyze news/social sentiment)
 - [ ] Create WebSocket support for real-time price updates
-- [ ] Build frontend dashboard components (charts, portfolio view, watchlist view)
-- [ ] Connect frontend to real backend API data
+- [x] Build frontend dashboard components (charts, portfolio view, watchlist view)
+- [x] Connect frontend to real backend API data
 
 ## Medium Priority - AI Features
 - [ ] Build AI Decision Synthesizer - fuses technical + sentiment + macro signals via Claude
@@ -67,6 +67,11 @@
 - [x] Portfolio router: live price integration via market data service
 - [x] Market and technical analysis response schemas (AssetQuote, HistoricalData, TechnicalAnalysis)
 - [x] Test suite: 59 tests passing (market, portfolio, watchlist, technical analysis, health)
+- [x] Frontend dashboard: PortfolioSummary, MarketOverviewCard, QuoteLookup, PriceChart, TechnicalAnalysisCard, WatchlistCard
+- [x] API client: fetchAPI, postAPI, patchAPI, deleteAPI with type safety
+- [x] TypeScript types: AssetQuote, HistoricalData, TechnicalAnalysis added
+- [x] Recharts integration: AreaChart with gradient fill for price history
+- [x] Frontend builds successfully (Next.js 15 production build)
 
 ## API Configuration
 - **Market Data**: yfinance (stocks/ETFs) + CoinGecko (crypto) - both free, no API key needed
