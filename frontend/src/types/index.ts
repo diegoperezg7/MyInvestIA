@@ -142,3 +142,31 @@ export interface AIStatus {
   configured: boolean;
   model: string;
 }
+
+export interface MacroIndicatorDetail {
+  name: string;
+  value: number;
+  change_percent: number;
+  previous_close: number;
+  trend: "up" | "down" | "stable";
+  impact_description: string;
+  category: string;
+}
+
+export interface MacroSummary {
+  environment: string;
+  risk_level: string;
+  key_signals: string[];
+}
+
+export interface MacroIntelligenceResponse {
+  indicators: MacroIndicatorDetail[];
+  summary: MacroSummary;
+}
+
+export interface PriceUpdate {
+  symbol: string;
+  price: number;
+  change_percent: number;
+  volume: number;
+}

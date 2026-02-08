@@ -19,7 +19,8 @@ async def test_get_market_overview(client):
             {"symbol": "META", "name": "META", "price": 400.0, "change_percent": -3.0, "volume": 500000},
         ],
     }
-    with patch("app.routers.market.market_data_service") as mock_svc:
+    with patch("app.routers.market.market_data_service") as mock_svc, \
+         patch("app.routers.market.get_all_macro_indicators", return_value=[]):
         mock_svc.get_top_movers = MagicMock(return_value=mock_movers)
         response = await client.get("/api/v1/market/")
 

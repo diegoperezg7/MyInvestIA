@@ -9,11 +9,16 @@ from app.schemas.asset import (
     HistoricalData,
     HistoricalDataPoint,
     MACDIndicator,
+    MacroIndicator,
+    MacroIndicatorDetail,
+    MacroIntelligenceResponse,
+    MacroSummary,
     MarketOverview,
     RSIIndicator,
     SMAIndicator,
     TechnicalAnalysis,
 )
+from app.services.macro_intelligence import get_all_macro_indicators, get_macro_summary
 from app.services.market_data import market_data_service
 from app.services.technical_analysis import compute_all_indicators
 
@@ -48,11 +53,23 @@ async def get_market_overview():
         for q in movers.get("losers", [])
     ]
 
+    # Fetch macro indicators for the overview
+    macro_raw = get_all_macro_indicators()
+    macro_indicators = [
+        MacroIndicator(
+            name=m["name"],
+            value=m["value"],
+            trend=m["trend"],
+            impact_description=m["impact_description"],
+        )
+        for m in macro_raw
+    ]
+
     return MarketOverview(
         sentiment_index=0.0,
         top_gainers=gainers,
         top_losers=losers,
-        macro_indicators=[],
+        macro_indicators=macro_indicators,
     )
 
 
@@ -108,4 +125,18 @@ async def get_technical_analysis(
         bollinger_bands=BollingerBandsIndicator(**indicators["bollinger_bands"]),
         overall_signal=indicators["overall_signal"],
         signal_counts=indicators["signal_counts"],
+    )
+
+
+@router.get("/macro", response_model=MacroIntelligenceResponse)
+async def get_macro_intelligence():
+    """Get macro economic indicators (VIX, DXY, Treasury yields, Gold, Oil) with analysis."""
+    raw_indicators = get_all_macro_indicators()
+    summary = get_macro_summary(raw_indicators)
+
+    indicators = [MacroIndicatorDetail(**m) for m in raw_indicators]
+
+    return MacroIntelligenceResponse(
+        indicators=indicators,
+        summary=MacroSummary(**summary),
     )

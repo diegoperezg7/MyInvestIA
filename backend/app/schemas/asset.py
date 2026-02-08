@@ -260,3 +260,27 @@ class AIAnalysisResponse(BaseModel):
     summary: str
     signal: str = "neutral"
     confidence: float = Field(ge=0.0, le=1.0, default=0.5)
+
+
+# --- Macro Intelligence Schemas ---
+
+
+class MacroIndicatorDetail(BaseModel):
+    name: str
+    value: float
+    change_percent: float = 0.0
+    previous_close: float = 0.0
+    trend: TrendDirection
+    impact_description: str = ""
+    category: str = ""
+
+
+class MacroSummary(BaseModel):
+    environment: str = "unknown"
+    risk_level: str = "unknown"
+    key_signals: list[str] = []
+
+
+class MacroIntelligenceResponse(BaseModel):
+    indicators: list[MacroIndicatorDetail] = []
+    summary: MacroSummary = MacroSummary()

@@ -24,7 +24,7 @@
 - [x] Implement market data service (use yfinance + CoinGecko to fetch real prices)
 - [x] Implement technical analysis indicators (RSI, MACD, EMA, SMA, Bollinger Bands) using real market data
 - [ ] Add sentiment analysis service (use Claude API to analyze news/social sentiment)
-- [ ] Create WebSocket support for real-time price updates
+- [x] Create WebSocket support for real-time price updates
 - [x] Build frontend dashboard components (charts, portfolio view, watchlist view)
 - [x] Connect frontend to real backend API data
 
@@ -35,7 +35,7 @@
 - [x] Create alert scoring system (multi-factor: price + technical + sentiment + macro)
 
 ## Low Priority - Advanced Features
-- [ ] Implement macro intelligence module (interest rates, inflation, DXY, central bank events)
+- [x] Implement macro intelligence module (interest rates, inflation, DXY, central bank events)
 - [ ] Build alerts engine with multi-factor detection and Telegram delivery
 - [x] Add chat interface frontend (conversational UI)
 - [ ] Email notification delivery
@@ -82,6 +82,14 @@
 - [x] Alerts router: GET /alerts/?scan=true (portfolio+watchlist scan), GET /alerts/scan/{symbol}
 - [x] AlertsPanel frontend: expandable alert cards with severity coloring and scan button
 - [x] Test suite: 80 tests passing (added 12 alert scoring + router tests)
+- [x] WebSocket price streaming: /api/v1/ws/prices with subscribe/unsubscribe protocol
+- [x] Macro intelligence service: VIX, DXY, 10Y/13W Treasury, Gold, Oil via yfinance
+- [x] Macro endpoint: GET /api/v1/market/macro with indicators + summary analysis
+- [x] MacroPanel frontend: environment/risk display with indicator rows
+- [x] Market overview now includes macro indicators
+- [x] Macro schemas: MacroIndicatorDetail, MacroSummary, MacroIntelligenceResponse
+- [x] TypeScript types: MacroIndicatorDetail, MacroSummary, MacroIntelligenceResponse, PriceUpdate
+- [x] Test suite: 115 tests passing (added 25 macro + 5 WebSocket tests)
 
 ## API Configuration
 - **Market Data**: yfinance (stocks/ETFs) + CoinGecko (crypto) - both free, no API key needed
