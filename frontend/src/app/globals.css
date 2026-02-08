@@ -1,0 +1,13 @@
+@import "tailwindcss";
+
+@theme {
+  --color-oracle-bg: #0a0e17;
+  --color-oracle-panel: #111827;
+  --color-oracle-border: #1f2937;
+  --color-oracle-accent: #3b82f6;
+  --color-oracle-green: #10b981;
+  --color-oracle-red: #ef4444;
+  --color-oracle-yellow: #f59e0b;
+  --color-oracle-text: #e5e7eb;
+  --color-oracle-muted: #6b7280;
+}
