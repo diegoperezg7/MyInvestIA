@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { fetchAPI } from "@/lib/api";
-import type { AlertList, Alert } from "@/types";
+import { fetchAPI, postAPI } from "@/lib/api";
+import type { AlertList, Alert, ScanAndNotifyResponse } from "@/types";
 
 const SEVERITY_STYLES: Record<string, string> = {
   critical: "bg-oracle-red/20 border-oracle-red/50 text-oracle-red",
@@ -62,12 +62,15 @@ function AlertCard({ alert }: { alert: Alert }) {
 export default function AlertsPanel() {
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [loading, setLoading] = useState(false);
+  const [notifying, setNotifying] = useState(false);
   const [scanned, setScanned] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notifyResult, setNotifyResult] = useState<string | null>(null);
 
   const handleScan = async () => {
     setLoading(true);
     setError(null);
+    setNotifyResult(null);
     try {
       const data = await fetchAPI<AlertList>("/api/v1/alerts/?scan=true");
       setAlerts(data.alerts);
@@ -79,27 +82,68 @@ export default function AlertsPanel() {
     }
   };
 
+  const handleScanAndNotify = async () => {
+    setNotifying(true);
+    setError(null);
+    setNotifyResult(null);
+    try {
+      const data = await postAPI<ScanAndNotifyResponse>(
+        "/api/v1/alerts/scan-and-notify?min_severity=high",
+        {}
+      );
+      setAlerts(data.alerts);
+      setScanned(true);
+      if (!data.telegram_configured) {
+        setNotifyResult("Telegram not configured");
+      } else if (data.total_notified > 0) {
+        setNotifyResult(
+          `Sent ${data.total_notified} alert${data.total_notified > 1 ? "s" : ""} to Telegram`
+        );
+      } else {
+        setNotifyResult(
+          `${data.total_alerts} alert${data.total_alerts !== 1 ? "s" : ""} found, none met notification threshold`
+        );
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Scan & notify failed");
+    } finally {
+      setNotifying(false);
+    }
+  };
+
   return (
     <div className="bg-oracle-panel border border-oracle-border rounded-lg p-6">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-oracle-muted text-sm font-medium uppercase tracking-wide">
           Active Alerts
         </h3>
-        <button
-          onClick={handleScan}
-          disabled={loading}
-          className="bg-oracle-accent text-white text-xs px-3 py-1.5 rounded hover:bg-oracle-accent/80 disabled:opacity-50 transition-colors"
-        >
-          {loading ? "Scanning..." : "Scan Now"}
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={handleScanAndNotify}
+            disabled={loading || notifying}
+            className="bg-oracle-green/20 text-oracle-green text-xs px-3 py-1.5 rounded border border-oracle-green/30 hover:bg-oracle-green/30 disabled:opacity-50 transition-colors"
+          >
+            {notifying ? "Notifying..." : "Scan & Notify"}
+          </button>
+          <button
+            onClick={handleScan}
+            disabled={loading || notifying}
+            className="bg-oracle-accent text-white text-xs px-3 py-1.5 rounded hover:bg-oracle-accent/80 disabled:opacity-50 transition-colors"
+          >
+            {loading ? "Scanning..." : "Scan"}
+          </button>
+        </div>
       </div>
 
       {error && <p className="text-oracle-red text-sm mb-2">{error}</p>}
+      {notifyResult && (
+        <p className="text-oracle-accent text-xs mb-2">{notifyResult}</p>
+      )}
 
       {!scanned && alerts.length === 0 && (
         <p className="text-oracle-muted text-sm">
-          Click &quot;Scan Now&quot; to analyze your portfolio and watchlist
-          assets for alerts.
+          Click &quot;Scan&quot; to analyze assets, or &quot;Scan &amp;
+          Notify&quot; to also send high-severity alerts to Telegram.
         </p>
       )}
 

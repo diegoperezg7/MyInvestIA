@@ -191,3 +191,19 @@ export interface SentimentAnalysis {
   narrative: string;
   key_factors: string[];
 }
+
+export interface NotifiedAlert {
+  alert_id: string;
+  symbol: string | null;
+  title: string;
+  severity: string;
+  delivered: boolean;
+}
+
+export interface ScanAndNotifyResponse {
+  alerts: Alert[];
+  notified: NotifiedAlert[];
+  total_alerts: number;
+  total_notified: number;
+  telegram_configured: boolean;
+}
