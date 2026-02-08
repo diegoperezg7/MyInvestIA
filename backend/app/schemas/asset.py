@@ -156,3 +156,82 @@ class MarketOverview(BaseModel):
 class AlertList(BaseModel):
     alerts: list[Alert] = []
     total: int = 0
+
+
+# --- Market Data Schemas ---
+
+
+class AssetQuote(BaseModel):
+    symbol: str
+    name: str
+    price: float
+    change_percent: float = 0.0
+    volume: float = 0.0
+    previous_close: float = 0.0
+    market_cap: float = 0.0
+
+
+class HistoricalDataPoint(BaseModel):
+    date: str
+    open: float = 0.0
+    high: float = 0.0
+    low: float = 0.0
+    close: float = 0.0
+    volume: int = 0
+
+
+class HistoricalData(BaseModel):
+    symbol: str
+    period: str
+    interval: str
+    data: list[HistoricalDataPoint] = []
+
+
+# --- Technical Analysis Schemas ---
+
+
+class IndicatorSignal(BaseModel):
+    value: float | None = None
+    signal: str = "neutral"  # bullish, bearish, neutral
+
+
+class RSIIndicator(IndicatorSignal):
+    pass
+
+
+class MACDIndicator(BaseModel):
+    macd_line: float | None = None
+    signal_line: float | None = None
+    histogram: float | None = None
+    signal: str = "neutral"
+
+
+class SMAIndicator(BaseModel):
+    sma_20: float | None = None
+    sma_50: float | None = None
+    signal: str = "neutral"
+
+
+class EMAIndicator(BaseModel):
+    ema_12: float | None = None
+    ema_26: float | None = None
+    signal: str = "neutral"
+
+
+class BollingerBandsIndicator(BaseModel):
+    upper: float | None = None
+    middle: float | None = None
+    lower: float | None = None
+    bandwidth: float | None = None
+    signal: str = "neutral"
+
+
+class TechnicalAnalysis(BaseModel):
+    symbol: str
+    rsi: RSIIndicator = RSIIndicator()
+    macd: MACDIndicator = MACDIndicator()
+    sma: SMAIndicator = SMAIndicator()
+    ema: EMAIndicator = EMAIndicator()
+    bollinger_bands: BollingerBandsIndicator = BollingerBandsIndicator()
+    overall_signal: str = "neutral"
+    signal_counts: dict[str, int] = {"bullish": 0, "bearish": 0, "neutral": 0}

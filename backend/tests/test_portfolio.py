@@ -2,7 +2,7 @@ import pytest
 
 
 @pytest.mark.asyncio
-async def test_get_empty_portfolio(client):
+async def test_get_empty_portfolio(client, mock_market_data):
     response = await client.get("/api/v1/portfolio/")
     assert response.status_code == 200
     data = response.json()
@@ -11,7 +11,7 @@ async def test_get_empty_portfolio(client):
 
 
 @pytest.mark.asyncio
-async def test_add_holding(client):
+async def test_add_holding(client, mock_market_data):
     payload = {
         "symbol": "AAPL",
         "name": "Apple Inc.",
@@ -30,7 +30,7 @@ async def test_add_holding(client):
 
 
 @pytest.mark.asyncio
-async def test_add_holding_averages_existing(client):
+async def test_add_holding_averages_existing(client, mock_market_data):
     payload = {
         "symbol": "AAPL",
         "name": "Apple Inc.",
@@ -56,7 +56,7 @@ async def test_add_holding_averages_existing(client):
 
 
 @pytest.mark.asyncio
-async def test_get_holding_by_symbol(client):
+async def test_get_holding_by_symbol(client, mock_market_data):
     payload = {
         "symbol": "TSLA",
         "name": "Tesla Inc.",
@@ -74,13 +74,13 @@ async def test_get_holding_by_symbol(client):
 
 
 @pytest.mark.asyncio
-async def test_get_holding_not_found(client):
+async def test_get_holding_not_found(client, mock_market_data):
     response = await client.get("/api/v1/portfolio/NONEXIST")
     assert response.status_code == 404
 
 
 @pytest.mark.asyncio
-async def test_update_holding_quantity(client):
+async def test_update_holding_quantity(client, mock_market_data):
     payload = {
         "symbol": "BTC",
         "name": "Bitcoin",
@@ -98,7 +98,7 @@ async def test_update_holding_quantity(client):
 
 
 @pytest.mark.asyncio
-async def test_update_holding_avg_price(client):
+async def test_update_holding_avg_price(client, mock_market_data):
     payload = {
         "symbol": "ETH",
         "name": "Ethereum",
@@ -115,7 +115,7 @@ async def test_update_holding_avg_price(client):
 
 
 @pytest.mark.asyncio
-async def test_update_holding_no_fields(client):
+async def test_update_holding_no_fields(client, mock_market_data):
     payload = {
         "symbol": "AAPL",
         "name": "Apple Inc.",
@@ -130,13 +130,13 @@ async def test_update_holding_no_fields(client):
 
 
 @pytest.mark.asyncio
-async def test_update_holding_not_found(client):
+async def test_update_holding_not_found(client, mock_market_data):
     response = await client.patch("/api/v1/portfolio/NONEXIST", json={"quantity": 1.0})
     assert response.status_code == 404
 
 
 @pytest.mark.asyncio
-async def test_delete_holding(client):
+async def test_delete_holding(client, mock_market_data):
     payload = {
         "symbol": "AAPL",
         "name": "Apple Inc.",
@@ -155,13 +155,13 @@ async def test_delete_holding(client):
 
 
 @pytest.mark.asyncio
-async def test_delete_holding_not_found(client):
+async def test_delete_holding_not_found(client, mock_market_data):
     response = await client.delete("/api/v1/portfolio/NONEXIST")
     assert response.status_code == 404
 
 
 @pytest.mark.asyncio
-async def test_portfolio_total_value(client):
+async def test_portfolio_total_value(client, mock_market_data):
     await client.post("/api/v1/portfolio/", json={
         "symbol": "AAPL", "name": "Apple", "type": "stock",
         "quantity": 10, "avg_buy_price": 100.0,
@@ -179,7 +179,7 @@ async def test_portfolio_total_value(client):
 
 
 @pytest.mark.asyncio
-async def test_add_holding_validation_errors(client):
+async def test_add_holding_validation_errors(client, mock_market_data):
     # Missing required fields
     response = await client.post("/api/v1/portfolio/", json={})
     assert response.status_code == 422
@@ -200,7 +200,7 @@ async def test_add_holding_validation_errors(client):
 
 
 @pytest.mark.asyncio
-async def test_symbol_case_insensitive(client):
+async def test_symbol_case_insensitive(client, mock_market_data):
     await client.post("/api/v1/portfolio/", json={
         "symbol": "aapl", "name": "Apple", "type": "stock",
         "quantity": 10, "avg_buy_price": 100.0,
@@ -209,3 +209,30 @@ async def test_symbol_case_insensitive(client):
     response = await client.get("/api/v1/portfolio/AAPL")
     assert response.status_code == 200
     assert response.json()["asset"]["symbol"] == "AAPL"
+
+
+@pytest.mark.asyncio
+async def test_portfolio_with_live_prices(client, mock_market_data):
+    """Test that live market prices are used when available."""
+    from unittest.mock import AsyncMock
+
+    mock_market_data.get_quote = AsyncMock(return_value={
+        "symbol": "AAPL",
+        "name": "Apple Inc.",
+        "price": 200.0,
+        "change_percent": 1.5,
+        "volume": 50000000,
+    })
+
+    await client.post("/api/v1/portfolio/", json={
+        "symbol": "AAPL", "name": "Apple Inc.", "type": "stock",
+        "quantity": 10, "avg_buy_price": 150.0,
+    })
+
+    response = await client.get("/api/v1/portfolio/AAPL")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["asset"]["price"] == 200.0
+    assert data["current_value"] == 2000.0
+    assert data["unrealized_pnl"] == 500.0
+    assert data["unrealized_pnl_percent"] == pytest.approx(33.33, abs=0.01)
