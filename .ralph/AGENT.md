@@ -1,49 +1,52 @@
 # Agent Build Instructions
 
-## Project Setup
-```bash
-# Install dependencies (example for Node.js project)
-npm install
+## Project Structure
+- `backend/` - Python FastAPI API server
+- `frontend/` - Next.js 15 + Tailwind CSS 4 dashboard
 
-# Or for Python project
+## Backend Setup
+```bash
+cd backend
+python -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
-
-# Or for Rust project  
-cargo build
 ```
 
-## Running Tests
+## Backend Dev Server
 ```bash
-# Node.js
-npm test
+cd backend
+uvicorn app.main:app --reload --port 8000
+```
 
-# Python
+## Backend Tests
+```bash
+cd backend
 pytest
-
-# Rust
-cargo test
+pytest --cov=app tests/ --cov-report=term-missing
 ```
 
-## Build Commands
+## Frontend Setup
 ```bash
-# Production build
-npm run build
-# or
-cargo build --release
+cd frontend
+npm install
 ```
 
-## Development Server
+## Frontend Dev Server
 ```bash
-# Start development server
+cd frontend
 npm run dev
-# or
-cargo run
+```
+
+## Frontend Build
+```bash
+cd frontend
+npm run build
 ```
 
 ## Key Learnings
-- Update this section when you learn new build optimizations
-- Document any gotchas or special setup requirements
-- Keep track of the fastest test/build cycle
+- Write tool auto-creates parent directories; use it instead of mkdir via Bash in sandboxed environments
+- Tailwind CSS v4 uses `@import "tailwindcss"` and `@theme` block for custom colors instead of tailwind.config.ts
+- FastAPI routes are organized as separate router modules under `app/routers/`
 
 ## Feature Development Quality Standards
 
