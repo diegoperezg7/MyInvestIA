@@ -1,8 +1,14 @@
-from fastapi import FastAPI
+import logging
+
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app.config import settings
 from app.routers import health, portfolio, watchlist, market, alerts
+
+logging.basicConfig(level=logging.DEBUG if settings.debug else logging.INFO)
+logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title="ORACLE - AI Investment Intelligence Dashboard",
@@ -17,6 +23,16 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    logger.error("Unhandled error on %s %s: %s", request.method, request.url.path, exc)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal server error"},
+    )
+
 
 app.include_router(health.router)
 app.include_router(portfolio.router, prefix="/api/v1")

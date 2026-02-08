@@ -19,6 +19,22 @@ class Asset(BaseModel):
     volume: float = 0.0
 
 
+# --- Portfolio Schemas ---
+
+
+class AddHoldingRequest(BaseModel):
+    symbol: str = Field(min_length=1, max_length=10)
+    name: str = Field(min_length=1, max_length=100)
+    type: AssetType
+    quantity: float = Field(gt=0)
+    avg_buy_price: float = Field(gt=0)
+
+
+class UpdateHoldingRequest(BaseModel):
+    quantity: float | None = Field(default=None, gt=0)
+    avg_buy_price: float | None = Field(default=None, gt=0)
+
+
 class PortfolioHolding(BaseModel):
     asset: Asset
     quantity: float
@@ -35,10 +51,32 @@ class Portfolio(BaseModel):
     holdings: list[PortfolioHolding] = []
 
 
+# --- Watchlist Schemas ---
+
+
+class CreateWatchlistRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=100)
+
+
+class UpdateWatchlistRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=100)
+
+
+class AddWatchlistAssetRequest(BaseModel):
+    symbol: str = Field(min_length=1, max_length=10)
+    name: str = Field(min_length=1, max_length=100)
+    type: AssetType
+
+
 class Watchlist(BaseModel):
     id: str
     name: str
     assets: list[Asset] = []
+
+
+class WatchlistList(BaseModel):
+    watchlists: list[Watchlist] = []
+    total: int = 0
 
 
 class AlertType(str, Enum):
@@ -100,3 +138,21 @@ class MacroIndicator(BaseModel):
     value: float
     trend: TrendDirection
     impact_description: str = ""
+
+
+# --- Market Overview Schemas ---
+
+
+class MarketOverview(BaseModel):
+    sentiment_index: float = 0.0
+    top_gainers: list[Asset] = []
+    top_losers: list[Asset] = []
+    macro_indicators: list[MacroIndicator] = []
+
+
+# --- Alert List Schemas ---
+
+
+class AlertList(BaseModel):
+    alerts: list[Alert] = []
+    total: int = 0
