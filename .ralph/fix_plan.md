@@ -36,7 +36,7 @@
 
 ## Low Priority - Advanced Features
 - [x] Implement macro intelligence module (interest rates, inflation, DXY, central bank events)
-- [ ] Build alerts engine with multi-factor detection and Telegram delivery
+- [x] Build alerts engine with multi-factor detection and Telegram delivery
 - [x] Add chat interface frontend (conversational UI)
 - [ ] Email notification delivery
 - [ ] Performance optimization (Redis caching)
@@ -101,6 +101,12 @@
 - [x] Sentiment schema: SentimentAnalysisResponse with score, label, narrative, key_factors
 - [x] TypeScript type: SentimentAnalysis
 - [x] Test suite: 144 tests passing (added 13 sentiment tests)
+- [x] Alerts engine service: scan + severity filter + Telegram delivery pipeline
+- [x] POST /api/v1/alerts/scan-and-notify endpoint with min_severity threshold
+- [x] AlertsPanel updated: "Scan & Notify" button sends high+ alerts to Telegram
+- [x] Schemas: NotifiedAlert, ScanAndNotifyResponse
+- [x] TypeScript types: NotifiedAlert, ScanAndNotifyResponse
+- [x] Test suite: 157 tests passing (added 13 alerts engine tests)
 
 ## API Configuration
 - **Market Data**: yfinance (stocks/ETFs) + CoinGecko (crypto) - both free, no API key needed

@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Query
 
-from app.schemas.asset import AlertList
+from app.schemas.asset import AlertList, ScanAndNotifyResponse
 from app.services.alert_scorer import scan_symbols
+from app.services.alerts_engine import scan_and_notify
 from app.services.store import store
 
 router = APIRouter(prefix="/alerts", tags=["alerts"])
@@ -65,3 +66,53 @@ async def scan_single_asset(symbol: str):
     """Run alert scan on a single asset and return any alerts."""
     alerts = await scan_symbols([{"symbol": symbol.upper(), "type": "stock"}])
     return AlertList(alerts=alerts, total=len(alerts))
+
+
+def _gather_user_symbols() -> list[dict]:
+    """Gather symbols from portfolio holdings and watchlists."""
+    symbols: list[dict] = []
+    seen: set[str] = set()
+
+    for holding in store.get_holdings():
+        sym = holding["symbol"]
+        if sym not in seen:
+            symbols.append({"symbol": sym, "type": holding["type"]})
+            seen.add(sym)
+
+    for wl in store.get_watchlists():
+        for asset in wl.get("assets", []):
+            sym = asset["symbol"]
+            if sym not in seen:
+                symbols.append({"symbol": sym, "type": asset["type"]})
+                seen.add(sym)
+
+    return symbols if symbols else DEFAULT_SCAN_SYMBOLS
+
+
+@router.post("/scan-and-notify", response_model=ScanAndNotifyResponse)
+async def scan_and_notify_endpoint(
+    min_severity: str = Query(
+        default="high",
+        description="Minimum alert severity to send via Telegram (all, medium, high, critical)",
+    ),
+):
+    """Scan portfolio and watchlist assets, then send qualifying alerts via Telegram.
+
+    Combines the alert scanner with Telegram delivery. Only alerts meeting
+    the min_severity threshold are sent as notifications.
+    """
+    symbols = _gather_user_symbols()
+    result = await scan_and_notify(symbols, min_severity=min_severity)
+
+    return ScanAndNotifyResponse(
+        alerts=result["alerts"],
+        notified=[
+            {"alert_id": n["alert_id"], "symbol": n["symbol"],
+             "title": n["title"], "severity": n["severity"],
+             "delivered": n["delivered"]}
+            for n in result["notified"]
+        ],
+        total_alerts=result["total_alerts"],
+        total_notified=result["total_notified"],
+        telegram_configured=result["telegram_configured"],
+    )

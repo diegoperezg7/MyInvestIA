@@ -296,3 +296,22 @@ class SentimentAnalysisResponse(BaseModel):
     sources_count: int = 0
     narrative: str = ""
     key_factors: list[str] = []
+
+
+# --- Alerts Engine Schemas ---
+
+
+class NotifiedAlert(BaseModel):
+    alert_id: str
+    symbol: str | None = None
+    title: str
+    severity: str
+    delivered: bool
+
+
+class ScanAndNotifyResponse(BaseModel):
+    alerts: list[Alert] = []
+    notified: list[NotifiedAlert] = []
+    total_alerts: int = 0
+    total_notified: int = 0
+    telegram_configured: bool = False
