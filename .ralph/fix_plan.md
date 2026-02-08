@@ -11,7 +11,7 @@
 ## High Priority - API Integrations (CRITICAL)
 - [x] Integrate yfinance for stock/ETF market data (prices, historical data, indicators)
 - [x] Integrate CoinGecko API for cryptocurrency data (prices, market cap, volume)
-- [ ] Integrate Anthropic Claude API for AI reasoning, chat interface, and signal synthesis
+- [x] Integrate Anthropic Claude API for AI reasoning, chat interface, and signal synthesis
 - [ ] Integrate Telegram Bot API for alert/notification delivery
 - [ ] Connect Supabase as primary database (replace in-memory store with PostgreSQL)
 - [x] Add pip dependencies: yfinance, numpy
@@ -29,15 +29,15 @@
 - [x] Connect frontend to real backend API data
 
 ## Medium Priority - AI Features
-- [ ] Build AI Decision Synthesizer - fuses technical + sentiment + macro signals via Claude
-- [ ] Implement chat interface backend (Claude-powered conversational Q&A about portfolio/market)
+- [x] Build AI Decision Synthesizer - fuses technical + sentiment + macro signals via Claude
+- [x] Implement chat interface backend (Claude-powered conversational Q&A about portfolio/market)
 - [ ] Add AI memory/context system in Supabase for personalized insights
 - [ ] Create alert scoring system (multi-factor: price + technical + sentiment + macro)
 
 ## Low Priority - Advanced Features
 - [ ] Implement macro intelligence module (interest rates, inflation, DXY, central bank events)
 - [ ] Build alerts engine with multi-factor detection and Telegram delivery
-- [ ] Add chat interface frontend (conversational UI)
+- [x] Add chat interface frontend (conversational UI)
 - [ ] Email notification delivery
 - [ ] Performance optimization (Redis caching)
 - [ ] Advanced error recovery
@@ -72,6 +72,12 @@
 - [x] TypeScript types: AssetQuote, HistoricalData, TechnicalAnalysis added
 - [x] Recharts integration: AreaChart with gradient fill for price history
 - [x] Frontend builds successfully (Next.js 15 production build)
+- [x] Anthropic Claude API integration: AIService with chat + analyze_asset
+- [x] Chat router: /api/v1/chat/ (POST), /api/v1/chat/status (GET), /api/v1/chat/analyze/{symbol} (GET)
+- [x] Chat schemas: ChatMessage, ChatRequest, ChatResponse, AIAnalysisResponse
+- [x] Chat frontend: ChatPanel component with multi-turn conversation UI
+- [x] AI status indicator with connected/not configured badge
+- [x] Test suite: 68 tests passing (added 9 chat/AI tests)
 
 ## API Configuration
 - **Market Data**: yfinance (stocks/ETFs) + CoinGecko (crypto) - both free, no API key needed

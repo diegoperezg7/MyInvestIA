@@ -9,6 +9,7 @@ supabase==2.11.0
 redis==5.2.1
 yfinance==0.2.51
 numpy==2.2.2
+anthropic==0.79.0
 pytest==8.3.4
 pytest-asyncio==0.25.0
 pytest-cov==6.0.0
