@@ -55,3 +55,20 @@ export interface MacroIndicator {
   trend: "up" | "down" | "stable";
   impact_description: string;
 }
+
+export interface WatchlistList {
+  watchlists: Watchlist[];
+  total: number;
+}
+
+export interface MarketOverview {
+  sentiment_index: number;
+  top_gainers: Asset[];
+  top_losers: Asset[];
+  macro_indicators: MacroIndicator[];
+}
+
+export interface AlertList {
+  alerts: Alert[];
+  total: number;
+}

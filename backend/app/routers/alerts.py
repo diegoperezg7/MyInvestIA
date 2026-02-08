@@ -1,8 +1,11 @@
 from fastapi import APIRouter
 
+from app.schemas.asset import AlertList
+
 router = APIRouter(prefix="/alerts", tags=["alerts"])
 
 
-@router.get("/")
+@router.get("/", response_model=AlertList)
 async def get_alerts():
-    return {"alerts": [], "total": 0}
+    """Get all active alerts."""
+    return AlertList()
