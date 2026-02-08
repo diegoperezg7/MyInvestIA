@@ -7,6 +7,7 @@ import QuoteLookup from "@/components/dashboard/QuoteLookup";
 import ChatPanel from "@/components/dashboard/ChatPanel";
 import AlertsPanel from "@/components/dashboard/AlertsPanel";
 import MacroPanel from "@/components/dashboard/MacroPanel";
+import NotificationsPanel from "@/components/dashboard/NotificationsPanel";
 
 export default function Home() {
   return (
@@ -29,9 +30,10 @@ export default function Home() {
         <TechnicalAnalysisCard />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
         <WatchlistCard />
         <AlertsPanel />
+        <NotificationsPanel />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">

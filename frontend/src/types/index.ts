@@ -170,3 +170,15 @@ export interface PriceUpdate {
   change_percent: number;
   volume: number;
 }
+
+export interface NotificationStatus {
+  configured: boolean;
+  bot_name: string | null;
+  bot_username: string | null;
+  chat_id: string | null;
+}
+
+export interface NotificationResponse {
+  success: boolean;
+  message: string;
+}
