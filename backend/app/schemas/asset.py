@@ -235,3 +235,28 @@ class TechnicalAnalysis(BaseModel):
     bollinger_bands: BollingerBandsIndicator = BollingerBandsIndicator()
     overall_signal: str = "neutral"
     signal_counts: dict[str, int] = {"bullish": 0, "bearish": 0, "neutral": 0}
+
+
+# --- Chat / AI Schemas ---
+
+
+class ChatMessage(BaseModel):
+    role: str = Field(pattern=r"^(user|assistant)$")
+    content: str = Field(min_length=1, max_length=4000)
+
+
+class ChatRequest(BaseModel):
+    messages: list[ChatMessage] = Field(min_length=1)
+    context: str = ""
+
+
+class ChatResponse(BaseModel):
+    response: str
+    model: str = "claude-sonnet-4-5-20250929"
+
+
+class AIAnalysisResponse(BaseModel):
+    symbol: str
+    summary: str
+    signal: str = "neutral"
+    confidence: float = Field(ge=0.0, le=1.0, default=0.5)

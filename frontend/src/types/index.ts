@@ -120,3 +120,25 @@ export interface TechnicalAnalysis {
   overall_signal: string;
   signal_counts: { bullish: number; bearish: number; neutral: number };
 }
+
+export interface ChatMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
+export interface ChatResponse {
+  response: string;
+  model: string;
+}
+
+export interface AIAnalysis {
+  symbol: string;
+  summary: string;
+  signal: string;
+  confidence: number;
+}
+
+export interface AIStatus {
+  configured: boolean;
+  model: string;
+}

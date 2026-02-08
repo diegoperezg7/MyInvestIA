@@ -4,6 +4,7 @@ import WatchlistCard from "@/components/dashboard/WatchlistCard";
 import TechnicalAnalysisCard from "@/components/dashboard/TechnicalAnalysisCard";
 import PriceChart from "@/components/dashboard/PriceChart";
 import QuoteLookup from "@/components/dashboard/QuoteLookup";
+import ChatPanel from "@/components/dashboard/ChatPanel";
 
 export default function Home() {
   return (
@@ -26,17 +27,21 @@ export default function Home() {
         <TechnicalAnalysisCard />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
         <WatchlistCard />
         <div className="bg-oracle-panel border border-oracle-border rounded-lg p-6">
           <h3 className="text-oracle-muted text-sm font-medium mb-3 uppercase tracking-wide">
             Active Alerts
           </h3>
           <p className="text-oracle-muted text-sm">
-            No alerts configured. Alerts will appear here once the AI engine is
-            connected.
+            No alerts configured. Alerts will appear here once the alert scoring
+            system is implemented.
           </p>
         </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4">
+        <ChatPanel />
       </div>
 
       <footer className="mt-auto pt-8 text-center text-oracle-muted text-xs">
