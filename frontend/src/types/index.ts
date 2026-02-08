@@ -182,3 +182,12 @@ export interface NotificationResponse {
   success: boolean;
   message: string;
 }
+
+export interface SentimentAnalysis {
+  symbol: string;
+  score: number;
+  label: "bullish" | "bearish" | "neutral";
+  sources_count: number;
+  narrative: string;
+  key_factors: string[];
+}
