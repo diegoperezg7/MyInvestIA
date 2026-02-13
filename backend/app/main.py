@@ -6,14 +6,15 @@ from fastapi.responses import JSONResponse
 
 from app.config import settings
 from app.routers import health, portfolio, watchlist, market, alerts, chat, ws, notifications, memory
+from app.routers import screener, transactions, paper_trading, openclaw, news
 
 logging.basicConfig(level=logging.DEBUG if settings.debug else logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = FastAPI(
-    title="ORACLE - AI Investment Intelligence Dashboard",
+    title="MyInvestIA - AI Investment Intelligence Dashboard",
     description="AI-powered investment intelligence API",
-    version="1.0.0",
+    version="2.0.0",
 )
 
 app.add_middleware(
@@ -43,3 +44,8 @@ app.include_router(chat.router, prefix="/api/v1")
 app.include_router(ws.router, prefix="/api/v1")
 app.include_router(notifications.router, prefix="/api/v1")
 app.include_router(memory.router, prefix="/api/v1")
+app.include_router(screener.router, prefix="/api/v1")
+app.include_router(transactions.router, prefix="/api/v1")
+app.include_router(paper_trading.router, prefix="/api/v1")
+app.include_router(openclaw.router, prefix="/api/v1")
+app.include_router(news.router, prefix="/api/v1")

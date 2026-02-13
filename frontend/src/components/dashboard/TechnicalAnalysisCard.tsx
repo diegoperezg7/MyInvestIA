@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { fetchAPI } from "@/lib/api";
 import type { TechnicalAnalysis } from "@/types";
+import SymbolAutocomplete from "@/components/ui/SymbolAutocomplete";
 
 const SIGNAL_COLORS: Record<string, string> = {
   bullish: "text-oracle-green",
@@ -59,13 +60,12 @@ export default function TechnicalAnalysisCard() {
       </h3>
 
       <div className="flex gap-2 mb-4">
-        <input
-          type="text"
+        <SymbolAutocomplete
           value={symbol}
-          onChange={(e) => setSymbol(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && handleAnalyze()}
+          onChange={setSymbol}
+          onSubmit={(s) => { setSymbol(s); handleAnalyze(); }}
           placeholder="Enter symbol (e.g. AAPL)"
-          className="flex-1 bg-oracle-bg border border-oracle-border rounded px-3 py-1.5 text-sm text-oracle-text placeholder:text-oracle-muted focus:outline-none focus:border-oracle-accent"
+          className="flex-1"
         />
         <button
           onClick={handleAnalyze}
@@ -81,7 +81,7 @@ export default function TechnicalAnalysisCard() {
       {analysis && (
         <div>
           <div className="flex items-center justify-between mb-4">
-            <span className="text-white font-bold text-lg">
+            <span className="text-oracle-text font-bold text-lg">
               {analysis.symbol}
             </span>
             <SignalBadge signal={analysis.overall_signal} />
@@ -181,7 +181,7 @@ function IndicatorRow({
         )}
       </div>
       <div className="flex items-center gap-2">
-        <span className="text-white font-mono text-xs">{value}</span>
+        <span className="text-oracle-text font-mono text-xs">{value}</span>
         <span
           className={`w-2 h-2 rounded-full ${
             signal === "bullish"

@@ -38,9 +38,9 @@
 - [x] Implement macro intelligence module (interest rates, inflation, DXY, central bank events)
 - [x] Build alerts engine with multi-factor detection and Telegram delivery
 - [x] Add chat interface frontend (conversational UI)
-- [ ] Email notification delivery
-- [ ] Performance optimization (Redis caching)
-- [ ] Advanced error recovery
+- [ ] Email notification delivery (optional — PRD marks as "future-ready")
+- [ ] Performance optimization (Redis caching) (optional — PRD marks as "optional")
+- [ ] Advanced error recovery (optional — not a PRD requirement)
 
 ## Completed
 - [x] Project initialization

@@ -1,32 +1,57 @@
+import asyncio
+
 from fastapi import APIRouter, HTTPException
 
 from app.schemas.asset import (
     AddWatchlistAssetRequest,
+    Asset,
     CreateWatchlistRequest,
     UpdateWatchlistRequest,
     Watchlist,
     WatchlistList,
 )
+from app.services.market_data import market_data_service
 from app.services.store import store
 
 router = APIRouter(prefix="/watchlists", tags=["watchlists"])
 
 
+async def _enrich_watchlist(raw: dict) -> Watchlist:
+    """Enrich a watchlist's assets with live market prices (parallel)."""
+    assets = raw.get("assets", [])
+
+    async def _enrich_one(asset: dict) -> Asset:
+        quote = await market_data_service.get_quote(asset["symbol"], asset.get("type"))
+        if quote:
+            return Asset(
+                symbol=asset["symbol"],
+                name=asset.get("name", asset["symbol"]),
+                type=asset.get("type", "stock"),
+                price=quote["price"],
+                change_percent=quote["change_percent"],
+                volume=quote.get("volume", 0),
+            )
+        return Asset(**asset)
+
+    enriched_assets = await asyncio.gather(*[_enrich_one(a) for a in assets])
+    return Watchlist(id=raw["id"], name=raw["name"], assets=list(enriched_assets))
+
+
 @router.get("/", response_model=WatchlistList)
 async def get_watchlists():
-    """Get all watchlists."""
+    """Get all watchlists with live prices."""
     raw = store.get_watchlists()
-    watchlists = [Watchlist(**wl) for wl in raw]
-    return WatchlistList(watchlists=watchlists, total=len(watchlists))
+    watchlists = await asyncio.gather(*[_enrich_watchlist(wl) for wl in raw])
+    return WatchlistList(watchlists=list(watchlists), total=len(watchlists))
 
 
 @router.get("/{watchlist_id}", response_model=Watchlist)
 async def get_watchlist(watchlist_id: str):
-    """Get a single watchlist by ID."""
+    """Get a single watchlist by ID with live prices."""
     raw = store.get_watchlist(watchlist_id)
     if not raw:
         raise HTTPException(status_code=404, detail="Watchlist not found")
-    return Watchlist(**raw)
+    return await _enrich_watchlist(raw)
 
 
 @router.post("/", response_model=Watchlist, status_code=201)

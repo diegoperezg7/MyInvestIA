@@ -1,13 +1,264 @@
 @import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+/* Hide Next.js dev error overlay when accessed via proxy */
+nextjs-portal { display: none !important; }
+
+/* ============================================
+   MyInvestIA Design System — Corporate Tokens
+   Primary: Teal/Cyan #12b5b0
+   Dark theme = default, Light theme = opt-in
+   ============================================ */
 
 @theme {
-  --color-oracle-bg: #0a0e17;
-  --color-oracle-panel: #111827;
-  --color-oracle-border: #1f2937;
-  --color-oracle-accent: #3b82f6;
+  --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text',
+    'Helvetica Neue', 'Helvetica', 'Arial', system-ui, sans-serif;
+  --font-mono: 'SF Mono', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas',
+    'Liberation Mono', 'Courier New', monospace;
+
+  --color-oracle-primary: var(--oracle-primary);
+  --color-oracle-primary-dark: var(--oracle-primary-dark);
+  --color-oracle-primary-light: var(--oracle-primary-light);
+  --color-oracle-bg: var(--oracle-bg);
+  --color-oracle-panel: var(--oracle-panel);
+  --color-oracle-border: var(--oracle-border);
+  --color-oracle-border-hover: var(--oracle-border-hover);
+  --color-oracle-accent: var(--oracle-primary);
   --color-oracle-green: #10b981;
   --color-oracle-red: #ef4444;
   --color-oracle-yellow: #f59e0b;
-  --color-oracle-text: #e5e7eb;
-  --color-oracle-muted: #6b7280;
+  --color-oracle-info: #3b82f6;
+  --color-oracle-text: var(--oracle-text);
+  --color-oracle-muted: var(--oracle-muted);
+  --color-oracle-tertiary: var(--oracle-tertiary);
+  --color-oracle-panel-hover: var(--oracle-panel-hover);
+  --color-oracle-sidebar: var(--oracle-sidebar);
+  --color-oracle-glow: var(--oracle-primary);
+  --color-oracle-surface-alt: var(--oracle-surface-alt);
+}
+
+/* --- Dark Theme (default) --- */
+:root {
+  --oracle-primary: #12b5b0;
+  --oracle-primary-dark: #0e9a96;
+  --oracle-primary-light: rgba(18, 181, 176, 0.12);
+
+  --oracle-bg: #050505;
+  --oracle-panel: #121212;
+  --oracle-panel-hover: #1e1e1e;
+  --oracle-sidebar: #0a0a0a;
+  --oracle-surface-alt: #1a1a1a;
+
+  --oracle-border: #27272a;
+  --oracle-border-hover: #3f3f46;
+
+  --oracle-text: #ededed;
+  --oracle-muted: #a1a1aa;
+  --oracle-tertiary: #52525b;
+
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.15);
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-full: 9999px;
+
+  --transition-fast: 0.15s ease;
+  --transition-normal: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* --- Light Theme --- */
+[data-theme='light'] {
+  --oracle-primary: #0d9488;
+  --oracle-primary-dark: #0f766e;
+  --oracle-primary-light: #ccfbf1;
+
+  --oracle-bg: #f8fafc;
+  --oracle-panel: #ffffff;
+  --oracle-panel-hover: #f1f5f9;
+  --oracle-sidebar: #ffffff;
+  --oracle-surface-alt: #f1f5f9;
+
+  --oracle-border: #e2e8f0;
+  --oracle-border-hover: #cbd5e1;
+
+  --oracle-text: #0f172a;
+  --oracle-muted: #64748b;
+  --oracle-tertiary: #94a3b8;
+
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+
+/* --- Base --- */
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text',
+    'Helvetica Neue', 'Helvetica', 'Arial', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: var(--oracle-bg);
+  color: var(--oracle-text);
+  transition: background-color var(--transition-normal), color var(--transition-normal);
+  line-height: 1.6;
+  letter-spacing: -0.01em;
+  font-feature-settings: 'kern' 1, 'liga' 1, 'calt' 1;
+}
+
+/* Apple-style monospace for numeric/financial values */
+.font-mono, code, pre, [class*="font-mono"] {
+  font-family: 'SF Mono', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas',
+    'Liberation Mono', 'Courier New', monospace !important;
+  font-feature-settings: 'tnum' 1, 'kern' 1;
+}
+
+/* --- Flash animations --- */
+@keyframes flash-green {
+  0% { background-color: rgba(18, 181, 176, 0.3); }
+  100% { background-color: transparent; }
+}
+@keyframes flash-red {
+  0% { background-color: rgba(239, 68, 68, 0.3); }
+  100% { background-color: transparent; }
+}
+.flash-up { animation: flash-green 0.8s ease-out; }
+.flash-down { animation: flash-red 0.8s ease-out; }
+
+/* --- Animations --- */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes pulseGlow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(18, 181, 176, 0.4); }
+  50% { box-shadow: 0 0 0 8px rgba(18, 181, 176, 0); }
+}
+@keyframes view-enter {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.view-transition { animation: view-enter 0.25s ease-out; }
+.animate-fadeIn { animation: fadeIn 0.3s ease-out; }
+.animate-fadeInUp { animation: fadeInUp 0.4s ease-out; }
+
+/* --- Sidebar --- */
+.oracle-sidebar {
+  background: var(--oracle-sidebar);
+  scrollbar-width: thin;
+  scrollbar-color: var(--oracle-border) transparent;
+  transition: background-color var(--transition-normal);
+}
+.oracle-sidebar::-webkit-scrollbar { width: 4px; }
+.oracle-sidebar::-webkit-scrollbar-track { background: transparent; }
+.oracle-sidebar::-webkit-scrollbar-thumb { background: var(--oracle-border); border-radius: 2px; }
+
+/* --- Cards --- */
+.oracle-card {
+  background: var(--oracle-panel);
+  border: 1px solid var(--oracle-border);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow var(--transition-normal), border-color var(--transition-fast);
+}
+.oracle-card:hover {
+  box-shadow: var(--shadow-md);
+  border-color: var(--oracle-border-hover);
+}
+
+.oracle-card-glow {
+  border-top: 2px solid transparent;
+  border-image: linear-gradient(90deg, #12b5b0, #0e9a96) 1;
+}
+.oracle-card-elevated {
+  box-shadow: var(--shadow-md);
+}
+
+/* --- Navigation --- */
+.oracle-nav-active {
+  border-left: 3px solid var(--oracle-primary);
+  background: var(--oracle-primary-light);
+}
+
+/* --- Separator --- */
+.oracle-separator {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--oracle-border) 20%, var(--oracle-primary) 50%, var(--oracle-border) 80%, transparent);
+}
+
+/* --- Buttons --- */
+.oracle-btn-primary {
+  background: linear-gradient(135deg, var(--oracle-primary), var(--oracle-primary-dark));
+  color: #ffffff;
+  border: none;
+  border-radius: var(--radius-md);
+  padding: 10px 20px;
+  font-weight: 600;
+  font-size: 0.9375rem;
+  cursor: pointer;
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.oracle-btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 0 16px rgba(18, 181, 176, 0.3);
+}
+.oracle-btn-primary:disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.oracle-btn-secondary {
+  background: transparent;
+  color: var(--oracle-primary);
+  border: 1px solid var(--oracle-primary);
+  border-radius: var(--radius-md);
+  padding: 10px 20px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+.oracle-btn-secondary:hover {
+  background: var(--oracle-primary-light);
+}
+
+/* --- Inputs --- */
+.oracle-input {
+  background: var(--oracle-panel);
+  border: 1px solid var(--oracle-border);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  font-size: 0.9rem;
+  font-family: inherit;
+  color: var(--oracle-text);
+  width: 100%;
+  transition: border var(--transition-fast), box-shadow var(--transition-fast);
+}
+.oracle-input:focus {
+  border-color: var(--oracle-primary);
+  box-shadow: 0 0 0 3px rgba(18, 181, 176, 0.15);
+  outline: none;
+}
+.oracle-input::placeholder {
+  color: var(--oracle-muted);
+}
+
+/* --- Chart tooltip overrides --- */
+.recharts-default-tooltip {
+  background-color: var(--oracle-panel) !important;
+  border-color: var(--oracle-border) !important;
+  border-radius: var(--radius-md) !important;
 }

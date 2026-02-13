@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { fetchAPI, postAPI } from "@/lib/api";
+import Sparkline from "@/components/ui/Sparkline";
+import useSparklines from "@/hooks/useSparklines";
 import type { AlertList, Alert, ScanAndNotifyResponse } from "@/types";
 
 const SEVERITY_STYLES: Record<string, string> = {
@@ -18,7 +20,7 @@ const ACTION_STYLES: Record<string, string> = {
   monitor: "text-oracle-accent",
 };
 
-function AlertCard({ alert }: { alert: Alert }) {
+function AlertCard({ alert, sparkData }: { alert: Alert; sparkData: number[] }) {
   const [expanded, setExpanded] = useState(false);
 
   return (
@@ -33,15 +35,20 @@ function AlertCard({ alert }: { alert: Alert }) {
           <span className="text-xs font-medium uppercase">
             {alert.severity}
           </span>
-          <span className="text-sm font-medium text-white">{alert.title}</span>
+          <span className="text-sm font-medium text-oracle-text">{alert.title}</span>
         </div>
-        <span
-          className={`text-xs font-medium uppercase ${
-            ACTION_STYLES[alert.suggested_action] || ""
-          }`}
-        >
-          {alert.suggested_action}
-        </span>
+        <div className="flex items-center gap-2">
+          {alert.asset_symbol && (
+            <Sparkline data={sparkData} width={48} height={18} />
+          )}
+          <span
+            className={`text-xs font-medium uppercase ${
+              ACTION_STYLES[alert.suggested_action] || ""
+            }`}
+          >
+            {alert.suggested_action}
+          </span>
+        </div>
       </div>
 
       {expanded && (
@@ -66,6 +73,11 @@ export default function AlertsPanel() {
   const [scanned, setScanned] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notifyResult, setNotifyResult] = useState<string | null>(null);
+
+  const alertSymbols = alerts
+    .map((a) => a.asset_symbol)
+    .filter((s): s is string => !!s);
+  const sparklines = useSparklines(alertSymbols);
 
   const handleScan = async () => {
     setLoading(true);
@@ -156,7 +168,11 @@ export default function AlertsPanel() {
       {alerts.length > 0 && (
         <div className="space-y-2 max-h-64 overflow-y-auto">
           {alerts.map((alert) => (
-            <AlertCard key={alert.id} alert={alert} />
+            <AlertCard
+              key={alert.id}
+              alert={alert}
+              sparkData={alert.asset_symbol ? (sparklines[alert.asset_symbol] ?? []) : []}
+            />
           ))}
         </div>
       )}

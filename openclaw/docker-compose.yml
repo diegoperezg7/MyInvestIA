@@ -1,0 +1,38 @@
+# OpenClaw + ORACLE Integration
+#
+# Usage:
+#   1. Copy this file to your OpenClaw directory (or run from here)
+#   2. Set environment variables in .env or export them
+#   3. Run: docker compose up -d
+#
+# Required environment variables:
+#   OPENCLAW_HOOKS_TOKEN - Bearer token for webhook auth (generate a random string)
+#   TELEGRAM_BOT_TOKEN   - From @BotFather on Telegram
+#
+# After starting:
+#   1. Send any message to your Telegram bot
+#   2. Approve pairing: docker compose run --rm openclaw-cli pairing approve telegram <CODE>
+#   3. Set in ORACLE backend .env:
+#      OPENCLAW_ENABLED=true
+#      OPENCLAW_TOKEN=<your OPENCLAW_HOOKS_TOKEN>
+#      OPENCLAW_URL=http://localhost:18789
+
+services:
+  openclaw-gateway:
+    image: openclaw/openclaw:latest
+    container_name: openclaw-oracle
+    ports:
+      - "18789:18789"
+    volumes:
+      - openclaw-data:/home/node/.openclaw
+      - ./AGENT.md:/home/node/.openclaw/AGENT.md:ro
+      - ./HEARTBEAT.md:/home/node/.openclaw/HEARTBEAT.md:ro
+    environment:
+      - OPENCLAW_HOOKS_TOKEN=${OPENCLAW_HOOKS_TOKEN}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+
+volumes:
+  openclaw-data:

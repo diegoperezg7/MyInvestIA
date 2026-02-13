@@ -1,4 +1,7 @@
-from fastapi import APIRouter, HTTPException
+import asyncio
+
+from fastapi import APIRouter, HTTPException, UploadFile, File
+from fastapi.responses import Response
 
 from app.schemas.asset import (
     AddHoldingRequest,
@@ -7,6 +10,8 @@ from app.schemas.asset import (
     PortfolioHolding,
     UpdateHoldingRequest,
 )
+from app.services.csv_service import export_portfolio_csv, parse_portfolio_csv
+from app.services.dividend_service import get_portfolio_dividends
 from app.services.market_data import market_data_service
 from app.services.store import store
 
@@ -54,7 +59,7 @@ async def _build_holding(h: dict) -> PortfolioHolding:
 async def get_portfolio():
     """Get the full portfolio with all holdings and live prices."""
     raw_holdings = store.get_holdings()
-    holdings = [await _build_holding(h) for h in raw_holdings]
+    holdings = list(await asyncio.gather(*[_build_holding(h) for h in raw_holdings]))
     total_value = sum(h.current_value for h in holdings)
     daily_pnl = sum(
         h.current_value * h.asset.change_percent / 100.0
@@ -109,3 +114,60 @@ async def delete_holding(symbol: str):
     """Remove a holding from the portfolio."""
     if not store.delete_holding(symbol):
         raise HTTPException(status_code=404, detail=f"Holding '{symbol.upper()}' not found")
+
+
+@router.get("/export", response_class=Response)
+async def export_csv():
+    """Export portfolio holdings as CSV."""
+    raw_holdings = store.get_holdings()
+    built = list(await asyncio.gather(*[_build_holding(h) for h in raw_holdings]))
+    holdings_data = [
+        {
+            "asset": {"symbol": holding.asset.symbol, "name": holding.asset.name, "type": holding.asset.type.value},
+            "quantity": holding.quantity,
+            "avg_buy_price": holding.avg_buy_price,
+            "current_value": holding.current_value,
+            "unrealized_pnl": holding.unrealized_pnl,
+        }
+        for holding in built
+    ]
+
+    csv_content = export_portfolio_csv(holdings_data)
+    return Response(
+        content=csv_content,
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=portfolio.csv"},
+    )
+
+
+@router.post("/import")
+async def import_csv(file: UploadFile = File(...)):
+    """Import portfolio holdings from CSV."""
+    content = (await file.read()).decode("utf-8")
+    holdings = parse_portfolio_csv(content)
+
+    imported = []
+    for h in holdings:
+        try:
+            raw = store.add_holding(
+                symbol=h["symbol"],
+                name=h.get("name", h["symbol"]),
+                asset_type=h.get("type", "stock"),
+                quantity=h["quantity"],
+                avg_buy_price=h["avg_buy_price"],
+            )
+            imported.append(raw["symbol"])
+        except Exception:
+            pass
+
+    return {"imported": len(imported), "symbols": imported}
+
+
+@router.get("/dividends")
+async def get_dividends():
+    """Get dividend data for all portfolio holdings."""
+    raw_holdings = store.get_holdings()
+    symbols = [h["symbol"] for h in raw_holdings]
+    if not symbols:
+        return {"dividends": {}, "total_annual": 0, "symbols_with_dividends": 0}
+    return get_portfolio_dividends(symbols)

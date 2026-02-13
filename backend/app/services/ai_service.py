@@ -1,19 +1,23 @@
-"""AI service wrapping the Anthropic Claude API.
+"""AI service wrapping the Mistral AI API.
 
 Provides conversational chat about markets/portfolio and AI-driven asset analysis
 that synthesizes technical indicators, market data, and reasoning.
+
+Model strategy:
+- mistral-large-latest: Chat, asset analysis, decision synthesis (complex reasoning)
+- mistral-small-latest: Sentiment analysis (classification, faster/cheaper)
 """
 
 import logging
 
-import anthropic
+from mistralai import Mistral
 
 from app.config import settings
 from app.services.store import store
 
 logger = logging.getLogger(__name__)
 
-SYSTEM_PROMPT = """You are ORACLE, an AI investment intelligence assistant. Your role is to help investors make informed decisions by analyzing market data, technical indicators, and portfolio positions.
+SYSTEM_PROMPT = """You are InvestIA, an AI investment intelligence assistant. Your role is to help investors make informed decisions by analyzing market data, technical indicators, and portfolio positions.
 
 Key guidelines:
 - You do NOT provide financial advice. You provide decision support and analysis.
@@ -27,43 +31,51 @@ Key guidelines:
 
 You have access to real-time market data, technical analysis (RSI, MACD, SMA, EMA, Bollinger Bands), portfolio holdings, and watchlists. When the user asks about specific assets, use the context provided to give informed analysis."""
 
+# Model selection per task type
+MODEL_CHAT = "mistral-large-latest"       # Complex reasoning, multi-turn conversation
+MODEL_ANALYSIS = "mistral-large-latest"    # Asset analysis, decision synthesis
+MODEL_SENTIMENT = "mistral-small-latest"   # Sentiment classification (faster/cheaper)
+
 
 class AIService:
-    """Handles all interactions with the Anthropic Claude API."""
+    """Handles all interactions with the Mistral AI API."""
 
     def __init__(self):
-        self._client: anthropic.AsyncAnthropic | None = None
+        self._client: Mistral | None = None
 
-    def _get_client(self) -> anthropic.AsyncAnthropic:
-        if not settings.anthropic_api_key:
-            raise ValueError("ANTHROPIC_API_KEY not configured in .env")
+    def _get_client(self) -> Mistral:
+        if not settings.mistral_api_key:
+            raise ValueError("MISTRAL_API_KEY not configured in .env")
         if self._client is None:
-            self._client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
+            self._client = Mistral(api_key=settings.mistral_api_key)
         return self._client
 
     @property
     def is_configured(self) -> bool:
-        return bool(settings.anthropic_api_key)
+        return bool(settings.mistral_api_key)
 
     async def chat(
         self,
         messages: list[dict],
         context: str = "",
         max_tokens: int = 1024,
+        model: str | None = None,
+        system_override: str | None = None,
     ) -> str:
-        """Send a conversation to Claude and get a response.
+        """Send a conversation to Mistral and get a response.
 
         Args:
             messages: List of {"role": "user"|"assistant", "content": str}
             context: Additional context about portfolio/market data
             max_tokens: Max response length
+            model: Override model (defaults to MODEL_CHAT)
 
         Returns:
             The assistant's text response.
         """
         client = self._get_client()
 
-        system = SYSTEM_PROMPT
+        system = system_override or SYSTEM_PROMPT
 
         # Inject AI memory for personalized context
         memories = store.get_memories(limit=20)
@@ -76,14 +88,16 @@ class AIService:
         if context:
             system += f"\n\nCurrent context:\n{context}"
 
-        response = await client.messages.create(
-            model="claude-sonnet-4-5-20250929",
+        # Build messages with system prompt as first message
+        full_messages = [{"role": "system", "content": system}] + messages
+
+        response = await client.chat.complete_async(
+            model=model or MODEL_CHAT,
             max_tokens=max_tokens,
-            system=system,
-            messages=messages,
+            messages=full_messages,
         )
 
-        return response.content[0].text
+        return response.choices[0].message.content
 
     async def analyze_asset(
         self,
@@ -94,14 +108,7 @@ class AIService:
     ) -> dict:
         """Generate AI analysis for an asset using available data.
 
-        Args:
-            symbol: Asset ticker symbol
-            technical_data: Technical analysis indicators (RSI, MACD, etc.)
-            quote_data: Current quote data (price, volume, change)
-            portfolio_context: User's portfolio context if relevant
-
-        Returns:
-            Dict with: summary, signal, confidence, reasoning, risks, opportunities
+        Uses mistral-large-latest for complex multi-factor reasoning.
         """
         context_parts = [f"Asset: {symbol}"]
 
@@ -154,6 +161,7 @@ class AIService:
             messages=[{"role": "user", "content": prompt}],
             context=context,
             max_tokens=800,
+            model=MODEL_ANALYSIS,
         )
 
         # Parse the signal from the overall technical data if available

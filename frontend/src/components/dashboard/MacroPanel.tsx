@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { fetchAPI } from "@/lib/api";
+import Sparkline from "@/components/ui/Sparkline";
+import useSparklines from "@/hooks/useSparklines";
 import type { MacroIntelligenceResponse, MacroIndicatorDetail } from "@/types";
 
 const TREND_ICONS: Record<string, string> = {
@@ -23,11 +25,11 @@ const RISK_COLORS: Record<string, string> = {
   high: "text-oracle-red",
 };
 
-function IndicatorRow({ indicator }: { indicator: MacroIndicatorDetail }) {
+function IndicatorRow({ indicator, sparkData }: { indicator: MacroIndicatorDetail; sparkData: number[] }) {
   return (
     <div className="flex items-center justify-between py-2 border-b border-oracle-border last:border-b-0">
       <div className="flex-1 min-w-0">
-        <p className="text-sm text-white font-medium truncate">
+        <p className="text-sm text-oracle-text font-medium truncate">
           {indicator.name}
         </p>
         <p className="text-xs text-oracle-muted truncate mt-0.5">
@@ -35,7 +37,8 @@ function IndicatorRow({ indicator }: { indicator: MacroIndicatorDetail }) {
         </p>
       </div>
       <div className="flex items-center gap-3 ml-4 shrink-0">
-        <span className="text-sm text-white font-mono">
+        <Sparkline data={sparkData} width={56} height={22} />
+        <span className="text-sm text-oracle-text font-mono">
           {indicator.value.toLocaleString(undefined, {
             minimumFractionDigits: 2,
             maximumFractionDigits: 2,
@@ -57,6 +60,9 @@ export default function MacroPanel() {
   const [data, setData] = useState<MacroIntelligenceResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const tickers = data?.indicators.map((i) => i.ticker).filter(Boolean) ?? [];
+  const sparklines = useSparklines(tickers);
 
   useEffect(() => {
     let cancelled = false;
@@ -108,7 +114,7 @@ export default function MacroPanel() {
               </span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-white capitalize">
+              <span className="text-sm font-medium text-oracle-text capitalize">
                 {data.summary.environment}
               </span>
               <span
@@ -133,7 +139,11 @@ export default function MacroPanel() {
           {/* Indicator list */}
           <div className="space-y-0">
             {data.indicators.map((indicator) => (
-              <IndicatorRow key={indicator.name} indicator={indicator} />
+              <IndicatorRow
+                key={indicator.name}
+                indicator={indicator}
+                sparkData={sparklines[indicator.ticker] ?? []}
+              />
             ))}
           </div>
 

@@ -59,7 +59,7 @@ async def test_chat_success(client):
     assert response.status_code == 200
     data = response.json()
     assert "AAPL" in data["response"]
-    assert data["model"] == "claude-sonnet-4-5-20250929"
+    assert data["model"] == "mistral-large-latest"
 
 
 @pytest.mark.asyncio

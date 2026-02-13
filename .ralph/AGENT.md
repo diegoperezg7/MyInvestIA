@@ -7,7 +7,7 @@
 ## Backend Setup
 ```bash
 cd backend
-python -m venv .venv
+python3.13 -m venv .venv   # MUST use Python 3.13 (3.14 incompatible with pydantic-core)
 source .venv/bin/activate
 pip install -r requirements.txt
 ```
@@ -47,6 +47,14 @@ npm run build
 - Write tool auto-creates parent directories; use it instead of mkdir via Bash in sandboxed environments
 - Tailwind CSS v4 uses `@import "tailwindcss"` and `@theme` block for custom colors instead of tailwind.config.ts
 - FastAPI routes are organized as separate router modules under `app/routers/`
+- Python 3.14 is NOT compatible with pydantic-core (PyO3 limit). Use Python 3.13 venv.
+- Backend venv already exists at `backend/.venv` with all deps installed
+- Frontend node_modules already exists at `frontend/node_modules`
+- API keys configured in `backend/.env` (see `backend/.env.example` for template)
+- Market data: yfinance (stocks/ETFs) + CoinGecko (crypto) - both free, no key needed
+- AI: Anthropic Claude API via `anthropic` Python package
+- Notifications: Telegram Bot API via `python-telegram-bot`
+- Database: Supabase PostgreSQL (credentials in .env)
 
 ## Feature Development Quality Standards
 
