@@ -40,17 +40,19 @@ def _sync_get_quote(symbol: str) -> dict | None:
     }
 
 
-_BATCH_CHUNK_SIZE = 100  # yfinance handles ~100 symbols well per download
+_BATCH_CHUNK_SIZE = 50  # keep chunks small to avoid yfinance rate limits
 
 
 def _sync_get_quotes_batch(symbols: list[str]) -> dict[str, dict]:
-    """Batch-fetch quotes using yf.download() — chunked to avoid timeouts."""
+    """Batch-fetch quotes using yf.download() — chunked to avoid rate limits."""
     results: dict[str, dict] = {}
     if not symbols:
         return results
 
-    # Process in chunks to avoid overwhelming yfinance
+    # Process in chunks with a small delay between them
     for i in range(0, len(symbols), _BATCH_CHUNK_SIZE):
+        if i > 0:
+            time.sleep(0.5)  # small pause between chunks to avoid rate limit
         chunk = symbols[i : i + _BATCH_CHUNK_SIZE]
         try:
             df = yf.download(
