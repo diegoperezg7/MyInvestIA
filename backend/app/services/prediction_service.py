@@ -11,17 +11,18 @@ from datetime import datetime, timezone
 
 from app.services.ai_service import ai_service
 from app.services.cache import get_or_fetch
+from app.services.quant_scoring import compute_quant_scores
 
 logger = logging.getLogger(__name__)
 
 PREDICTION_TTL = 600  # 10 minutes
 
-PREDICTION_SYSTEM_PROMPT = """You are InvestIA, an expert AI investment analyst. Your task is to synthesize ALL provided data into a single, comprehensive prediction for the given asset.
+PREDICTION_SYSTEM_PROMPT = """You are InvestIA, an expert AI investment analyst. A quantitative scoring engine has already computed a verdict and confidence based on 7 algorithmic factors. Your job is to EXPLAIN and CONTEXTUALIZE the quant scores — NOT to invent your own verdict.
 
 You MUST respond with ONLY valid JSON (no markdown, no extra text). The JSON must follow this exact structure:
 {
-  "verdict": "strong_buy|buy|neutral|sell|strong_sell",
-  "confidence": <float 0.0-1.0>,
+  "verdict_adjustment": "none|upgrade|downgrade",
+  "adjustment_reason": "Only fill if adjustment is not none — explain why sentiment/news justifies shifting the quant verdict by one step",
   "technical_summary": {
     "signal": "bullish|bearish|neutral",
     "key_indicators": ["indicator1: value (signal)", "indicator2: value (signal)"],
@@ -58,19 +59,14 @@ You MUST respond with ONLY valid JSON (no markdown, no extra text). The JSON mus
     "catalysts": ["catalyst1", "catalyst2"],
     "risks": ["risk1", "risk2"]
   },
-  "ai_analysis": "Full 4-6 paragraph narrative analysis IN SPANISH covering: current situation, technical picture, sentiment landscape, macro context, and final recommendation with reasoning. Be specific with numbers and data points."
+  "ai_analysis": "Full 4-6 paragraph narrative analysis IN SPANISH. You MUST reference the quant scores (composite, each factor, regime). Explain WHY the numbers are what they are. Cover: quant verdict explanation, technical picture, sentiment landscape, macro context, and final recommendation. Be specific with numbers and data points."
 }
 
-Verdict criteria:
-- strong_buy: Multiple strong bullish signals across technicals, sentiment, and macro. High confidence.
-- buy: Net bullish signals, some supporting data. Moderate-high confidence.
-- neutral: Mixed or insufficient signals. Low confidence or conflicting data.
-- sell: Net bearish signals. Moderate-high confidence.
-- strong_sell: Multiple strong bearish signals. High confidence.
-
-Important:
+CRITICAL RULES:
+- The verdict and confidence come from the QUANT ENGINE — you do NOT set them
+- You may suggest a verdict_adjustment of "upgrade" or "downgrade" (shifts verdict by ±1 step) ONLY if news/sentiment data provides a compelling reason that the quant model cannot capture (e.g., breaking news, earnings surprise)
 - The ai_analysis MUST be written entirely in SPANISH
-- Reference specific numbers, prices, percentages from the data
+- Reference the specific quant factor scores and explain what drives each one
 - Be honest about uncertainty and conflicting signals
 - Never promise future returns — provide analysis and scenarios"""
 
@@ -126,6 +122,11 @@ async def generate_prediction(symbol: str) -> dict:
             except Exception:
                 pass
 
+        # Compute quantitative scores (with sentiment data)
+        quant_scores = compute_quant_scores(
+            history or [], macro_indicators, enhanced_sentiment
+        )
+
         # Filter RSS for symbol
         rss_mentions = [
             a for a in rss_articles
@@ -166,11 +167,12 @@ async def generate_prediction(symbol: str) -> dict:
             headlines=headlines,
             market_news=market_news,
             portfolio_context=portfolio_context,
+            quant_scores=quant_scores,
         )
 
         # Generate prediction with AI
         if not ai_service.is_configured:
-            return _fallback_prediction(symbol, technical_data, enhanced_sentiment, macro_summary)
+            return _fallback_prediction(symbol, technical_data, enhanced_sentiment, macro_summary, quant_scores)
 
         now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
         user_prompt = (
@@ -185,14 +187,14 @@ async def generate_prediction(symbol: str) -> dict:
                 model="mistral-large-latest",
                 system_override=PREDICTION_SYSTEM_PROMPT,
             )
-            result = _parse_prediction_response(response, symbol)
+            result = _parse_prediction_response(response, symbol, quant_scores)
             if result:
                 result["generated_at"] = datetime.now(timezone.utc).isoformat()
                 return result
         except Exception as e:
             logger.warning("AI prediction for %s failed: %s", symbol, e)
 
-        return _fallback_prediction(symbol, technical_data, enhanced_sentiment, macro_summary)
+        return _fallback_prediction(symbol, technical_data, enhanced_sentiment, macro_summary, quant_scores)
 
     return await get_or_fetch(f"prediction:{symbol}", _fetch, PREDICTION_TTL) or {
         "symbol": symbol,
@@ -205,6 +207,7 @@ async def generate_prediction(symbol: str) -> dict:
         "social_summary": {},
         "price_outlook": {},
         "ai_analysis": "No se pudo generar la predicción.",
+        "quant_scores": {},
         "generated_at": datetime.now(timezone.utc).isoformat(),
     }
 
@@ -221,9 +224,43 @@ def _build_prediction_context(
     headlines: list[str],
     market_news: list[dict],
     portfolio_context: str,
+    quant_scores: dict | None = None,
 ) -> str:
     """Build a rich context string for the AI prediction prompt."""
     parts: list[str] = []
+
+    # Quantitative scores (placed first — these are the HARD FACTS)
+    if quant_scores and quant_scores.get("composite_score") is not None:
+        qs = quant_scores
+        factors = qs.get("factors", {})
+        risk = qs.get("risk_metrics", {})
+        sr = qs.get("support_resistance", {})
+        lines = [
+            "## QUANTITATIVE SCORING ENGINE (HARD FACTS — base your analysis on these)",
+            f"- Composite Score: {qs['composite_score']:+.4f}",
+            f"- Quant Verdict: {qs['verdict'].upper()} (confidence: {qs['confidence']:.0%})",
+            f"- Regime: {qs['regime']} (ADX: {qs.get('adx', 0):.1f})",
+            "",
+            "Factor Scores [-1.0 to +1.0]:",
+        ]
+        weights = qs.get("weights", {})
+        for fname, fval in factors.items():
+            w = weights.get(fname, 0)
+            lines.append(f"  - {fname}: {fval:+.4f} (weight: {w:.0%})")
+        lines.append("")
+        lines.append("Risk Metrics:")
+        lines.append(f"  - Sharpe Ratio (63d): {risk.get('sharpe_ratio', 0):.2f}")
+        lines.append(f"  - Max Drawdown (63d): {risk.get('max_drawdown', 0):.2f}%")
+        lines.append(f"  - Historical Volatility (20d): {risk.get('historical_volatility', 0):.2f}%")
+        if sr:
+            lines.append("")
+            lines.append(f"Support/Resistance: Pivot={sr.get('pivot', 'N/A')}, "
+                         f"S1={sr.get('s1', 'N/A')}, S2={sr.get('s2', 'N/A')}, "
+                         f"R1={sr.get('r1', 'N/A')}, R2={sr.get('r2', 'N/A')}")
+        patterns = qs.get("candlestick_patterns", [])
+        if patterns:
+            lines.append(f"Candlestick Patterns: {', '.join(patterns)}")
+        parts.append("\n".join(lines))
 
     # Quote data
     if quote:
@@ -354,8 +391,23 @@ def _build_prediction_context(
     return "\n\n".join(parts)
 
 
-def _parse_prediction_response(text: str, symbol: str) -> dict | None:
-    """Parse AI JSON response into prediction dict."""
+VERDICT_ORDER = ["strong_sell", "sell", "neutral", "buy", "strong_buy"]
+
+
+def _apply_verdict_adjustment(base_verdict: str, adjustment: str) -> str:
+    """Shift verdict by ±1 step based on AI adjustment."""
+    if adjustment not in ("upgrade", "downgrade"):
+        return base_verdict
+    idx = VERDICT_ORDER.index(base_verdict) if base_verdict in VERDICT_ORDER else 2
+    if adjustment == "upgrade":
+        idx = min(idx + 1, len(VERDICT_ORDER) - 1)
+    else:
+        idx = max(idx - 1, 0)
+    return VERDICT_ORDER[idx]
+
+
+def _parse_prediction_response(text: str, symbol: str, quant_scores: dict | None = None) -> dict | None:
+    """Parse AI JSON response into prediction dict. Verdict/confidence come from quant engine."""
     try:
         cleaned = text.strip()
         if cleaned.startswith("```"):
@@ -364,16 +416,26 @@ def _parse_prediction_response(text: str, symbol: str) -> dict | None:
             cleaned = cleaned[:-3]
         cleaned = cleaned.strip()
 
-        data = json.loads(cleaned)
+        # Mistral sometimes emits literal control characters inside JSON string
+        # values (e.g. real newlines in ai_analysis). strict=False allows them.
+        data = json.loads(cleaned, strict=False)
         if not isinstance(data, dict):
             return None
 
-        valid_verdicts = {"strong_buy", "buy", "neutral", "sell", "strong_sell"}
-        verdict = data.get("verdict", "neutral")
-        if verdict not in valid_verdicts:
-            verdict = "neutral"
-
-        confidence = max(0.0, min(1.0, float(data.get("confidence", 0.5))))
+        # Verdict and confidence come from the quant engine
+        if quant_scores and quant_scores.get("verdict"):
+            verdict = quant_scores["verdict"]
+            confidence = quant_scores["confidence"]
+            # AI may adjust verdict ±1 step
+            adjustment = data.get("verdict_adjustment", "none")
+            verdict = _apply_verdict_adjustment(verdict, adjustment)
+        else:
+            # Fallback to AI verdict if no quant scores
+            valid_verdicts = {"strong_buy", "buy", "neutral", "sell", "strong_sell"}
+            verdict = data.get("verdict", "neutral")
+            if verdict not in valid_verdicts:
+                verdict = "neutral"
+            confidence = max(0.0, min(1.0, float(data.get("confidence", 0.5))))
 
         return {
             "symbol": symbol,
@@ -386,6 +448,7 @@ def _parse_prediction_response(text: str, symbol: str) -> dict | None:
             "social_summary": data.get("social_summary", {}),
             "price_outlook": data.get("price_outlook", {}),
             "ai_analysis": str(data.get("ai_analysis", "")),
+            "quant_scores": quant_scores or {},
         }
     except (json.JSONDecodeError, ValueError, TypeError) as e:
         logger.warning("Failed to parse prediction for %s: %s", symbol, e)
@@ -397,20 +460,29 @@ def _fallback_prediction(
     technical_data: dict | None,
     enhanced_sentiment: dict | None,
     macro_summary: dict,
+    quant_scores: dict | None = None,
 ) -> dict:
-    """Basic prediction when AI is unavailable."""
-    verdict = "neutral"
-    confidence = 0.3
+    """Basic prediction when AI is unavailable. Uses quant verdict if available."""
+    # Use quant engine verdict when available
+    if quant_scores and quant_scores.get("verdict"):
+        verdict = quant_scores["verdict"]
+        confidence = quant_scores["confidence"]
+    else:
+        verdict = "neutral"
+        confidence = 0.3
+
+        if technical_data:
+            tech_signal = technical_data.get("overall_signal", "neutral")
+            if tech_signal == "bullish":
+                verdict = "buy"
+                confidence = 0.5
+            elif tech_signal == "bearish":
+                verdict = "sell"
+                confidence = 0.5
 
     tech_signal = "neutral"
     if technical_data:
         tech_signal = technical_data.get("overall_signal", "neutral")
-        if tech_signal == "bullish":
-            verdict = "buy"
-            confidence = 0.5
-        elif tech_signal == "bearish":
-            verdict = "sell"
-            confidence = 0.5
 
     sent_label = "neutral"
     if enhanced_sentiment:
@@ -426,6 +498,7 @@ def _fallback_prediction(
         "news_summary": {"headline_count": 0, "overall_tone": "neutral"},
         "social_summary": {"buzz_level": "none", "total_mentions": 0},
         "price_outlook": {"short_term": "Análisis no disponible sin IA.", "medium_term": "Análisis no disponible sin IA."},
-        "ai_analysis": "Predicción básica generada sin IA. Configure MISTRAL_API_KEY para análisis completo.",
+        "ai_analysis": "Predicción basada en motor cuantitativo. Configure MISTRAL_API_KEY para análisis narrativo completo.",
+        "quant_scores": quant_scores or {},
         "generated_at": datetime.now(timezone.utc).isoformat(),
     }

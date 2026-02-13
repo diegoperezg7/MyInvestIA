@@ -1,4 +1,7 @@
+import asyncio
 import logging
+
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -11,10 +14,29 @@ from app.routers import screener, transactions, paper_trading, openclaw, news
 logging.basicConfig(level=logging.DEBUG if settings.debug else logging.INFO)
 logger = logging.getLogger(__name__)
 
+
+async def _warmup_movers_cache():
+    """Pre-warm the movers cache for US region in background on startup."""
+    try:
+        from app.routers.market import get_movers
+        await get_movers(region="us", threshold=1.0)
+        logger.info("Movers cache warmed up (US)")
+    except Exception as e:
+        logger.warning("Movers cache warmup failed: %s", e)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup: warm caches in background (don't block server start)
+    asyncio.create_task(_warmup_movers_cache())
+    yield
+
+
 app = FastAPI(
     title="MyInvestIA - AI Investment Intelligence Dashboard",
     description="AI-powered investment intelligence API",
     version="2.0.0",
+    lifespan=lifespan,
 )
 
 app.add_middleware(

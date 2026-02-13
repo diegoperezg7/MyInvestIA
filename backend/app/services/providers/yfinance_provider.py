@@ -23,6 +23,7 @@ def _sync_get_quote(symbol: str) -> dict | None:
     prev_close = info.get("previousClose", 0.0) or info.get("regularMarketPreviousClose", 0.0)
     volume = info.get("lastVolume", 0) or info.get("regularMarketVolume", 0)
     market_cap = info.get("marketCap", 0) or 0
+    currency = info.get("currency", "USD")
 
     if not price:
         return None
@@ -37,6 +38,7 @@ def _sync_get_quote(symbol: str) -> dict | None:
         "volume": volume or 0,
         "previous_close": round(prev_close, 4),
         "market_cap": market_cap,
+        "currency": currency,
     }
 
 

@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import { fetchAPI } from "@/lib/api";
 import useLanguageStore from "@/stores/useLanguageStore";
-import type { PredictionResponse } from "@/types";
+import type { PredictionResponse, QuantScores } from "@/types";
 
 const VERDICT_CONFIG: Record<
   string,
@@ -249,6 +249,11 @@ export default function PredictionView() {
               </div>
             </div>
           </div>
+
+          {/* Quantitative Score Card */}
+          {data.quant_scores && data.quant_scores.composite_score !== undefined && (
+            <QuantScoreCard quant={data.quant_scores} />
+          )}
 
           {/* 5-Section Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -532,6 +537,237 @@ export default function PredictionView() {
           <p className="text-sm">{t("prediction.enter_symbol")}</p>
         </div>
       )}
+    </div>
+  );
+}
+
+/* Quantitative Score Card */
+
+const FACTOR_LABELS: Record<string, string> = {
+  trend: "Tendencia",
+  mean_reversion: "Reversión",
+  momentum: "Momentum",
+  volume: "Volumen",
+  support_resistance: "Soporte/Resist.",
+  candlestick: "Velas",
+  macro: "Macro",
+  sentiment: "Sentimiento",
+};
+
+function FactorBar({ name, value, weight }: { name: string; value: number; weight: number }) {
+  const pct = Math.round(((value + 1) / 2) * 100); // [-1,1] → [0,100]
+  const color = value > 0.15 ? "bg-emerald-500" : value < -0.15 ? "bg-red-500" : "bg-yellow-500";
+  const textColor = value > 0.15 ? "text-emerald-400" : value < -0.15 ? "text-red-400" : "text-yellow-400";
+
+  return (
+    <div className="flex items-center gap-2 text-xs">
+      <span className="w-28 text-oracle-muted truncate" title={name}>
+        {FACTOR_LABELS[name] || name}
+      </span>
+      <div className="flex-1 h-2 bg-oracle-bg rounded-full overflow-hidden relative">
+        <div className="absolute left-1/2 top-0 w-px h-full bg-oracle-border z-10" />
+        <div
+          className={`absolute top-0 h-full ${color} rounded-full transition-all duration-500`}
+          style={
+            value >= 0
+              ? { left: "50%", width: `${(value / 1) * 50}%` }
+              : { right: "50%", width: `${(Math.abs(value) / 1) * 50}%` }
+          }
+        />
+      </div>
+      <span className={`w-12 text-right font-mono font-bold ${textColor}`}>
+        {value > 0 ? "+" : ""}{value.toFixed(2)}
+      </span>
+      <span className="w-10 text-right text-oracle-muted font-mono text-[10px]">
+        {Math.round(weight * 100)}%
+      </span>
+    </div>
+  );
+}
+
+function QuantScoreCard({ quant }: { quant: QuantScores }) {
+  const composite = quant.composite_score;
+  const compositePct = Math.round(((composite + 1) / 2) * 100);
+  const compositeColor =
+    composite > 0.25
+      ? "text-emerald-400"
+      : composite < -0.25
+        ? "text-red-400"
+        : "text-yellow-400";
+  const compositeBarColor =
+    composite > 0.25
+      ? "bg-emerald-500"
+      : composite < -0.25
+        ? "bg-red-500"
+        : "bg-yellow-500";
+
+  const sr = quant.support_resistance || {};
+  const risk = quant.risk_metrics || { sharpe_ratio: 0, max_drawdown: 0, historical_volatility: 0 };
+  const patterns = quant.candlestick_patterns || [];
+
+  return (
+    <div className="bg-oracle-panel border border-oracle-border rounded-lg p-5">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <BarChart3 size={18} className="text-oracle-accent" />
+          <h3 className="text-sm font-semibold text-oracle-text">Motor Cuantitativo</h3>
+        </div>
+        <div className="flex items-center gap-2">
+          <span
+            className={`text-[11px] font-medium px-2 py-0.5 rounded ${
+              quant.regime === "trending"
+                ? "text-blue-400 bg-blue-500/10"
+                : quant.regime === "range_bound"
+                  ? "text-purple-400 bg-purple-500/10"
+                  : "text-oracle-muted bg-oracle-bg"
+            }`}
+          >
+            {quant.regime === "trending"
+              ? "Tendencial"
+              : quant.regime === "range_bound"
+                ? "Rango"
+                : "—"}
+          </span>
+          <span className="text-[10px] text-oracle-muted font-mono">
+            ADX {quant.adx?.toFixed(1)}
+          </span>
+          {quant.factor_agreement != null && (
+            <span
+              className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${
+                quant.factor_agreement >= 1.15
+                  ? "text-emerald-400 bg-emerald-500/10"
+                  : quant.factor_agreement <= 0.85
+                    ? "text-red-400 bg-red-500/10"
+                    : "text-yellow-400 bg-yellow-500/10"
+              }`}
+            >
+              {quant.factor_agreement >= 1.15
+                ? "Alta Conviccion"
+                : quant.factor_agreement <= 0.85
+                  ? "Factores Divididos"
+                  : "Conviccion Moderada"}
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Composite Score */}
+      <div className="mb-4 p-3 bg-oracle-bg rounded-lg border border-oracle-border">
+        <div className="flex items-center justify-between mb-1.5">
+          <span className="text-xs text-oracle-muted font-semibold uppercase tracking-wide">
+            Score Compuesto
+          </span>
+          <span className={`text-lg font-black font-mono ${compositeColor}`}>
+            {composite > 0 ? "+" : ""}{composite.toFixed(4)}
+          </span>
+        </div>
+        <div className="h-3 bg-oracle-panel rounded-full overflow-hidden relative">
+          <div className="absolute left-1/2 top-0 w-px h-full bg-oracle-border z-10" />
+          <div
+            className={`absolute top-0 h-full ${compositeBarColor} rounded-full transition-all duration-700`}
+            style={
+              composite >= 0
+                ? { left: "50%", width: `${(composite / 1) * 50}%` }
+                : { right: "50%", width: `${(Math.abs(composite) / 1) * 50}%` }
+            }
+          />
+        </div>
+        <div className="flex justify-between mt-1 text-[10px] text-oracle-muted font-mono">
+          <span>-1.0</span>
+          <span>0</span>
+          <span>+1.0</span>
+        </div>
+      </div>
+
+      {/* Factor Bars */}
+      <div className="space-y-1.5 mb-4">
+        {Object.entries(quant.factors || {}).map(([name, value]) => (
+          <FactorBar
+            key={name}
+            name={name}
+            value={value}
+            weight={quant.weights?.[name] ?? 0}
+          />
+        ))}
+      </div>
+
+      {/* Bottom row: S/R + Risk + Patterns */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-3 border-t border-oracle-border">
+        {/* Support/Resistance */}
+        <div className="space-y-1">
+          <p className="text-[10px] text-oracle-muted font-semibold uppercase tracking-wide">
+            Soporte / Resistencia
+          </p>
+          {sr.nearest_support != null && (
+            <div className="flex justify-between text-xs">
+              <span className="text-oracle-muted">Soporte</span>
+              <span className="text-green-400 font-mono">${sr.nearest_support}</span>
+            </div>
+          )}
+          {sr.nearest_resistance != null && (
+            <div className="flex justify-between text-xs">
+              <span className="text-oracle-muted">Resistencia</span>
+              <span className="text-red-400 font-mono">${sr.nearest_resistance}</span>
+            </div>
+          )}
+          {sr.pivot != null && (
+            <div className="flex justify-between text-xs">
+              <span className="text-oracle-muted">Pivot</span>
+              <span className="text-oracle-text font-mono">${sr.pivot}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Risk Metrics */}
+        <div className="space-y-1">
+          <p className="text-[10px] text-oracle-muted font-semibold uppercase tracking-wide">
+            Riesgo
+          </p>
+          <div className="flex justify-between text-xs">
+            <span className="text-oracle-muted">Sharpe (63d)</span>
+            <span
+              className={`font-mono font-bold ${
+                risk.sharpe_ratio > 0.5
+                  ? "text-emerald-400"
+                  : risk.sharpe_ratio < 0
+                    ? "text-red-400"
+                    : "text-yellow-400"
+              }`}
+            >
+              {risk.sharpe_ratio.toFixed(2)}
+            </span>
+          </div>
+          <div className="flex justify-between text-xs">
+            <span className="text-oracle-muted">Max DD (63d)</span>
+            <span className="text-red-400 font-mono">{risk.max_drawdown.toFixed(1)}%</span>
+          </div>
+          <div className="flex justify-between text-xs">
+            <span className="text-oracle-muted">Vol (20d)</span>
+            <span className="text-oracle-text font-mono">{risk.historical_volatility.toFixed(1)}%</span>
+          </div>
+        </div>
+
+        {/* Candlestick Patterns */}
+        <div className="space-y-1">
+          <p className="text-[10px] text-oracle-muted font-semibold uppercase tracking-wide">
+            Patrones
+          </p>
+          {patterns.length > 0 ? (
+            <div className="flex flex-wrap gap-1">
+              {patterns.map((p, i) => (
+                <span
+                  key={i}
+                  className="text-[10px] px-1.5 py-0.5 rounded bg-oracle-bg border border-oracle-border text-oracle-text"
+                >
+                  {p}
+                </span>
+              ))}
+            </div>
+          ) : (
+            <span className="text-xs text-oracle-muted">Sin patrones detectados</span>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
