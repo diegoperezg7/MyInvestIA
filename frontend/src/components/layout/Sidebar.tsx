@@ -13,15 +13,11 @@ import {
   Globe,
   Lightbulb,
   Crosshair,
-  Search,
   ChevronsLeft,
   ChevronsRight,
 } from "lucide-react";
 import { useView, type View } from "@/contexts/ViewContext";
 import useLanguageStore from "@/stores/useLanguageStore";
-import ThemeToggle from "@/components/ui/ThemeToggle";
-import LanguageToggle from "@/components/ui/LanguageToggle";
-import CurrencyToggle from "@/components/ui/CurrencyToggle";
 import type { LucideIcon } from "lucide-react";
 
 interface NavItem {
@@ -79,7 +75,6 @@ export default function Sidebar() {
     setSidebarCollapsed,
     sidebarMobileOpen,
     setSidebarMobileOpen,
-    setCommandBarOpen,
   } = useView();
   const { t } = useLanguageStore();
 
@@ -90,8 +85,8 @@ export default function Sidebar() {
 
   const sidebarContent = (
     <div className="flex flex-col h-full oracle-sidebar">
-      {/* Branding */}
-      <div className="flex items-center h-14 px-4 border-b border-oracle-border shrink-0">
+      {/* Branding + collapse toggle */}
+      <div className="flex items-center justify-between h-14 px-4 border-b border-oracle-border shrink-0">
         {sidebarCollapsed ? (
           <span className="font-bold text-base tracking-wider">
             <span className="text-oracle-text">M</span>
@@ -103,6 +98,12 @@ export default function Sidebar() {
             <span style={{ color: "var(--oracle-primary)" }}>IA</span>
           </span>
         )}
+        <button
+          onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+          className="p-1 text-oracle-muted hover:text-oracle-text rounded-md hover:bg-oracle-panel-hover transition-colors"
+        >
+          {sidebarCollapsed ? <ChevronsRight size={16} /> : <ChevronsLeft size={16} />}
+        </button>
       </div>
 
       {/* Navigation */}
@@ -143,28 +144,6 @@ export default function Sidebar() {
         ))}
       </nav>
 
-      {/* Bottom controls */}
-      <div className="border-t border-oracle-border px-2 py-3 shrink-0 space-y-1">
-        {!sidebarCollapsed && (
-          <button
-            onClick={() => setCommandBarOpen(true)}
-            className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-oracle-muted hover:text-oracle-text bg-oracle-bg rounded-md hover:bg-oracle-panel-hover transition-colors"
-          >
-            <Search size={14} />
-            <span className="flex-1 text-left">{t("action.search")}</span>
-            <kbd className="text-[10px] bg-oracle-panel px-1 rounded">{"\u2318"}K</kbd>
-          </button>
-        )}
-        <ThemeToggle collapsed={sidebarCollapsed} />
-        <LanguageToggle collapsed={sidebarCollapsed} />
-        <CurrencyToggle collapsed={sidebarCollapsed} />
-        <button
-          onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-          className="w-full flex items-center justify-center px-3 py-1.5 text-xs text-oracle-muted hover:text-oracle-text rounded-md hover:bg-oracle-panel-hover transition-colors"
-        >
-          {sidebarCollapsed ? <ChevronsRight size={16} /> : <ChevronsLeft size={16} />}
-        </button>
-      </div>
     </div>
   );
 

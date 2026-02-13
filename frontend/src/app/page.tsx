@@ -3,6 +3,7 @@
 import { useView } from "@/contexts/ViewContext";
 import useLanguageStore from "@/stores/useLanguageStore";
 import Sidebar from "@/components/layout/Sidebar";
+import TopBar from "@/components/layout/TopBar";
 import MobileTopBar from "@/components/layout/MobileTopBar";
 import HeroMetrics from "@/components/layout/HeroMetrics";
 import KeyboardShortcuts from "@/components/layout/KeyboardShortcuts";
@@ -52,6 +53,7 @@ export default function Home() {
           sidebarCollapsed ? "lg:ml-16" : "lg:ml-56"
         }`}
       >
+        <TopBar />
         <MobileTopBar />
 
         <main className="flex-1 p-6">

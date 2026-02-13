@@ -51,6 +51,8 @@ const translations: Translations = {
   "hero.open": { es: "Abierto", en: "Open" },
   "hero.closed": { es: "Cerrado", en: "Closed" },
   "hero.us_markets": { es: "Mercados EE.UU. (NYSE/NASDAQ)", en: "US Markets (NYSE/NASDAQ)" },
+  "hero.closes_in": { es: "Cierra en {time}", en: "Closes in {time}" },
+  "hero.opens_in": { es: "Abre en {time}", en: "Opens in {time}" },
   "hero.tracked_assets": { es: "Activos rastreados", en: "Tracked assets" },
 
   // --- Sections ---
@@ -132,6 +134,15 @@ const translations: Translations = {
   "prediction.strong_sell": { es: "VENTA FUERTE", en: "STRONG SELL" },
   "prediction.error": { es: "Error al generar prediccion", en: "Failed to generate prediction" },
 
+  // --- Price Chart ---
+  "chart.title": { es: "Gráfico de Precios", en: "Price Chart" },
+  "chart.placeholder": { es: "Símbolo (ej. AAPL)", en: "Symbol (e.g. AAPL)" },
+  "chart.load": { es: "Cargar", en: "Load" },
+  "chart.area": { es: "Área", en: "Area" },
+  "chart.candle": { es: "Vela", en: "Candle" },
+  "chart.price": { es: "Precio", en: "Price" },
+  "chart.empty": { es: "Ingresa un símbolo para ver el historial de precios.", en: "Enter a symbol to view price history." },
+
   // --- Quote Lookup ---
   "quote.title": { es: "Buscar Cotización", en: "Quote Lookup" },
   "quote.placeholder": { es: "Símbolo (ej. NVDA, BTC)", en: "Symbol (e.g. NVDA, BTC)" },
@@ -140,6 +151,8 @@ const translations: Translations = {
   "quote.volume": { es: "Volumen", en: "Volume" },
   "quote.market_cap": { es: "Cap. Mercado", en: "Market Cap" },
   "quote.hint": { es: "Busca cotizaciones en tiempo real de acciones, ETFs y crypto.", en: "Look up real-time quotes for stocks, ETFs, and crypto." },
+  "quote.quick_picks": { es: "Rápido", en: "Quick" },
+  "quote.day_range": { es: "Rango Diario", en: "Day Range" },
 
   // --- Watchlist ---
   "watchlist.add_placeholder": { es: "Agregar símbolo (ej. AAPL, BTC)", en: "Add symbol (e.g. AAPL, BTC)" },

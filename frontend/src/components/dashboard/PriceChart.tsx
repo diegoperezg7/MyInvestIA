@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   XAxis,
   YAxis,
@@ -14,9 +14,22 @@ import type { HistoricalData } from "@/types";
 import CandlestickChart from "@/components/charts/CandlestickChart";
 import SymbolAutocomplete from "@/components/ui/SymbolAutocomplete";
 import useCurrencyStore from "@/stores/useCurrencyStore";
+import useLanguageStore from "@/stores/useLanguageStore";
+import { Search } from "lucide-react";
 
 const PERIODS = ["1mo", "3mo", "6mo", "1y"] as const;
 type ChartMode = "area" | "candlestick";
+
+const QUICK_PICKS = [
+  { symbol: "SPY", label: "SPY" },
+  { symbol: "QQQ", label: "QQQ" },
+  { symbol: "AAPL", label: "AAPL" },
+  { symbol: "TSLA", label: "TSLA" },
+  { symbol: "BTC-USD", label: "BTC" },
+  { symbol: "ETH-USD", label: "ETH" },
+];
+
+const DEFAULT_SYMBOL = "SPY";
 
 export default function PriceChart() {
   const [symbol, setSymbol] = useState("");
@@ -27,17 +40,20 @@ export default function PriceChart() {
   const [error, setError] = useState<string | null>(null);
   const [chartMode, setChartMode] = useState<ChartMode>("area");
   const { formatPrice } = useCurrencyStore();
+  const t = useLanguageStore((s) => s.t);
+  const didMount = useRef(false);
 
   const fetchHistory = async (sym: string, per: string) => {
-    if (!sym.trim()) return;
+    const target = sym.trim().toUpperCase();
+    if (!target) return;
     setLoading(true);
     setError(null);
     try {
       const result = await fetchAPI<HistoricalData>(
-        `/api/v1/market/history/${sym.trim().toUpperCase()}?period=${per}&interval=1d`
+        `/api/v1/market/history/${target}?period=${per}&interval=1d`
       );
       setData(result);
-      setActiveSymbol(sym.trim().toUpperCase());
+      setActiveSymbol(target);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load chart");
       setData(null);
@@ -52,6 +68,15 @@ export default function PriceChart() {
     setPeriod(p);
     if (activeSymbol) fetchHistory(activeSymbol, p);
   };
+
+  // Auto-load default chart on mount
+  useEffect(() => {
+    if (!didMount.current) {
+      didMount.current = true;
+      fetchHistory(DEFAULT_SYMBOL, period);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const chartData =
     data?.data.map((d) => ({
@@ -77,40 +102,38 @@ export default function PriceChart() {
     <div className="bg-oracle-panel border border-oracle-border rounded-lg p-6">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-oracle-muted text-sm font-medium uppercase tracking-wide">
-          Price Chart
+          {t("chart.title")}
         </h3>
-        {activeSymbol && (
-          <div className="flex gap-1">
-            <button
-              onClick={() => setChartMode("area")}
-              className={`text-xs px-2 py-1 rounded transition-colors ${
-                chartMode === "area"
-                  ? "bg-oracle-accent text-white"
-                  : "bg-oracle-bg text-oracle-muted hover:text-oracle-text"
-              }`}
-            >
-              Area
-            </button>
-            <button
-              onClick={() => setChartMode("candlestick")}
-              className={`text-xs px-2 py-1 rounded transition-colors ${
-                chartMode === "candlestick"
-                  ? "bg-oracle-accent text-white"
-                  : "bg-oracle-bg text-oracle-muted hover:text-oracle-text"
-              }`}
-            >
-              Candle
-            </button>
-          </div>
-        )}
+        <div className="flex gap-1">
+          <button
+            onClick={() => setChartMode("area")}
+            className={`text-xs px-2 py-1 rounded transition-colors ${
+              chartMode === "area"
+                ? "bg-oracle-accent text-white"
+                : "bg-oracle-bg text-oracle-muted hover:text-oracle-text"
+            }`}
+          >
+            {t("chart.area")}
+          </button>
+          <button
+            onClick={() => setChartMode("candlestick")}
+            className={`text-xs px-2 py-1 rounded transition-colors ${
+              chartMode === "candlestick"
+                ? "bg-oracle-accent text-white"
+                : "bg-oracle-bg text-oracle-muted hover:text-oracle-text"
+            }`}
+          >
+            {t("chart.candle")}
+          </button>
+        </div>
       </div>
 
       <div className="flex gap-2 mb-3">
         <SymbolAutocomplete
           value={symbol}
           onChange={setSymbol}
-          onSubmit={(s) => { setSymbol(s); handleSearch(); }}
-          placeholder="Symbol (e.g. AAPL)"
+          onSubmit={(s) => { setSymbol(s); fetchHistory(s, period); }}
+          placeholder={t("chart.placeholder")}
           className="flex-1"
         />
         <button
@@ -118,12 +141,30 @@ export default function PriceChart() {
           disabled={loading || !symbol.trim()}
           className="bg-oracle-accent text-white text-sm px-4 py-1.5 rounded hover:bg-oracle-accent/80 disabled:opacity-50 transition-colors"
         >
-          {loading ? "..." : "Load"}
+          {loading ? "..." : t("chart.load")}
         </button>
       </div>
 
-      {activeSymbol && (
-        <div className="flex gap-1 mb-3">
+      {/* Quick picks + period selector */}
+      <div className="flex items-center justify-between mb-3 gap-2">
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <Search className="w-3 h-3 text-oracle-muted shrink-0" />
+          {QUICK_PICKS.map((pick) => (
+            <button
+              key={pick.symbol}
+              onClick={() => { setSymbol(pick.symbol); fetchHistory(pick.symbol, period); }}
+              className={`text-xs px-2 py-0.5 rounded border transition-colors ${
+                activeSymbol === pick.symbol
+                  ? "bg-oracle-accent/20 text-oracle-accent border-oracle-accent/40"
+                  : "bg-oracle-bg text-oracle-muted border-oracle-border hover:text-oracle-text hover:border-oracle-accent/30"
+              }`}
+            >
+              {pick.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex gap-1 shrink-0">
           {PERIODS.map((p) => (
             <button
               key={p}
@@ -138,9 +179,21 @@ export default function PriceChart() {
             </button>
           ))}
         </div>
-      )}
+      </div>
 
       {error && <p className="text-oracle-red text-sm mb-3">{error}</p>}
+
+      {/* Loading skeleton */}
+      {loading && !data && (
+        <div className="animate-pulse">
+          <div className="flex items-baseline gap-2 mb-2">
+            <div className="h-5 w-12 bg-oracle-bg rounded" />
+            <div className="h-6 w-24 bg-oracle-bg rounded" />
+            <div className="h-4 w-16 bg-oracle-bg rounded" />
+          </div>
+          <div className="h-48 bg-oracle-bg rounded" />
+        </div>
+      )}
 
       {data && chartData.length > 0 && (
         <div>
@@ -204,7 +257,7 @@ export default function PriceChart() {
                     }}
                     formatter={(value: number) => [
                       formatPrice(value),
-                      "Price",
+                      t("chart.price"),
                     ]}
                   />
                   <Area
@@ -219,12 +272,6 @@ export default function PriceChart() {
             )}
           </div>
         </div>
-      )}
-
-      {!data && !loading && !error && (
-        <p className="text-oracle-muted text-sm">
-          Enter a symbol to view price history.
-        </p>
       )}
     </div>
   );
