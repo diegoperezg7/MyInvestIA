@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+import time
 
 import yfinance as yf
 
@@ -21,7 +22,7 @@ def _sync_get_quote(symbol: str) -> dict | None:
     price = info.get("lastPrice", 0.0) or info.get("regularMarketPrice", 0.0)
     prev_close = info.get("previousClose", 0.0) or info.get("regularMarketPreviousClose", 0.0)
     volume = info.get("lastVolume", 0) or info.get("regularMarketVolume", 0)
-    market_cap = info.get("marketCap", 0)
+    market_cap = info.get("marketCap", 0) or 0
 
     if not price:
         return None
@@ -33,60 +34,66 @@ def _sync_get_quote(symbol: str) -> dict | None:
         "name": symbol,
         "price": round(price, 4),
         "change_percent": round(change_pct, 2),
-        "volume": volume,
+        "volume": volume or 0,
         "previous_close": round(prev_close, 4),
         "market_cap": market_cap,
     }
 
 
+_BATCH_CHUNK_SIZE = 100  # yfinance handles ~100 symbols well per download
+
+
 def _sync_get_quotes_batch(symbols: list[str]) -> dict[str, dict]:
-    """Batch-fetch quotes using yf.download() — single HTTP call for N symbols."""
+    """Batch-fetch quotes using yf.download() — chunked to avoid timeouts."""
     results: dict[str, dict] = {}
     if not symbols:
         return results
 
-    try:
-        df = yf.download(
-            symbols,
-            period="2d",
-            interval="1d",
-            group_by="ticker",
-            progress=False,
-            threads=False,
-        )
-        if df.empty:
-            return results
+    # Process in chunks to avoid overwhelming yfinance
+    for i in range(0, len(symbols), _BATCH_CHUNK_SIZE):
+        chunk = symbols[i : i + _BATCH_CHUNK_SIZE]
+        try:
+            df = yf.download(
+                chunk,
+                period="2d",
+                interval="1d",
+                group_by="ticker",
+                progress=False,
+                threads=False,
+            )
+            if df.empty:
+                continue
 
-        for sym in symbols:
-            try:
-                if len(symbols) == 1:
-                    ticker_df = df
-                else:
-                    ticker_df = df[sym]
+            for sym in chunk:
+                try:
+                    if len(chunk) == 1:
+                        ticker_df = df
+                    else:
+                        ticker_df = df[sym]
 
-                ticker_df = ticker_df.dropna(subset=["Close"])
-                if len(ticker_df) < 1:
-                    continue
+                    ticker_df = ticker_df.dropna(subset=["Close"])
+                    if len(ticker_df) < 1:
+                        continue
 
-                price = float(ticker_df["Close"].iloc[-1])
-                prev_close = float(ticker_df["Close"].iloc[-2]) if len(ticker_df) >= 2 else price
-                volume = int(ticker_df["Volume"].iloc[-1]) if "Volume" in ticker_df.columns else 0
+                    price = float(ticker_df["Close"].iloc[-1])
+                    prev_close = float(ticker_df["Close"].iloc[-2]) if len(ticker_df) >= 2 else price
+                    volume = int(ticker_df["Volume"].iloc[-1]) if "Volume" in ticker_df.columns else 0
 
-                if price > 0:
-                    change_pct = ((price - prev_close) / prev_close * 100) if prev_close else 0.0
-                    results[sym] = {
-                        "symbol": sym,
-                        "name": sym,
-                        "price": round(price, 4),
-                        "change_percent": round(change_pct, 2),
-                        "volume": volume,
-                        "previous_close": round(prev_close, 4),
-                        "market_cap": 0,
-                    }
-            except Exception as e:
-                logger.debug("Batch quote: failed to extract %s: %s", sym, e)
-    except Exception as e:
-        logger.warning("yf.download batch quote failed: %s", e)
+                    if price > 0:
+                        change_pct = ((price - prev_close) / prev_close * 100) if prev_close else 0.0
+                        results[sym] = {
+                            "symbol": sym,
+                            "name": sym,
+                            "price": round(price, 4),
+                            "change_percent": round(change_pct, 2),
+                            "volume": volume,
+                            "previous_close": round(prev_close, 4),
+                            "market_cap": 0,
+                        }
+                except Exception as e:
+                    logger.debug("Batch quote: failed to extract %s: %s", sym, e)
+        except Exception as e:
+            logger.warning("yf.download batch chunk failed: %s", e)
 
     return results
 

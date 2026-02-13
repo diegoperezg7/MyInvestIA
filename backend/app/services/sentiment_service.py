@@ -20,25 +20,34 @@ Provide your assessment in the following JSON format ONLY (no other text):
 {{
   "score": <float from -1.0 (very bearish) to 1.0 (very bullish)>,
   "label": "<bullish|bearish|neutral>",
+  "strength": <int 1-5, how strong/clear the sentiment signal is: 1=very weak, 5=very strong>,
   "sources_count": <number of distinct data points or factors you considered>,
   "narrative": "<2-3 sentence summary of the current sentiment landscape>",
   "key_factors": [
     "<factor 1>",
     "<factor 2>",
     "<factor 3>"
+  ],
+  "divergences": [
+    "<describe any conflicts between signals, e.g. 'Social sentiment is bullish but technicals are bearish'>"
   ]
 }}
 
 Base your analysis on:
 - Recent price action and volume patterns
-- Technical indicator signals (if provided)
+- Technical indicator signals (if provided) — weigh these heavily
 - Social media sentiment data from Reddit and Twitter (if provided) — mention counts, buzz level, positive/negative ratio
+- News headlines (if provided) — AI-analyzed sentiment from recent coverage
 - Known fundamental factors for this asset
 - General market conditions
 - Sector/industry trends
 
-When social buzz is high or viral, factor it heavily — it often precedes price moves.
-If social sentiment diverges from technical signals, highlight the divergence.
+IMPORTANT weighting guidelines:
+- Social buzz that is "high" or "viral" should be weighted heavily — it often precedes price moves
+- When social mentions exceed 50, give social data extra weight
+- If social sentiment and technical signals diverge, explicitly call it out in divergences
+- If news sentiment contradicts the technical picture, note it as a divergence
+- Strength should reflect how many sources agree. If all sources align → strength 4-5. If sources conflict → strength 1-2.
 Be honest about uncertainty. If you lack recent data, reflect that in a lower confidence score closer to 0."""
 
 
@@ -48,6 +57,7 @@ async def analyze_sentiment(
     quote_data: dict | None = None,
     technical_data: dict | None = None,
     social_data: dict | None = None,
+    news_headlines: list[str] | None = None,
 ) -> dict:
     """Analyze market sentiment for an asset using Mistral (small model).
 
@@ -57,9 +67,10 @@ async def analyze_sentiment(
         quote_data: Optional current price/volume data
         technical_data: Optional technical indicators
         social_data: Optional social sentiment from Finnhub (Reddit + Twitter)
+        news_headlines: Optional list of recent news headlines
 
     Returns:
-        Dict with: score, label, sources_count, narrative, key_factors
+        Dict with: score, label, strength, sources_count, narrative, key_factors, divergences
     """
     if not ai_service.is_configured:
         return _default_sentiment(symbol)
@@ -78,8 +89,12 @@ async def analyze_sentiment(
         rsi_val = technical_data.get("rsi", {}).get("value", "N/A")
         rsi_sig = technical_data.get("rsi", {}).get("signal", "N/A")
         macd_sig = technical_data.get("macd", {}).get("signal", "N/A")
+        bb_sig = technical_data.get("bollinger_bands", {}).get("signal", "N/A")
+        counts = technical_data.get("signal_counts", {})
         context_parts.append(
-            f"Technical signals: Overall={overall}, RSI={rsi_val} ({rsi_sig}), MACD={macd_sig}"
+            f"Technical signals: Overall={overall}, RSI={rsi_val} ({rsi_sig}), "
+            f"MACD={macd_sig}, Bollinger={bb_sig} | "
+            f"Bullish: {counts.get('bullish', 0)}, Bearish: {counts.get('bearish', 0)}, Neutral: {counts.get('neutral', 0)}"
         )
 
     if social_data:
@@ -93,6 +108,12 @@ async def analyze_sentiment(
             f"({reddit.get('positive_mentions', 0)} positive, {reddit.get('negative_mentions', 0)} negative) | "
             f"Twitter: {twitter.get('mentions', 0)} mentions "
             f"({twitter.get('positive_mentions', 0)} positive, {twitter.get('negative_mentions', 0)} negative)"
+        )
+
+    if news_headlines:
+        trimmed = news_headlines[:10]
+        context_parts.append(
+            "Recent News Headlines:\n" + "\n".join(f"  - {h}" for h in trimmed)
         )
 
     context = "\n".join(context_parts) if context_parts else "No additional market data available."
@@ -148,13 +169,22 @@ def _parse_sentiment_response(text: str, symbol: str) -> dict:
         if label not in ("bullish", "bearish", "neutral"):
             label = "bullish" if score > 0.2 else "bearish" if score < -0.2 else "neutral"
 
+        strength = int(data.get("strength", 3))
+        strength = max(1, min(5, strength))
+
+        divergences = data.get("divergences", [])
+        if not isinstance(divergences, list):
+            divergences = []
+
         return {
             "symbol": symbol.upper(),
             "score": round(score, 2),
             "label": label,
+            "strength": strength,
             "sources_count": int(data.get("sources_count", 0)),
             "narrative": str(data.get("narrative", "")),
             "key_factors": data.get("key_factors", []),
+            "divergences": [str(d) for d in divergences[:5]],
         }
     except (json.JSONDecodeError, ValueError, KeyError) as e:
         logger.warning("Failed to parse sentiment response for %s: %s", symbol, e)

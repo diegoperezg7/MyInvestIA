@@ -19,6 +19,7 @@ import ChatView from "@/components/views/ChatView";
 import MacroView from "@/components/views/MacroView";
 import CommoditiesView from "@/components/views/CommoditiesView";
 import RecommendationsView from "@/components/views/RecommendationsView";
+import PredictionView from "@/components/views/PredictionView";
 
 const VIEW_MAP: Record<string, React.ComponentType> = {
   overview: OverviewView,
@@ -32,6 +33,7 @@ const VIEW_MAP: Record<string, React.ComponentType> = {
   chat: ChatView,
   macro: MacroView,
   recommendations: RecommendationsView,
+  prediction: PredictionView,
 };
 
 export default function Home() {

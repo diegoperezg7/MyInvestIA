@@ -12,6 +12,7 @@ import {
   MessageSquare,
   Globe,
   Lightbulb,
+  Crosshair,
   Search,
   ChevronsLeft,
   ChevronsRight,
@@ -55,9 +56,10 @@ const NAV_GROUPS: NavGroup[] = [
   {
     titleKey: "group.intelligence",
     items: [
-      { key: "recommendations", labelKey: "nav.recommendations", icon: Lightbulb, shortcut: "7" },
-      { key: "chat", labelKey: "nav.chat", icon: MessageSquare, shortcut: "8" },
-      { key: "macro", labelKey: "nav.macro", icon: Globe, shortcut: "9" },
+      { key: "prediction", labelKey: "nav.prediction", icon: Crosshair, shortcut: "7" },
+      { key: "recommendations", labelKey: "nav.recommendations", icon: Lightbulb, shortcut: "8" },
+      { key: "chat", labelKey: "nav.chat", icon: MessageSquare, shortcut: "9" },
+      { key: "macro", labelKey: "nav.macro", icon: Globe, shortcut: "" },
     ],
   },
   {

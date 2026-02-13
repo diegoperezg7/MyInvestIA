@@ -11,6 +11,7 @@ from app.schemas.asset import (
 from app.services.ai_service import ai_service
 from app.services.analysis_pipeline import run_analysis_pipeline
 from app.services.briefing_service import generate_briefing
+from app.services.prediction_service import generate_prediction
 from app.services.recommendations_service import generate_recommendations
 from app.services.market_data import market_data_service
 from app.services.news_service import news_service
@@ -197,6 +198,16 @@ async def get_news(symbol: str | None = None):
     except Exception as e:
         logger.error("News fetch failed: %s", e)
         raise HTTPException(status_code=500, detail=f"News fetch error: {e}")
+
+
+@router.get("/predict/{symbol}")
+async def predict_symbol(symbol: str):
+    """Generate an all-in-one prediction for a symbol, synthesizing all data sources."""
+    try:
+        return await generate_prediction(symbol)
+    except Exception as e:
+        logger.error("Prediction generation failed for %s: %s", symbol, e)
+        raise HTTPException(status_code=500, detail=f"Prediction error: {e}")
 
 
 @router.get("/analyze-pipeline/{symbol}")

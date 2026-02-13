@@ -119,7 +119,7 @@ function RecommendationCard({ rec }: { rec: Recommendation }) {
       </div>
 
       {/* Tickers + Action */}
-      <div className="flex items-center justify-between mt-2.5 gap-2">
+      <div className="mt-2.5 space-y-1.5">
         {rec.tickers.length > 0 && (
           <div className="flex flex-wrap gap-1">
             {rec.tickers.map((t) => (
@@ -133,7 +133,7 @@ function RecommendationCard({ rec }: { rec: Recommendation }) {
           </div>
         )}
         {rec.action && (
-          <p className="text-[11px] text-oracle-muted shrink-0 text-right">
+          <p className={`text-[11px] text-oracle-muted leading-relaxed ${expanded ? "" : "line-clamp-1"}`}>
             {rec.action}
           </p>
         )}
@@ -185,7 +185,7 @@ export default function RecommendationsPanel() {
           )}
           <button
             onClick={refresh}
-            disabled={loading}
+            disabled={loading && !data}
             className="p-1 rounded text-oracle-muted hover:text-oracle-text hover:bg-oracle-bg transition-colors disabled:opacity-50"
             title="Actualizar"
           >

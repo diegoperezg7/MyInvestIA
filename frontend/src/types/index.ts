@@ -441,6 +441,52 @@ export interface SocialSentimentData {
   configured: boolean;
 }
 
+// --- Prediction ---
+
+export interface PredictionResponse {
+  symbol: string;
+  verdict: "strong_buy" | "buy" | "neutral" | "sell" | "strong_sell";
+  confidence: number;
+  technical_summary: {
+    signal?: string;
+    key_indicators?: string[];
+    support?: string;
+    resistance?: string;
+  };
+  sentiment_summary: {
+    unified_score?: number;
+    label?: string;
+    key_factors?: string[];
+    divergences?: string[];
+  };
+  macro_summary: {
+    environment?: string;
+    risk_level?: string;
+    vix_regime?: string;
+    impact_on_asset?: string;
+  };
+  news_summary: {
+    headline_count?: number;
+    overall_tone?: string;
+    top_headlines?: string[];
+    summary?: string;
+  };
+  social_summary: {
+    buzz_level?: string;
+    total_mentions?: number;
+    trend?: string;
+    summary?: string;
+  };
+  price_outlook: {
+    short_term?: string;
+    medium_term?: string;
+    catalysts?: string[];
+    risks?: string[];
+  };
+  ai_analysis: string;
+  generated_at: string;
+}
+
 // --- Volatility ---
 
 export interface VolatilityData {
