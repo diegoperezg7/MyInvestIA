@@ -7,14 +7,54 @@ import useLanguageStore from "@/stores/useLanguageStore";
 import useCurrencyStore from "@/stores/useCurrencyStore";
 import type { Portfolio, MacroIntelligenceResponse } from "@/types";
 
+const MARKET_OPEN_MIN = 570;  // 9:30 AM ET
+const MARKET_CLOSE_MIN = 960; // 4:00 PM ET
+
+function getEasternNow(): Date {
+  return new Date(new Date().toLocaleString("en-US", { timeZone: "America/New_York" }));
+}
+
 function isMarketOpen(): boolean {
-  const now = new Date();
-  const eastern = new Date(now.toLocaleString("en-US", { timeZone: "America/New_York" }));
+  const eastern = getEasternNow();
   const day = eastern.getDay();
-  const hours = eastern.getHours();
-  const minutes = eastern.getMinutes();
-  const time = hours * 60 + minutes;
-  return day >= 1 && day <= 5 && time >= 570 && time < 960;
+  const time = eastern.getHours() * 60 + eastern.getMinutes();
+  return day >= 1 && day <= 5 && time >= MARKET_OPEN_MIN && time < MARKET_CLOSE_MIN;
+}
+
+/** Returns seconds until next market close (if open) or next market open (if closed). */
+function getMarketCountdown(): { secondsLeft: number; isOpen: boolean } {
+  const eastern = getEasternNow();
+  const day = eastern.getDay();
+  const nowMin = eastern.getHours() * 60 + eastern.getMinutes();
+  const nowSec = eastern.getSeconds();
+  const open = day >= 1 && day <= 5 && nowMin >= MARKET_OPEN_MIN && nowMin < MARKET_CLOSE_MIN;
+
+  if (open) {
+    // seconds until 4:00 PM ET
+    return { secondsLeft: (MARKET_CLOSE_MIN - nowMin) * 60 - nowSec, isOpen: true };
+  }
+
+  // Calculate seconds until next open
+  let daysUntilOpen = 0;
+  if (day === 0) daysUntilOpen = 1;                          // Sunday → Monday
+  else if (day === 6) daysUntilOpen = 2;                     // Saturday → Monday
+  else if (nowMin >= MARKET_CLOSE_MIN) daysUntilOpen = day === 5 ? 3 : 1; // After close → next trading day
+  // else: before open today, daysUntilOpen = 0
+
+  const secsToday = (MARKET_OPEN_MIN - nowMin) * 60 - nowSec;
+  const secondsLeft = daysUntilOpen > 0
+    ? (daysUntilOpen - 1) * 86400 + (24 * 60 - nowMin) * 60 - nowSec + MARKET_OPEN_MIN * 60
+    : secsToday;
+
+  return { secondsLeft: Math.max(0, secondsLeft), isOpen: false };
+}
+
+function formatCountdown(totalSec: number): string {
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  if (h > 0) return `${h}h ${m.toString().padStart(2, "0")}m ${s.toString().padStart(2, "0")}s`;
+  return `${m}m ${s.toString().padStart(2, "0")}s`;
 }
 
 /** Map VIX to 0-100 sentiment score (0 = very bearish, 100 = very bullish) */
@@ -91,13 +131,20 @@ function OverviewHero() {
   const { formatPrice } = useCurrencyStore();
   const [portfolio, setPortfolio] = useState<Portfolio | null>(null);
   const [macro, setMacro] = useState<MacroIntelligenceResponse | null>(null);
+  const [countdown, setCountdown] = useState(getMarketCountdown);
 
   useEffect(() => {
     fetchAPI<Portfolio>("/api/v1/portfolio/").then(setPortfolio).catch(() => {});
     fetchAPI<MacroIntelligenceResponse>("/api/v1/market/macro").then(setMacro).catch(() => {});
   }, []);
 
-  const marketOpen = isMarketOpen();
+  // Tick countdown every second
+  useEffect(() => {
+    const interval = setInterval(() => setCountdown(getMarketCountdown()), 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const marketOpen = countdown.isOpen;
   const pnlPositive = (portfolio?.daily_pnl ?? 0) >= 0;
 
   // Extract VIX for sentiment gauge
@@ -105,6 +152,10 @@ function OverviewHero() {
   const vixValue = vixIndicator?.value ?? null;
   const sentimentScore = vixValue !== null ? vixToScore(vixValue) : null;
   const sentiment = sentimentScore !== null ? getSentimentLabel(sentimentScore, t) : null;
+
+  const countdownText = marketOpen
+    ? t("hero.closes_in", { time: formatCountdown(countdown.secondsLeft) })
+    : t("hero.opens_in", { time: formatCountdown(countdown.secondsLeft) });
 
   const cards = [
     {
@@ -119,12 +170,6 @@ function OverviewHero() {
       value: portfolio ? `${pnlPositive ? "+" : ""}${formatPrice(portfolio.daily_pnl)}` : "--",
       sub: portfolio ? `${pnlPositive ? "+" : ""}${portfolio.daily_pnl_percent.toFixed(2)}%` : t("hero.loading"),
       color: portfolio ? (pnlPositive ? "text-oracle-green" : "text-oracle-red") : undefined,
-    },
-    {
-      label: t("hero.market_status"),
-      value: marketOpen ? t("hero.open") : t("hero.closed"),
-      sub: t("hero.us_markets"),
-      color: marketOpen ? "text-oracle-green" : "text-oracle-muted",
     },
   ];
 
@@ -147,6 +192,23 @@ function OverviewHero() {
           </div>
         </div>
       ))}
+
+      {/* Market Status card with countdown */}
+      <div className="bg-oracle-panel border border-oracle-border rounded-xl overflow-hidden shadow-sm transition-all duration-300 hover:border-oracle-border-hover hover:shadow-md">
+        <div className="h-[2px] bg-gradient-to-r from-[#12b5b0] to-[#0e9a96]" />
+        <div className="p-5">
+          <p className="text-oracle-muted text-xs font-semibold uppercase tracking-wide mb-1">
+            {t("hero.market_status")}
+          </p>
+          <p className={`text-xl font-bold font-mono ${marketOpen ? "text-oracle-green" : "text-oracle-muted"}`}>
+            {marketOpen ? t("hero.open") : t("hero.closed")}
+          </p>
+          <p className="text-oracle-muted text-xs mt-1">{t("hero.us_markets")}</p>
+          <p className={`font-mono text-xs mt-1.5 ${marketOpen ? "text-oracle-yellow" : "text-oracle-accent"}`}>
+            {countdownText}
+          </p>
+        </div>
+      </div>
 
       {/* 4th card: Market Sentiment Gauge */}
       <div className="bg-oracle-panel border border-oracle-border rounded-xl overflow-hidden shadow-sm transition-all duration-300 hover:border-oracle-border-hover hover:shadow-md flex flex-col">
