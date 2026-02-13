@@ -1,3 +1,5 @@
+import time
+
 from fastapi import APIRouter, HTTPException, Query
 
 from app.schemas.asset import (
@@ -30,6 +32,10 @@ from app.services.technical_analysis import compute_all_indicators
 from app.services.volatility_service import compute_volatility
 
 router = APIRouter(prefix="/market", tags=["market"])
+
+# Endpoint-level cache for movers (avoids re-fetching 400+ symbols on every request)
+_movers_cache: dict[str, tuple[float, dict]] = {}
+_MOVERS_CACHE_TTL = 180  # 3 minutes
 
 
 @router.get("/", response_model=MarketOverview)
@@ -651,7 +657,16 @@ async def get_movers(
     else:
         symbols = region_symbols.get(region, region_symbols["us"])
 
+    # Check endpoint-level cache
+    cache_key = f"{region}:{threshold}"
+    cached = _movers_cache.get(cache_key)
+    if cached:
+        ts, data = cached
+        if time.time() - ts < _MOVERS_CACHE_TTL:
+            return data
+
     data = await market_data_service.get_extended_movers(symbols=symbols, threshold=threshold)
+    _movers_cache[cache_key] = (time.time(), data)
     return data
 
 
