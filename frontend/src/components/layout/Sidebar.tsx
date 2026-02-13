@@ -107,15 +107,15 @@ export default function Sidebar() {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto py-3 px-2">
+      <nav className="flex-1 overflow-y-auto py-4 px-2">
         {NAV_GROUPS.map((group) => (
-          <div key={group.titleKey} className="mb-4">
+          <div key={group.titleKey} className="mb-6">
             {!sidebarCollapsed && (
-              <p className="text-oracle-muted text-[10px] font-semibold uppercase tracking-widest px-3 mb-1.5">
+              <p className="text-oracle-muted text-[10px] font-semibold uppercase tracking-widest px-3 mb-2">
                 {t(group.titleKey)}
               </p>
             )}
-            <div className="space-y-0.5">
+            <div className="space-y-1">
               {group.items.map((item) => {
                 const isActive = activeView === item.key;
                 const Icon = item.icon;
@@ -125,7 +125,7 @@ export default function Sidebar() {
                     onClick={() => handleNav(item.key)}
                     title={sidebarCollapsed ? t(item.labelKey) : undefined}
                     className={`w-full flex items-center gap-3 rounded-md text-sm transition-colors duration-150 ${
-                      sidebarCollapsed ? "justify-center px-2 py-2.5" : "px-3 py-2"
+                      sidebarCollapsed ? "justify-center px-2 py-3" : "px-3 py-2.5"
                     } ${
                       isActive
                         ? "oracle-nav-active text-oracle-accent"

@@ -27,4 +27,6 @@ class PredictionResponse(BaseModel):
     # AI prediction
     price_outlook: dict = {}
     ai_analysis: str = ""
+    # Quantitative scoring engine results
+    quant_scores: dict = {}
     generated_at: str = ""

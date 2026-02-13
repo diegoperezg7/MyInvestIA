@@ -1,4 +1,5 @@
 import asyncio
+import logging
 
 from fastapi import APIRouter, HTTPException, UploadFile, File
 from fastapi.responses import Response
@@ -11,11 +12,33 @@ from app.schemas.asset import (
     UpdateHoldingRequest,
 )
 from app.services.csv_service import export_portfolio_csv, parse_portfolio_csv
+from app.services.currency_service import convert_currency
 from app.services.dividend_service import get_portfolio_dividends
 from app.services.market_data import market_data_service
 from app.services.store import store
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/portfolio", tags=["portfolio"])
+
+# Base currency for portfolio P&L calculations
+PORTFOLIO_BASE_CURRENCY = "EUR"
+
+# Cache for FX rates within a single request cycle
+_fx_cache: dict[str, float] = {}
+
+
+async def _get_fx_rate(from_currency: str, to_currency: str) -> float:
+    """Get FX rate with in-memory caching for the request."""
+    if from_currency == to_currency:
+        return 1.0
+    key = f"{from_currency}:{to_currency}"
+    if key in _fx_cache:
+        return _fx_cache[key]
+    result = await convert_currency(1.0, from_currency, to_currency)
+    rate = result["rate"] if result else 1.0
+    _fx_cache[key] = rate
+    return rate
 
 
 async def _build_holding(h: dict) -> PortfolioHolding:
@@ -23,20 +46,26 @@ async def _build_holding(h: dict) -> PortfolioHolding:
     quote = await market_data_service.get_quote(h["symbol"], h["type"])
 
     if quote:
-        price = quote["price"]
+        raw_price = quote["price"]
         change_percent = quote["change_percent"]
         volume = quote["volume"]
+        quote_currency = quote.get("currency", "USD")
     else:
         # Fallback to cost basis if market data unavailable
-        price = h["avg_buy_price"]
+        raw_price = h["avg_buy_price"]
         change_percent = 0.0
         volume = 0.0
+        quote_currency = PORTFOLIO_BASE_CURRENCY  # assume same currency
+
+    # Convert price to portfolio base currency (EUR) if needed
+    fx_rate = await _get_fx_rate(quote_currency, PORTFOLIO_BASE_CURRENCY)
+    price = raw_price * fx_rate
 
     asset = Asset(
         symbol=h["symbol"],
         name=h["name"],
         type=h["type"],
-        price=price,
+        price=round(price, 4),
         change_percent=change_percent,
         volume=volume,
     )

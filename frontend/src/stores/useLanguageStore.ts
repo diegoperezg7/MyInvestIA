@@ -54,6 +54,8 @@ const translations: Translations = {
   "hero.closes_in": { es: "Cierra en {time}", en: "Closes in {time}" },
   "hero.opens_in": { es: "Abre en {time}", en: "Opens in {time}" },
   "hero.tracked_assets": { es: "Activos rastreados", en: "Tracked assets" },
+  "hero.et_open": { es: "apertura ET", en: "ET open" },
+  "hero.et_close": { es: "cierre ET", en: "ET close" },
 
   // --- Sections ---
   "section.market_movers": { es: "Movers del Mercado", en: "Market Movers" },

@@ -441,6 +441,52 @@ export interface SocialSentimentData {
   configured: boolean;
 }
 
+// --- Quantitative Scoring ---
+
+export interface QuantFactors {
+  trend: number;
+  mean_reversion: number;
+  momentum: number;
+  volume: number;
+  support_resistance: number;
+  candlestick: number;
+  macro: number;
+  sentiment: number;
+}
+
+export interface QuantRiskMetrics {
+  sharpe_ratio: number;
+  max_drawdown: number;
+  historical_volatility: number;
+}
+
+export interface QuantSupportResistance {
+  pivot?: number;
+  s1?: number;
+  s2?: number;
+  r1?: number;
+  r2?: number;
+  nearest_support?: number;
+  nearest_resistance?: number;
+  fractal_supports?: number[];
+  fractal_resistances?: number[];
+}
+
+export interface QuantScores {
+  factors: QuantFactors;
+  composite_score: number;
+  verdict: string;
+  confidence: number;
+  regime: "trending" | "range_bound" | "unknown";
+  adx: number;
+  weights: Record<string, number>;
+  risk_metrics: QuantRiskMetrics;
+  support_resistance: QuantSupportResistance;
+  candlestick_patterns: string[];
+  risk_vol_score: number;
+  factor_agreement: number;
+}
+
 // --- Prediction ---
 
 export interface PredictionResponse {
@@ -484,6 +530,7 @@ export interface PredictionResponse {
     risks?: string[];
   };
   ai_analysis: string;
+  quant_scores?: QuantScores;
   generated_at: string;
 }
 
