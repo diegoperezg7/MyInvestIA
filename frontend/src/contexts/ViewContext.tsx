@@ -13,7 +13,8 @@ export type View =
   | "alerts"
   | "chat"
   | "macro"
-  | "recommendations";
+  | "recommendations"
+  | "prediction";
 
 interface ViewContextType {
   activeView: View;

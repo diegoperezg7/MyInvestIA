@@ -338,7 +338,11 @@ class MarketDataService:
         symbols: list[str] | None = None,
         threshold: float = 2.0,
     ) -> dict:
-        """Get movers with sparkline data and threshold filtering (batch fetch)."""
+        """Get movers with sparkline data and threshold filtering (batch fetch).
+
+        Strategy: batch-fetch all quotes first, filter to top gainers/losers,
+        then fetch sparklines only for the ~30 results (not hundreds of symbols).
+        """
         if symbols is None:
             symbols = [
                 "AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "META", "TSLA",
@@ -346,26 +350,30 @@ class MarketDataService:
                 "INTC", "BA", "DIS", "V", "JPM", "GS", "WMT", "KO", "PEP",
             ]
 
-        # Batch-fetch all quotes in a single HTTP call
+        # Step 1: Batch-fetch all quotes in a single HTTP call (fast)
         batch = await provider_chain.get_quotes_batch(symbols)
         quotes = list(batch.values())
 
-        # Fetch sparklines in parallel for all valid quotes
+        # Step 2: Sort and filter BEFORE fetching sparklines
+        sorted_quotes = sorted(quotes, key=lambda x: x["change_percent"], reverse=True)
+        gainers = [q for q in sorted_quotes if q["change_percent"] >= threshold][:15]
+        losers = [q for q in reversed(sorted_quotes) if q["change_percent"] <= -threshold][:15]
+
+        # Step 3: Fetch sparklines only for the filtered results (~30 max)
+        top_movers = gainers + losers
+
         async def _add_sparkline(q: dict) -> dict:
-            history = await self.get_history(q["symbol"], period="5d", interval="1d")
-            q["sparkline"] = [r["close"] for r in history] if history else []
+            try:
+                history = await self.get_history(q["symbol"], period="5d", interval="1d")
+                q["sparkline"] = [r["close"] for r in history] if history else []
+            except Exception:
+                q["sparkline"] = []
             return q
 
-        sparkline_tasks = [_add_sparkline(q) for q in quotes]
-        quotes = await asyncio.gather(*sparkline_tasks, return_exceptions=True)
-        quotes = [q for q in quotes if isinstance(q, dict)]
+        sparkline_tasks = [_add_sparkline(q) for q in top_movers]
+        await asyncio.gather(*sparkline_tasks, return_exceptions=True)
 
-        sorted_quotes = sorted(quotes, key=lambda x: x["change_percent"], reverse=True)
-
-        gainers = [q for q in sorted_quotes if q["change_percent"] >= threshold]
-        losers = [q for q in reversed(sorted_quotes) if q["change_percent"] <= -threshold]
-
-        return {"gainers": gainers[:15], "losers": losers[:15]}
+        return {"gainers": gainers, "losers": losers}
 
 
 # Singleton

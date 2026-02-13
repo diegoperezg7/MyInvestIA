@@ -95,7 +95,7 @@ function ArticleItem({ article, t }: { article: AnalyzedArticle; t: (key: string
 
         {/* Content */}
         <div className="flex-1 min-w-0">
-          <p className="text-sm text-oracle-text truncate">{article.headline}</p>
+          <p className={`text-sm text-oracle-text ${expanded ? "" : "truncate"}`}>{article.headline}</p>
           <div className="flex items-center gap-2 mt-1">
             {/* Source badge */}
             <span
@@ -178,11 +178,11 @@ function ArticleItem({ article, t }: { article: AnalyzedArticle; t: (key: string
 
 export default function BreakingNewsFeed({ defaultCollapsed = true, className = "" }: { defaultCollapsed?: boolean; className?: string }) {
   const { articles, loading, error, refresh } = useNewsFeed();
-  const [showAll, setShowAll] = useState(false);
   const [collapsed, setCollapsed] = useState(defaultCollapsed);
+  const [showAll, setShowAll] = useState(false);
   const t = useLanguageStore((s) => s.t);
 
-  const VISIBLE_COUNT = 3;
+  const VISIBLE_COUNT = 4;
   const displayed = showAll ? articles : articles.slice(0, VISIBLE_COUNT);
 
   return (
@@ -212,7 +212,7 @@ export default function BreakingNewsFeed({ defaultCollapsed = true, className = 
         </button>
         <button
           onClick={(e) => { e.stopPropagation(); refresh(); }}
-          disabled={loading}
+          disabled={loading && articles.length === 0}
           className="p-1 rounded text-oracle-muted hover:text-oracle-accent hover:bg-oracle-bg transition-colors disabled:opacity-50"
           title={t("news.refresh")}
         >
@@ -224,7 +224,7 @@ export default function BreakingNewsFeed({ defaultCollapsed = true, className = 
 
       {/* Collapsible content */}
       {!collapsed && (
-        <div className="mt-3 flex-1 overflow-y-auto">
+        <div className="mt-3">
           {/* Loading */}
           {loading && articles.length === 0 && (
             <div className="space-y-3">
@@ -246,20 +246,16 @@ export default function BreakingNewsFeed({ defaultCollapsed = true, className = 
             </div>
           )}
 
-          {/* Show more */}
+          {/* Show more / less */}
           {articles.length > VISIBLE_COUNT && (
             <button
               onClick={() => setShowAll(!showAll)}
               className="w-full mt-2 py-1.5 text-xs text-oracle-accent hover:bg-oracle-bg rounded transition-colors flex items-center justify-center gap-1"
             >
               {showAll ? (
-                <>
-                  {t("news.show_less")} <ChevronUp className="w-3 h-3" />
-                </>
+                <>{t("news.show_less")} <ChevronUp className="w-3 h-3" /></>
               ) : (
-                <>
-                  {t("news.show_more", { count: String(articles.length - VISIBLE_COUNT) })} <ChevronDown className="w-3 h-3" />
-                </>
+                <>{t("news.show_more", { count: String(articles.length - VISIBLE_COUNT) })} <ChevronDown className="w-3 h-3" /></>
               )}
             </button>
           )}

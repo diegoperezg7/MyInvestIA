@@ -25,6 +25,7 @@ const translations: Translations = {
   "nav.chat": { es: "Chat IA", en: "AI Chat" },
   "nav.commodities": { es: "Commodities", en: "Commodities" },
   "nav.macro": { es: "Macro", en: "Macro" },
+  "nav.prediction": { es: "Prediccion", en: "Prediction" },
   "nav.recommendations": { es: "Recomendaciones", en: "Recommendations" },
 
   // --- Nav groups ---
@@ -102,8 +103,34 @@ const translations: Translations = {
   "view.commodities.desc": { es: "Materias primas: metales, energia y agricultura", en: "Raw materials: metals, energy and agriculture" },
   "view.macro.title": { es: "Macro", en: "Macro Intelligence" },
   "view.macro.desc": { es: "Indicadores economicos globales", en: "Global economic indicators and analysis" },
+  "view.prediction.title": { es: "Prediccion IA", en: "AI Prediction" },
+  "view.prediction.desc": { es: "Prediccion todo-en-uno sintetizando todas las fuentes de datos", en: "All-in-one prediction synthesizing every data source" },
   "view.recommendations.title": { es: "Recomendaciones IA", en: "AI Recommendations" },
   "view.recommendations.desc": { es: "Recomendaciones diarias basadas en tu portafolio", en: "Daily recommendations based on your portfolio" },
+
+  // --- Prediction ---
+  "prediction.enter_symbol": { es: "Ingresa un simbolo para generar prediccion", en: "Enter a symbol to generate prediction" },
+  "prediction.generate": { es: "Predecir", en: "Predict" },
+  "prediction.loading": { es: "Analizando todas las fuentes de datos...", en: "Analyzing all data sources..." },
+  "prediction.verdict": { es: "Veredicto", en: "Verdict" },
+  "prediction.confidence": { es: "Confianza", en: "Confidence" },
+  "prediction.technical": { es: "Tecnico", en: "Technical" },
+  "prediction.sentiment": { es: "Sentimiento", en: "Sentiment" },
+  "prediction.macro": { es: "Macro", en: "Macro" },
+  "prediction.news": { es: "Noticias", en: "News" },
+  "prediction.social": { es: "Social", en: "Social" },
+  "prediction.outlook": { es: "Perspectiva de Precio", en: "Price Outlook" },
+  "prediction.short_term": { es: "Corto Plazo (1-2 semanas)", en: "Short Term (1-2 weeks)" },
+  "prediction.medium_term": { es: "Mediano Plazo (1-3 meses)", en: "Medium Term (1-3 months)" },
+  "prediction.catalysts": { es: "Catalizadores", en: "Catalysts" },
+  "prediction.risks": { es: "Riesgos", en: "Risks" },
+  "prediction.analysis": { es: "Analisis Completo", en: "Full Analysis" },
+  "prediction.strong_buy": { es: "COMPRA FUERTE", en: "STRONG BUY" },
+  "prediction.buy": { es: "COMPRAR", en: "BUY" },
+  "prediction.neutral": { es: "NEUTRAL", en: "NEUTRAL" },
+  "prediction.sell": { es: "VENDER", en: "SELL" },
+  "prediction.strong_sell": { es: "VENTA FUERTE", en: "STRONG SELL" },
+  "prediction.error": { es: "Error al generar prediccion", en: "Failed to generate prediction" },
 
   // --- Quote Lookup ---
   "quote.title": { es: "Buscar Cotización", en: "Quote Lookup" },

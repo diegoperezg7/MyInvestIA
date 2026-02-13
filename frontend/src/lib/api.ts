@@ -19,12 +19,12 @@ export async function fetchAPI<T>(endpoint: string, { skipCache = false }: { ski
     if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
       return cached.data as T;
     }
-  }
 
-  // Deduplicate inflight requests
-  const existing = inflight.get(url);
-  if (existing) {
-    return existing as Promise<T>;
+    // Deduplicate inflight requests (only for normal fetches, not manual refreshes)
+    const existing = inflight.get(url);
+    if (existing) {
+      return existing as Promise<T>;
+    }
   }
 
   const promise = fetch(url).then(async (response) => {

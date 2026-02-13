@@ -10,9 +10,9 @@ const VIEW_KEYS: Record<string, View> = {
   "4": "movers",
   "5": "volatility",
   "6": "commodities",
-  "7": "recommendations",
-  "8": "chat",
-  "9": "macro",
+  "7": "prediction",
+  "8": "recommendations",
+  "9": "chat",
   "0": "alerts",
 };
 

@@ -27,6 +27,8 @@ You MUST respond with ONLY valid JSON (no markdown, no explanation). The JSON mu
 {
   "market_mood": "2-sentence executive summary of current market conditions",
   "mood_score": float between -1.0 (very bearish) and 1.0 (very bullish),
+  "fear_greed": "1-sentence fear/greed assessment based on VIX, social buzz, and price action",
+  "vix_regime": "low_vol|normal|elevated|crisis",
   "recommendations": [
     {
       "category": "opportunity|risk_alert|rebalance|trend|macro_shift|social_signal|earnings_watch|sector_rotation",
@@ -50,11 +52,25 @@ Categories:
 - earnings_watch: Watch earnings/events
 - sector_rotation: Detected sector rotation
 
+VIX regime interpretation:
+- <15: low_vol — complacency, good for equities but watch for reversals
+- 15-20: normal — balanced conditions
+- 20-30: elevated — caution, rising uncertainty
+- >30: crisis — fear dominates, risk-off, consider hedging
+
+Yield curve context:
+- Compare 10Y yield vs 13W T-bill to detect inversion (recessionary signal)
+- Rising yields pressure growth/tech stocks, help financials
+- Falling yields support growth stocks, hurt bank margins
+
 Guidelines:
 - Generate 5-8 recommendations
 - ALL text (titles, reasoning, actions) must be in SPANISH
 - Use actual data: prices, percentages, indicators
 - Be specific and actionable
+- Classify VIX into the appropriate regime and reference it
+- Mention sector implications when relevant (e.g. tech vs financials vs energy)
+- Include fear/greed assessment based on data signals
 - Never give financial advice — provide analysis and decision support only
 - Each recommendation should reference specific data points"""
 
@@ -264,13 +280,54 @@ def _build_recommendations_context(
             )
         parts.append("\n".join(lines))
 
-    # Macro
+    # Macro with enriched context
     if macro_indicators:
         lines = ["## Macro Indicators"]
+        vix_val = None
+        yield_10y = None
+        yield_13w = None
         for ind in macro_indicators:
             lines.append(
                 f"- {ind['name']}: {ind['value']:.2f} ({ind['change_percent']:+.2f}%) — {ind['impact_description']}"
             )
+            if "VIX" in ind["name"]:
+                vix_val = ind["value"]
+            elif "10-Year" in ind["name"]:
+                yield_10y = ind["value"]
+            elif "13-Week" in ind["name"] or "T-Bill" in ind["name"]:
+                yield_13w = ind["value"]
+
+        # VIX regime classification
+        if vix_val is not None:
+            if vix_val < 15:
+                regime = "LOW VOLATILITY (<15) — complacency, favorable for equities"
+            elif vix_val < 20:
+                regime = "NORMAL (15-20) — balanced conditions"
+            elif vix_val < 30:
+                regime = "ELEVATED (20-30) — rising uncertainty, caution warranted"
+            else:
+                regime = "CRISIS (>30) — fear-driven, risk-off environment"
+            lines.append(f"\nVIX Regime: {regime}")
+
+        # Yield curve context
+        if yield_10y is not None and yield_13w is not None:
+            spread = yield_10y - yield_13w
+            if spread < 0:
+                lines.append(
+                    f"Yield Curve: INVERTED (10Y {yield_10y:.2f}% vs 13W {yield_13w:.2f}%, spread {spread:+.2f}%) "
+                    f"— recessionary signal, historically precedes economic slowdowns"
+                )
+            elif spread < 0.5:
+                lines.append(
+                    f"Yield Curve: FLAT (10Y {yield_10y:.2f}% vs 13W {yield_13w:.2f}%, spread {spread:+.2f}%) "
+                    f"— caution, approaching inversion territory"
+                )
+            else:
+                lines.append(
+                    f"Yield Curve: NORMAL (10Y {yield_10y:.2f}% vs 13W {yield_13w:.2f}%, spread {spread:+.2f}%) "
+                    f"— healthy credit conditions"
+                )
+
         if macro_summary.get("key_signals"):
             lines.append(f"\nEnvironment: {macro_summary.get('environment', 'unknown')}, "
                          f"Risk: {macro_summary.get('risk_level', 'unknown')}")
@@ -344,9 +401,16 @@ def _parse_ai_response(response: str) -> dict | None:
         if not market_mood and not recommendations:
             return None
 
+        fear_greed = str(data.get("fear_greed", ""))
+        vix_regime = data.get("vix_regime", "normal")
+        if vix_regime not in ("low_vol", "normal", "elevated", "crisis"):
+            vix_regime = "normal"
+
         return {
             "market_mood": market_mood,
             "mood_score": mood_score,
+            "fear_greed": fear_greed,
+            "vix_regime": vix_regime,
             "recommendations": recommendations,
         }
     except (json.JSONDecodeError, ValueError, TypeError) as e:

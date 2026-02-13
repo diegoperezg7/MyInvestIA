@@ -168,7 +168,7 @@ class AssetQuote(BaseModel):
     change_percent: float = 0.0
     volume: float = 0.0
     previous_close: float = 0.0
-    market_cap: float = 0.0
+    market_cap: float | None = 0.0
 
 
 class HistoricalDataPoint(BaseModel):

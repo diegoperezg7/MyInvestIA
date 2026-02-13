@@ -27,6 +27,7 @@ export default function CommandBar() {
     { id: "v-chat", label: "Go to Chat", category: "Views", action: () => setActiveView("chat") },
     { id: "v-commodities", label: "Go to Commodities", category: "Views", action: () => setActiveView("commodities") },
     { id: "v-macro", label: "Go to Macro", category: "Views", action: () => setActiveView("macro") },
+    { id: "v-prediction", label: "Go to Prediction", category: "Views", action: () => setActiveView("prediction") },
   ];
 
   // If query looks like a ticker symbol, add a "Look up" action
