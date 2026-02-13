@@ -365,284 +365,113 @@ async def get_movers(
     region_symbols: dict[str, list[str]] = {
         "us": [
             # ── Mega-cap tech ──
-            "AAPL", "MSFT", "GOOGL", "GOOG", "AMZN", "NVDA", "META", "TSLA", "AVGO", "ORCL",
+            "AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "META", "TSLA", "AVGO", "ORCL",
             # ── Semiconductors ──
-            "AMD", "INTC", "QCOM", "TXN", "MU", "MRVL", "KLAC", "LRCX", "AMAT", "SNPS",
-            "CDNS", "ARM", "SMCI", "ON", "NXPI", "ADI", "MCHP", "SWKS", "MPWR", "WOLF",
-            "GFS", "CRUS", "RMBS", "ACLS", "ONTO",
-            # ── Cybersecurity / infra ──
-            "CRWD", "PANW", "FTNT", "ZS", "NET", "S", "RPD", "TENB", "QLYS", "VRNS",
-            # ── Cloud / data / AI ──
-            "PLTR", "DDOG", "SNOW", "MDB", "CFLT", "ESTC", "GTLB", "FROG", "AUR",
-            "PATH", "AI", "BBAI", "SOUN", "IOSP",
+            "AMD", "INTC", "QCOM", "MU", "ARM", "SMCI", "MRVL", "AMAT", "LRCX",
+            # ── Cybersecurity / Cloud / AI ──
+            "CRWD", "PANW", "NET", "PLTR", "DDOG", "SNOW", "MDB", "SOUN", "AI",
             # ── Software / SaaS ──
-            "CRM", "ADBE", "NOW", "INTU", "WDAY", "TEAM", "HUBS", "DOCU", "ZM",
-            "OKTA", "ZI", "BILL", "PCOR", "MNDY", "TOST", "BRZE", "ALTR", "CWAN",
+            "CRM", "ADBE", "NOW", "INTU", "HUBS", "TEAM", "MNDY", "TOST", "ZM",
             # ── Fintech / payments ──
-            "V", "MA", "PYPL", "SQ", "COIN", "HOOD", "SOFI", "AFRM", "MSTR", "UPST",
-            "FOUR", "FLYW", "PAYO", "GPN", "FIS", "FISV", "FI", "WEX",
+            "V", "MA", "PYPL", "SQ", "COIN", "HOOD", "SOFI", "AFRM", "MSTR",
             # ── E-commerce / consumer internet ──
-            "SHOP", "AMZN", "ETSY", "EBAY", "W", "CHWY", "CARG", "CPNG",
-            "PINS", "SNAP", "MTCH", "BMBL",
-            # ── Gaming / metaverse ──
-            "U", "RBLX", "EA", "TTWO", "ATVI", "DKNG", "PENN", "RSI",
-            # ── Streaming / media / entertainment ──
-            "NFLX", "DIS", "CMCSA", "WBD", "PARA", "SPOT", "ROKU", "TTD",
-            "IMAX", "LGF-A", "MSGS", "LYV", "SIRI",
-            # ── Social / advertising ──
-            "GOOGL", "META", "TTD", "MGNI", "PUBM", "DSP", "IAS", "DV",
+            "SHOP", "ETSY", "PINS", "SNAP", "RBLX", "DKNG",
+            # ── Streaming / media ──
+            "NFLX", "DIS", "SPOT", "ROKU", "TTD", "CMCSA",
             # ── ETFs – broad market ──
-            "SPY", "QQQ", "IWM", "DIA", "VTI", "VOO", "VT", "VXUS",
-            "MDY", "IJR", "RSP", "SPLG", "SCHB", "ITOT",
-            # ── ETFs – sector ──
-            "XLF", "XLE", "XLV", "XLK", "XLI", "XLU", "XLP", "XLY", "XLB", "XLRE",
-            "XBI", "XHB", "XRT", "XME", "XOP", "KRE", "KBE",
-            # ── ETFs – thematic / factor ──
-            "ARKK", "ARKW", "ARKG", "ARKF", "ARKQ",
-            "SOXX", "SMH", "HACK", "BOTZ", "ROBO", "LIT", "TAN", "ICLN", "QCLN",
-            "KWEB", "CQQQ", "FXI", "EEM", "VWO", "EFA", "IEMG",
-            # ── ETFs – fixed income / commodities / leveraged ──
-            "TLT", "IEF", "SHY", "BND", "AGG", "HYG", "LQD", "JNK", "BNDX", "TIP",
-            "GLD", "SLV", "GDX", "GDXJ", "USO", "UNG", "DBA", "PALL",
-            "IBIT", "BITO", "GBTC", "ETHE",
-            "TQQQ", "SQQQ", "SPXL", "SPXS", "SOXL", "SOXS", "UPRO", "SDS",
-            "UVXY", "VXX", "SVXY",
-            # ── Financials – banks ──
-            "JPM", "BAC", "WFC", "C", "GS", "MS", "USB", "PNC", "TFC", "COF",
-            "SCHW", "BK", "STT", "FITB", "HBAN", "KEY", "RF", "CFG", "MTB", "ZION",
-            "SIVB", "WAL", "FRC", "ALLY", "DFS", "SYF", "NYCB",
-            # ── Financials – insurance / asset management ──
-            "BRK-B", "BLK", "AXP", "MMC", "AON", "AJG", "SPGI", "MCO", "MSCI",
-            "ICE", "CME", "CBOE", "NDAQ", "TW", "LPLA", "RJF", "IBKR", "HOOD",
-            "AIG", "MET", "PRU", "ALL", "TRV", "PGR", "CB", "AFL", "HIG",
-            # ── Healthcare – pharma / biotech ──
-            "UNH", "JNJ", "LLY", "ABBV", "MRK", "PFE", "TMO", "ABT", "AMGN", "GILD",
-            "BIIB", "REGN", "VRTX", "BMY", "AZN", "NVO", "GSK", "SNY", "MRNA", "BNTX",
-            "ZTS", "CI", "ELV", "HUM", "CNC", "MOH", "ALGN", "DXCM", "PODD",
-            # ── Healthcare – devices / services ──
-            "ISRG", "MDT", "SYK", "BSX", "EW", "BDX", "BAX", "ZBH",
-            "HOLX", "IDXX", "IQV", "A", "WAT", "MTD", "TFX",
-            "HCA", "THC", "UHS", "DVA", "ENSG", "AMED",
-            # ── Biotech – small/mid cap ──
-            "SGEN", "ALNY", "EXAS", "RARE", "BMRN", "INCY", "IONS", "SRPT",
-            "PCVX", "RCKT", "ARWR", "NTLA", "BEAM", "CRSP", "EDIT", "VERV",
-            "ACAD", "HALO", "NBIX", "CRNX", "RVMD", "LEGN", "IMVT",
+            "SPY", "QQQ", "IWM", "DIA", "VTI",
+            # ── ETFs – sector / thematic ──
+            "XLF", "XLE", "XLV", "XLK", "ARKK", "SOXX", "SMH",
+            "GLD", "SLV", "IBIT", "SOXL", "TQQQ",
+            # ── Financials ──
+            "JPM", "BAC", "GS", "MS", "WFC", "C", "BRK-B", "SCHW", "BLK",
+            # ── Healthcare / pharma / biotech ──
+            "UNH", "LLY", "JNJ", "ABBV", "MRK", "PFE", "MRNA", "ISRG",
+            "REGN", "VRTX", "AMGN", "GILD", "CRSP", "DXCM",
             # ── Consumer / retail ──
-            "WMT", "COST", "HD", "LOW", "TGT", "SBUX", "MCD", "NKE", "LULU", "TJX",
-            "KO", "PEP", "PG", "CL", "KMB", "MNST", "KDP", "STZ", "TAP", "SAM",
-            "DG", "DLTR", "ROST", "BURL", "GPS", "ANF", "AEO", "URBN", "TPR", "CPRI",
-            "EL", "DECK", "CROX", "BIRK", "ON", "SKX",
-            "ULTA", "COTY", "HELE",
-            "CMG", "YUM", "DPZ", "WEN", "QSR", "JACK", "WING", "CAVA", "SHAK",
-            "ABNB", "BKNG", "EXPE", "MAR", "HLT", "H", "IHG", "WH", "RCL", "CCL", "NCLH",
+            "WMT", "COST", "HD", "NKE", "SBUX", "MCD", "LULU", "CMG",
+            "ABNB", "BKNG", "RCL", "CCL",
             # ── Industrial / defense ──
-            "BA", "CAT", "DE", "HON", "GE", "RTX", "LMT", "NOC", "GD", "HII", "LHX",
-            "TDG", "HWM", "AXON", "TXT", "LDOS", "SAIC", "BAH",
-            "MMM", "EMR", "ROK", "AME", "ITW", "PH", "DOV", "IR", "SWK",
-            "ETN", "CMI", "PCAR", "GNRC", "TT", "A", "OTIS", "CARR",
-            "WM", "RSG", "WCN", "CLH", "SRCL",
-            "FLR", "PWR", "FAST", "WSO", "AOS", "RRX",
-            # ── Aerospace / transport / logistics ──
-            "DAL", "UAL", "LUV", "AAL", "ALK", "JBLU", "HA", "SAVE",
-            "FDX", "UPS", "XPO", "CHRW", "JBHT", "ODFL", "SAIA", "KNX",
-            "UNP", "CSX", "NSC", "CP",
+            "BA", "CAT", "HON", "GE", "RTX", "LMT", "DE", "AXON",
+            # ── Transport / logistics ──
+            "DAL", "UAL", "FDX", "UPS", "UBER", "LYFT",
             # ── Energy ──
-            "XOM", "CVX", "COP", "SLB", "EOG", "OXY", "MPC", "PSX", "VLO",
-            "PXD", "FANG", "DVN", "HES", "HAL", "BKR",
-            "KMI", "WMB", "OKE", "TRGP", "ET", "EPD", "MMP", "PAA",
-            "ENPH", "SEDG", "FSLR", "RUN", "NOVA", "ARRY",
-            "CEG", "VST", "NRG", "OGE",
+            "XOM", "CVX", "COP", "OXY", "SLB", "ENPH", "FSLR", "CEG", "VST",
             # ── Autos / EV ──
-            "GM", "F", "RIVN", "LCID", "GOEV", "FSR", "VFS", "PSNY",
-            "UBER", "LYFT", "GRAB",
-            "TM", "HMC", "STLA", "RACE", "TSLA",
-            # ── Chinese ADRs (US-listed) ──
-            "BABA", "JD", "PDD", "BIDU", "NIO", "XPEV", "LI", "BILI", "TME",
-            "FUTU", "TIGR", "ZH", "TAL", "EDU", "VNET", "WB", "IQ", "DIDI",
-            "YMM", "KC", "MNSO", "LKNCY",
-            # ── Telecom / media ──
-            "T", "VZ", "TMUS", "CHTR", "LBRDA", "FYBR",
-            # ── Utilities ──
-            "NEE", "DUK", "SO", "D", "AEP", "EXC", "SRE", "XEL", "WEC", "ED",
-            "ES", "AEE", "CMS", "DTE", "LNT", "EVRG", "PNW", "ATO", "NI",
-            # ── REITs ──
-            "AMT", "PLD", "CCI", "EQIX", "SPG", "O", "DLR", "PSA", "WELL", "AVB",
-            "EQR", "VTR", "MAA", "UDR", "ESS", "CPT", "KIM", "REG", "FRT",
-            "BXP", "VNO", "SLG", "HIW", "ARE", "PEAK", "MPW", "SBAC",
-            "INVH", "AMH", "STAG", "TRNO", "REXR", "FR",
-            # ── Materials / mining ──
-            "LIN", "APD", "SHW", "ECL", "DD", "DOW", "PPG", "NEM",
-            "FCX", "SCCO", "TECK", "CLF", "X", "NUE", "STLD", "RS",
-            "AA", "CENX", "ATI", "BALL", "PKG", "IP", "WRK", "SEE",
-            "CF", "MOS", "NTR", "FMC", "IPI",
-            # ── Other notable US-listed ──
-            "CSCO", "IBM", "ACN", "ABNB", "DASH", "DELL", "HPQ", "HPE",
-            "LRCX", "NTAP", "STX", "WDC", "SMCI",
-            "TWLO", "SPLK", "VEEV", "ANSS", "CDNS", "SNPS", "TYL", "MANH",
-            "BSY", "GRAB", "CPNG", "SE",
+            "GM", "F", "RIVN", "LCID",
+            # ── Chinese ADRs ──
+            "BABA", "JD", "PDD", "BIDU", "NIO", "LI",
+            # ── Telecom / utilities / REITs ──
+            "T", "VZ", "TMUS", "NEE", "AMT", "EQIX", "O", "DLR",
+            # ── Materials ──
+            "LIN", "FCX", "NEM", "NUE", "CLF", "X",
+            # ── Other notable ──
+            "CSCO", "IBM", "DELL", "DASH",
         ],
         "eu": [
-            # ── Germany (Xetra / DAX 40 + MDAX) ──
-            "SAP", "SIE.DE", "ALV.DE", "MUV2.DE", "DTE.DE", "DHL.DE", "AIR.DE",
-            "BMW.DE", "VOW3.DE", "MBG.DE", "P911.DE", "PAH3.DE",
-            "BAS.DE", "BAYN.DE", "FRE.DE", "HEN3.DE", "BEI.DE",
-            "ADS.DE", "PUM.DE", "ZAL.DE", "HFG.DE",
-            "IFX.DE", "MRK.DE", "SRT3.DE", "RHM.DE", "MTX.DE",
-            "DB1.DE", "CBK.DE", "DBK.DE",
-            "RWE.DE", "EOAN.DE", "ENR.DE",
-            "HEI.DE", "FME.DE", "SHL.DE", "EVK.DE", "SY1.DE",
-            "LEG.DE", "1COV.DE", "WCH.DE",
-            # ── France (CAC 40 + SBF 120) ──
-            "MC.PA", "OR.PA", "TTE.PA", "SAN.PA", "BNP.PA", "AI.PA", "AIR.PA",
-            "SU.PA", "RI.PA", "KER.PA", "DG.PA", "HO.PA", "SGO.PA",
-            "CAP.PA", "STM.PA", "DSY.PA", "BN.PA", "EN.PA", "VIV.PA",
-            "ACA.PA", "GLE.PA", "CS.PA", "ML.PA", "PUB.PA",
-            "ORA.PA", "EL.PA", "RMS.PA", "ERF.PA", "WLN.PA",
-            "ATO.PA", "LR.PA", "SAF.PA", "AM.PA",
-            # ── Netherlands (AEX) ──
-            "ASML", "PHIA.AS", "UNA.AS", "INGA.AS", "AD.AS", "HEIA.AS",
-            "ABN.AS", "RAND.AS", "WKL.AS", "AKZA.AS", "DSM.AS", "BESI.AS",
-            "PRX.AS", "JDEP.AS", "NN.AS",
-            # ── Belgium ──
-            "UCB.BR", "SOLB.BR", "ABI.BR", "KBC.BR", "ACKB.BR",
-            # ── Nordic (Denmark, Sweden, Finland, Norway) ──
-            "NVO", "NOVO-B.CO", "CARL-B.CO", "MAERSK-B.CO", "VWS.CO", "ORSTED.CO",
-            "DSV.CO", "COLO-B.CO", "PNDORA.CO", "GN.CO",
-            "ERIC-B.ST", "VOLV-B.ST", "ABB.ST", "ATCO-A.ST", "SEB-A.ST",
-            "INVE-B.ST", "SAND.ST", "ALFA.ST", "HM-B.ST", "SCA-B.ST",
-            "ASSA-B.ST", "HEXA-B.ST", "SWED-A.ST",
-            "NOKIA.HE", "SAMPO.HE", "NESTE.HE", "UPM.HE", "FORTUM.HE",
-            "NHY.OL", "EQNR.OL", "DNB.OL", "TEL.OL", "MOWI.OL", "ORK.OL",
-            "SALM.OL", "YAR.OL", "AKER.OL",
-            # ── UK (FTSE 100 + 250) ──
-            "SHEL", "AZN", "ULVR.L", "HSBA.L", "BP.L", "RIO.L", "GSK.L",
-            "BARC.L", "LLOY.L", "VOD.L", "BT-A.L", "DGE.L", "LSEG.L",
-            "AAL.L", "ABF.L", "AHT.L", "ANTO.L", "AUTO.L", "AVST.L",
-            "AV.L", "BAT.L", "BDEV.L", "BKG.L", "BNZL.L",
-            "CPG.L", "CRH.L", "DARK.L", "EXPN.L", "FLTR.L",
-            "GLEN.L", "HLMA.L", "IAG.L", "III.L", "IMB.L",
-            "INF.L", "ITV.L", "JD.L", "JMAT.L", "KGF.L",
-            "LAND.L", "LGEN.L", "MNG.L", "NWG.L", "PHNX.L",
-            "PRU.L", "PSH.L", "PSN.L", "RKT.L", "RMV.L",
-            "RS1.L", "SBRY.L", "SDR.L", "SGE.L", "SHEL.L",
-            "SKG.L", "SMDS.L", "SMT.L", "SN.L", "SSE.L",
-            "STAN.L", "SVT.L", "TSCO.L", "TW.L", "WPP.L",
-            # ── Switzerland (SMI + SPI) ──
-            "NESN.SW", "ROG.SW", "NOVN.SW", "UBSG.SW", "ABBN.SW", "SREN.SW",
-            "CSGN.SW", "ZURN.SW", "GEBN.SW", "GIVN.SW", "SGSN.SW",
-            "LONN.SW", "SCMN.SW", "SLHN.SW", "STMN.SW", "TEMN.SW",
-            "BAER.SW", "BARN.SW",
-            # ── Spain (IBEX 35) ──
-            "SAN", "BBVA", "ITX.MC", "TEF.MC", "IBE.MC", "REP.MC", "FER.MC",
-            "AMS.MC", "CABK.MC", "MAP.MC", "ACS.MC", "ENG.MC",
-            "IAG.MC", "GRF.MC", "CLNX.MC", "MTS.MC",
-            # ── Italy (FTSE MIB) ──
-            "UCG.MI", "ISP.MI", "ENI.MI", "ENEL.MI", "RACE.MI",
-            "STM.MI", "G.MI", "TEN.MI", "PRY.MI", "BAMI.MI",
-            "STLA.MI", "A2A.MI", "SRG.MI", "HER.MI", "LDO.MI",
-            # ── Portugal / Ireland / other ──
-            "EDP.LS", "GALP.LS", "SON.LS",
-            "CRH", "RYA.IR", "KYGA.IR",
-            # ── European ETFs (US-listed) ──
-            "EWG", "EWU", "EWQ", "EWP", "EWI", "EWL", "EWN", "EWD",
-            "FEZ", "VGK", "HEDJ", "IEV", "EZU",
+            # ── Germany ──
+            "SAP", "SIE.DE", "ALV.DE", "BMW.DE", "MBG.DE", "BAS.DE", "IFX.DE",
+            "DBK.DE", "DTE.DE", "RWE.DE", "DHL.DE",
+            # ── France ──
+            "MC.PA", "OR.PA", "TTE.PA", "SAN.PA", "BNP.PA", "AIR.PA",
+            "SU.PA", "KER.PA", "STM.PA", "CAP.PA",
+            # ── Netherlands ──
+            "ASML", "PHIA.AS", "UNA.AS", "INGA.AS", "BESI.AS", "PRX.AS",
+            # ── Nordic ──
+            "NVO", "NOVO-B.CO", "ERIC-B.ST", "VOLV-B.ST", "NOKIA.HE",
+            "EQNR.OL", "NHY.OL",
+            # ── UK ──
+            "SHEL", "AZN", "HSBA.L", "BP.L", "RIO.L", "GSK.L",
+            "BARC.L", "LLOY.L", "LSEG.L", "GLEN.L",
+            # ── Switzerland ──
+            "NESN.SW", "ROG.SW", "NOVN.SW", "UBSG.SW",
+            # ── Spain / Italy ──
+            "SAN", "BBVA", "UCG.MI", "ENEL.MI", "ENI.MI",
+            # ── EU ETFs ──
+            "FEZ", "VGK", "EWG", "EWU",
         ],
         "asia": [
-            # ── Japan (Nikkei 225 / TOPIX) ──
-            "TM", "SONY", "HMC", "NTDOY", "MUFG", "SMFG", "NMR",
-            "7203.T", "6758.T", "9984.T", "8306.T", "6861.T", "6501.T",
-            "7267.T", "6902.T", "8035.T", "6098.T", "4063.T", "9433.T",
-            "7741.T", "4519.T", "4502.T", "6367.T", "8058.T", "8001.T",
-            "9432.T", "7974.T", "4661.T", "6594.T", "6981.T",
-            "8316.T", "8411.T", "3382.T", "9983.T", "7011.T", "6301.T",
-            "2914.T", "8031.T", "4543.T", "4568.T", "6723.T",
-            # ── China / Hong Kong (Hang Seng + ADRs) ──
-            "BABA", "JD", "PDD", "BIDU", "NIO", "XPEV", "LI", "BILI", "TME",
-            "9988.HK", "0700.HK", "3690.HK", "1211.HK", "0941.HK", "1299.HK", "2318.HK",
-            "0005.HK", "0388.HK", "0016.HK", "0001.HK", "0003.HK", "0027.HK",
-            "2020.HK", "9618.HK", "9999.HK", "1810.HK", "2269.HK", "6862.HK",
-            "0175.HK", "0883.HK", "2628.HK", "1398.HK", "3988.HK", "0939.HK",
-            "600519.SS", "601318.SS", "601012.SS", "600036.SS", "000858.SZ",
-            "000333.SZ", "300750.SZ", "002594.SZ", "600900.SS",
-            # ── Taiwan ──
-            "TSM", "2330.TW", "2317.TW", "2454.TW", "2412.TW", "2308.TW",
-            "3711.TW", "2881.TW", "2882.TW", "2886.TW",
-            # ── South Korea ──
-            "005930.KS", "000660.KS", "035420.KS", "051910.KS", "006400.KS",
-            "035720.KS", "068270.KS", "055550.KS", "105560.KS", "003550.KS",
-            # ── India (NSE / ADRs) ──
-            "INFY", "WIT", "HDB", "IBN", "SIFY", "RDY", "TTM",
-            "RELIANCE.NS", "TCS.NS", "HDFCBANK.NS", "ICICIBANK.NS", "INFY.NS",
-            "HINDUNILVR.NS", "ITC.NS", "SBIN.NS", "BHARTIARTL.NS", "KOTAKBANK.NS",
-            "LT.NS", "AXISBANK.NS", "BAJFINANCE.NS", "MARUTI.NS", "TATAMOTORS.NS",
-            "SUNPHARMA.NS", "TITAN.NS", "WIPRO.NS", "NESTLEIND.NS", "HCLTECH.NS",
-            "ADANIENT.NS", "ADANIPORTS.NS", "ADANIGREEN.NS", "JSWSTEEL.NS", "TATASTEEL.NS",
-            # ── Southeast Asia ──
-            "SE", "GRAB", "GOTO.JK",
-            "DBS.SI", "OCBC.SI", "UOB.SI", "SGX.SI",
-            "BBCA.JK", "BBRI.JK", "TLKM.JK", "ASII.JK",
-            "BDO.PS", "SM.PS", "ALI.PS", "JFC.PS",
-            "PTT.BK", "SCC.BK", "AOT.BK", "CPALL.BK",
-            "MAYBANK.KL", "PBBANK.KL", "TENAGA.KL", "PCHEM.KL",
-            # ── Australia (ASX 200) ──
-            "BHP", "CBA.AX", "CSL.AX", "WDS.AX", "NAB.AX",
-            "ANZ.AX", "WBC.AX", "MQG.AX", "FMG.AX", "WES.AX",
-            "TLS.AX", "RIO.AX", "NCM.AX", "ALL.AX", "WOW.AX",
-            "REA.AX", "GMG.AX", "TCL.AX", "COL.AX", "SHL.AX",
-            # ── New Zealand ──
-            "FPH.NZ", "SPK.NZ", "ATM.NZ",
-            # ── Asia ETFs (US-listed) ──
-            "EWJ", "EWT", "EWY", "EWH", "EWS", "EWA", "EWZ",
-            "FXI", "KWEB", "CQQQ", "INDA", "INDY", "PIN", "EPI",
-            "VPL", "AAXJ", "ASHR", "MCHI",
+            # ── Japan ──
+            "TM", "SONY", "NTDOY", "MUFG", "9984.T", "7203.T", "6758.T",
+            "8035.T", "7974.T", "6861.T",
+            # ── China / Hong Kong ──
+            "BABA", "JD", "PDD", "BIDU", "NIO", "XPEV", "LI",
+            "9988.HK", "0700.HK", "3690.HK", "1211.HK", "0005.HK",
+            # ── Taiwan / Korea ──
+            "TSM", "2330.TW", "005930.KS", "000660.KS",
+            # ── India ──
+            "INFY", "HDB", "IBN", "RELIANCE.NS", "TCS.NS", "HDFCBANK.NS",
+            # ── Southeast Asia / Australia ──
+            "SE", "GRAB", "DBS.SI", "BHP", "CBA.AX", "CSL.AX",
+            # ── Asia ETFs ──
+            "EWJ", "EWT", "EWY", "FXI", "KWEB", "INDA",
         ],
         "latam": [
-            # ── Brazil (Ibovespa / ADRs) ──
-            "VALE", "PBR", "PBR-A", "ITUB", "BBD", "ABEV", "NU", "XP", "PAGS", "STNE",
-            "ERJ", "BRFS", "CIG", "CBD", "SBS", "UGP", "GGB", "SID", "BSBR",
-            "PETR4.SA", "VALE3.SA", "ITUB4.SA", "BBDC4.SA", "B3SA3.SA", "WEGE3.SA",
-            "ABEV3.SA", "BBAS3.SA", "RENT3.SA", "EQTL3.SA", "RAIL3.SA", "SUZB3.SA",
-            "MGLU3.SA", "VBBR3.SA", "CSNA3.SA", "GGBR4.SA", "GOAU4.SA", "USIM5.SA",
-            "CYRE3.SA", "MRVE3.SA", "COGN3.SA", "NTCO3.SA", "TOTS3.SA", "RADL3.SA",
-            "HAPV3.SA", "BEEF3.SA", "JBSS3.SA", "MRFG3.SA", "CPLE6.SA", "ENBR3.SA",
-            # ── Argentina (Merval / ADRs) ──
-            "MELI", "GLOB", "LOMA", "YPF", "GGAL", "BMA", "CRESY", "PAM", "TEO", "SUPV",
-            "CEPU", "EDN", "TGS", "IRCP", "DESP",
-            # ── Mexico (BMV / ADRs) ──
-            "AMX", "FEMSA", "BSMX", "KOF", "OMAB", "ASUR", "PAC", "TV",
-            "WALMEX.MX", "GFNORTEO.MX", "CEMEXCPO.MX", "FEMSAUBD.MX", "AMXB.MX",
-            "AC.MX", "BIMBOA.MX", "GCARSOA1.MX", "GMEXICOB.MX", "GAPB.MX",
-            "LIVEPOLC-1.MX", "PE&OLES.MX", "ORBIA.MX", "GRUMAB.MX",
-            # ── Chile (IPSA / ADRs) ──
-            "SQM", "BSAC", "LTM", "CCU", "ENELCHILE", "ECL.SN",
-            "CENCOSUD.SN", "FALABELLA.SN", "BCI.SN", "CMPC.SN", "COPEC.SN", "CAP.SN",
-            # ── Colombia (BVC / ADRs) ──
-            "EC", "COPA", "CIB", "AVAL",
-            "PFBCOLOM.BVC", "ECOPETL.BVC", "ISA.BVC", "GRUPOARGOS.BVC",
-            # ── Peru ──
-            "BVN", "SUZ", "BAP", "IFS",
-            # ── Other LATAM ──
-            "ARCO", "VIVO", "LREN3.SA",
-            # ── LATAM ETFs (US-listed) ──
-            "EWZ", "EWW", "ECH", "ILF", "GXG", "EPU", "ARGT", "FLBR",
+            # ── Brazil ──
+            "VALE", "PBR", "ITUB", "NU", "ABEV", "XP", "PAGS", "STNE",
+            "PETR4.SA", "VALE3.SA", "ITUB4.SA", "B3SA3.SA", "WEGE3.SA",
+            # ── Argentina ──
+            "MELI", "GLOB", "YPF", "GGAL", "BMA", "PAM",
+            # ── Mexico ──
+            "AMX", "FEMSA", "KOF", "CEMEXCPO.MX", "WALMEX.MX",
+            # ── Chile / Colombia / Peru ──
+            "SQM", "BSAC", "EC", "COPA", "BAP",
+            # ── LATAM ETFs ──
+            "EWZ", "EWW", "ILF",
         ],
         "crypto": [
             # ── Major / Layer 1 ──
             "BTC", "ETH", "SOL", "ADA", "DOT", "AVAX", "MATIC", "ATOM",
             "XRP", "BNB", "TRX", "TON", "NEAR", "SUI", "APT", "SEI", "INJ",
-            "FTM", "ALGO", "HBAR", "ICP", "FIL", "EGLD", "FLOW",
+            "FTM", "ALGO", "HBAR", "ICP", "FIL",
             # ── DeFi ──
-            "LINK", "UNI", "AAVE", "MKR", "LDO", "CRV", "SNX", "COMP",
-            "SUSHI", "DYDX", "GMX", "PENDLE", "JUP", "RAY",
+            "LINK", "UNI", "AAVE", "MKR", "LDO", "CRV", "COMP", "PENDLE",
             # ── Layer 2 / Infrastructure ──
-            "ARB", "OP", "STRK", "IMX", "RNDR", "GRT", "FET", "AGIX",
-            "THETA", "AR", "OCEAN", "AKT",
+            "ARB", "OP", "IMX", "RNDR", "GRT", "FET",
             # ── Other major ──
-            "LTC", "BCH", "ETC", "XLM", "VET", "SAND", "MANA", "AXS",
-            "ENJ", "GALA", "APE", "BLUR", "CRO", "OKB", "LEO",
+            "LTC", "BCH", "XLM", "SAND", "MANA",
             # ── Memecoins ──
             "DOGE", "SHIB", "PEPE", "WIF", "BONK", "FLOKI", "TRUMP",
-            "MEME", "MYRO", "POPCAT", "BRETT", "MOG", "SPX", "TURBO", "NEIRO",
         ],
     }
 

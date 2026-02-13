@@ -41,29 +41,44 @@ def _sync_get_quote(symbol: str) -> dict | None:
 
 
 _BATCH_CHUNK_SIZE = 50  # keep chunks small to avoid yfinance rate limits
+_MAX_RETRIES = 2
+_RETRY_DELAY = 3.0  # seconds between retries
+
+
+def _sync_download_chunk(symbols: list[str], attempt: int = 0):
+    """Download a chunk of symbols with retry on rate limit."""
+    try:
+        df = yf.download(
+            symbols,
+            period="2d",
+            interval="1d",
+            group_by="ticker",
+            progress=False,
+            threads=False,
+        )
+        return df
+    except Exception as e:
+        if "rate" in str(e).lower() and attempt < _MAX_RETRIES:
+            delay = _RETRY_DELAY * (attempt + 1)
+            logger.info("Rate limited, retrying chunk in %.1fs (attempt %d)", delay, attempt + 1)
+            time.sleep(delay)
+            return _sync_download_chunk(symbols, attempt + 1)
+        raise
 
 
 def _sync_get_quotes_batch(symbols: list[str]) -> dict[str, dict]:
-    """Batch-fetch quotes using yf.download() — chunked to avoid rate limits."""
+    """Batch-fetch quotes using yf.download() — chunked with retry on rate limit."""
     results: dict[str, dict] = {}
     if not symbols:
         return results
 
-    # Process in chunks with a small delay between them
     for i in range(0, len(symbols), _BATCH_CHUNK_SIZE):
         if i > 0:
-            time.sleep(0.5)  # small pause between chunks to avoid rate limit
+            time.sleep(1.0)  # pause between chunks
         chunk = symbols[i : i + _BATCH_CHUNK_SIZE]
         try:
-            df = yf.download(
-                chunk,
-                period="2d",
-                interval="1d",
-                group_by="ticker",
-                progress=False,
-                threads=False,
-            )
-            if df.empty:
+            df = _sync_download_chunk(chunk)
+            if df is None or df.empty:
                 continue
 
             for sym in chunk:
