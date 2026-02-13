@@ -1,4 +1,4 @@
-# InvestIA
+# MyInvestIA
 
 AI-powered investment intelligence dashboard that aggregates real-time market data, technical analysis, sentiment intelligence, macroeconomic indicators, and portfolio tracking into a single explainable decision-support system.
 
@@ -259,7 +259,7 @@ The system is optimized for fast dashboard loads:
 
 ## Disclaimer
 
-InvestIA is a decision-support tool for informational purposes only. It does not provide financial advice, and it does not execute trades. All AI-generated outputs include confidence scores and reasoning for transparency. Users are solely responsible for their investment decisions.
+MyInvestIA is a decision-support tool for informational purposes only. It does not provide financial advice, and it does not execute trades. All AI-generated outputs include confidence scores and reasoning for transparency. Users are solely responsible for their investment decisions.
 
 ---
 
