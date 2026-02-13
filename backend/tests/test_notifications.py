@@ -134,7 +134,7 @@ class TestNotificationsRouter:
         with patch("app.routers.notifications.telegram_service") as mock_svc:
             mock_svc.configured = True
             mock_svc.get_bot_info = AsyncMock(return_value={
-                "first_name": "ORACLE Bot",
+                "first_name": "InvestIA Bot",
                 "username": "oracle_bot",
             })
             response = await client.get("/api/v1/notifications/status")
@@ -142,7 +142,7 @@ class TestNotificationsRouter:
         assert response.status_code == 200
         data = response.json()
         assert data["configured"] is True
-        assert data["bot_name"] == "ORACLE Bot"
+        assert data["bot_name"] == "InvestIA Bot"
         assert data["bot_username"] == "oracle_bot"
 
     @pytest.mark.asyncio
@@ -163,7 +163,7 @@ class TestNotificationsRouter:
             mock_svc.send_message = AsyncMock(return_value={"ok": True})
             response = await client.post(
                 "/api/v1/notifications/send",
-                json={"message": "Hello from ORACLE"}
+                json={"message": "Hello from InvestIA"}
             )
 
         assert response.status_code == 200

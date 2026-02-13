@@ -90,7 +90,7 @@ class TelegramService:
         confidence = alert.get("confidence", 0.0)
 
         text = (
-            f"{severity_emoji} <b>ORACLE Alert — {severity}</b>\n\n"
+            f"{severity_emoji} <b>InvestIA Alert — {severity}</b>\n\n"
             f"<b>{title}</b>\n"
             f"Symbol: <code>{symbol}</code>\n"
             f"{description}\n\n"
@@ -102,7 +102,7 @@ class TelegramService:
     async def send_test_message(self) -> dict | None:
         """Send a test message to verify Telegram configuration."""
         return await self.send_message(
-            "\u2705 <b>ORACLE Connected</b>\n\n"
+            "\u2705 <b>InvestIA Connected</b>\n\n"
             "Telegram notifications are working correctly."
         )
 

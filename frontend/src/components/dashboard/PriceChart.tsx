@@ -2,8 +2,6 @@
 
 import { useState } from "react";
 import {
-  LineChart,
-  Line,
   XAxis,
   YAxis,
   Tooltip,
@@ -13,8 +11,12 @@ import {
 } from "recharts";
 import { fetchAPI } from "@/lib/api";
 import type { HistoricalData } from "@/types";
+import CandlestickChart from "@/components/charts/CandlestickChart";
+import SymbolAutocomplete from "@/components/ui/SymbolAutocomplete";
+import useCurrencyStore from "@/stores/useCurrencyStore";
 
 const PERIODS = ["1mo", "3mo", "6mo", "1y"] as const;
+type ChartMode = "area" | "candlestick";
 
 export default function PriceChart() {
   const [symbol, setSymbol] = useState("");
@@ -23,6 +25,8 @@ export default function PriceChart() {
   const [data, setData] = useState<HistoricalData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [chartMode, setChartMode] = useState<ChartMode>("area");
+  const { formatPrice } = useCurrencyStore();
 
   const fetchHistory = async (sym: string, per: string) => {
     if (!sym.trim()) return;
@@ -51,10 +55,14 @@ export default function PriceChart() {
 
   const chartData =
     data?.data.map((d) => ({
-      date: new Date(d.date).toLocaleDateString("en-US", {
+      date: d.date,
+      displayDate: new Date(d.date).toLocaleDateString("en-US", {
         month: "short",
         day: "numeric",
       }),
+      open: d.open,
+      high: d.high,
+      low: d.low,
       close: d.close,
       volume: d.volume,
     })) ?? [];
@@ -67,18 +75,43 @@ export default function PriceChart() {
 
   return (
     <div className="bg-oracle-panel border border-oracle-border rounded-lg p-6">
-      <h3 className="text-oracle-muted text-sm font-medium mb-3 uppercase tracking-wide">
-        Price Chart
-      </h3>
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-oracle-muted text-sm font-medium uppercase tracking-wide">
+          Price Chart
+        </h3>
+        {activeSymbol && (
+          <div className="flex gap-1">
+            <button
+              onClick={() => setChartMode("area")}
+              className={`text-xs px-2 py-1 rounded transition-colors ${
+                chartMode === "area"
+                  ? "bg-oracle-accent text-white"
+                  : "bg-oracle-bg text-oracle-muted hover:text-oracle-text"
+              }`}
+            >
+              Area
+            </button>
+            <button
+              onClick={() => setChartMode("candlestick")}
+              className={`text-xs px-2 py-1 rounded transition-colors ${
+                chartMode === "candlestick"
+                  ? "bg-oracle-accent text-white"
+                  : "bg-oracle-bg text-oracle-muted hover:text-oracle-text"
+              }`}
+            >
+              Candle
+            </button>
+          </div>
+        )}
+      </div>
 
       <div className="flex gap-2 mb-3">
-        <input
-          type="text"
+        <SymbolAutocomplete
           value={symbol}
-          onChange={(e) => setSymbol(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+          onChange={setSymbol}
+          onSubmit={(s) => { setSymbol(s); handleSearch(); }}
           placeholder="Symbol (e.g. AAPL)"
-          className="flex-1 bg-oracle-bg border border-oracle-border rounded px-3 py-1.5 text-sm text-oracle-text placeholder:text-oracle-muted focus:outline-none focus:border-oracle-accent"
+          className="flex-1"
         />
         <button
           onClick={handleSearch}
@@ -112,9 +145,9 @@ export default function PriceChart() {
       {data && chartData.length > 0 && (
         <div>
           <div className="flex items-baseline gap-2 mb-2">
-            <span className="text-white font-bold">{activeSymbol}</span>
-            <span className="text-white text-lg font-mono">
-              ${chartData[chartData.length - 1].close.toFixed(2)}
+            <span className="text-oracle-text font-bold">{activeSymbol}</span>
+            <span className="text-oracle-text text-lg font-mono">
+              {formatPrice(chartData[chartData.length - 1].close)}
             </span>
             <span
               className={`text-sm ${
@@ -122,64 +155,68 @@ export default function PriceChart() {
               }`}
             >
               {isPositive ? "+" : ""}
-              {priceChange.toFixed(2)}
+              {formatPrice(priceChange)}
             </span>
           </div>
 
           <div className="h-48">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={chartData}>
-                <defs>
-                  <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
-                    <stop
-                      offset="5%"
-                      stopColor={isPositive ? "#10b981" : "#ef4444"}
-                      stopOpacity={0.3}
-                    />
-                    <stop
-                      offset="95%"
-                      stopColor={isPositive ? "#10b981" : "#ef4444"}
-                      stopOpacity={0}
-                    />
-                  </linearGradient>
-                </defs>
-                <XAxis
-                  dataKey="date"
-                  tick={{ fill: "#6b7280", fontSize: 10 }}
-                  axisLine={false}
-                  tickLine={false}
-                  interval="preserveStartEnd"
-                />
-                <YAxis
-                  domain={["auto", "auto"]}
-                  tick={{ fill: "#6b7280", fontSize: 10 }}
-                  axisLine={false}
-                  tickLine={false}
-                  width={60}
-                  tickFormatter={(v: number) => `$${v.toFixed(0)}`}
-                />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "#111827",
-                    border: "1px solid #1f2937",
-                    borderRadius: "8px",
-                    fontSize: "12px",
-                    color: "#e5e7eb",
-                  }}
-                  formatter={(value: number) => [
-                    `$${value.toFixed(2)}`,
-                    "Price",
-                  ]}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="close"
-                  stroke={isPositive ? "#10b981" : "#ef4444"}
-                  strokeWidth={2}
-                  fill="url(#colorPrice)"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
+            {chartMode === "candlestick" ? (
+              <CandlestickChart data={chartData} formatPrice={formatPrice} />
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={chartData}>
+                  <defs>
+                    <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
+                      <stop
+                        offset="5%"
+                        stopColor={isPositive ? "#10b981" : "#ef4444"}
+                        stopOpacity={0.3}
+                      />
+                      <stop
+                        offset="95%"
+                        stopColor={isPositive ? "#10b981" : "#ef4444"}
+                        stopOpacity={0}
+                      />
+                    </linearGradient>
+                  </defs>
+                  <XAxis
+                    dataKey="displayDate"
+                    tick={{ fill: "var(--oracle-muted)", fontSize: 10 }}
+                    axisLine={false}
+                    tickLine={false}
+                    interval="preserveStartEnd"
+                  />
+                  <YAxis
+                    domain={["auto", "auto"]}
+                    tick={{ fill: "var(--oracle-muted)", fontSize: 10 }}
+                    axisLine={false}
+                    tickLine={false}
+                    width={60}
+                    tickFormatter={(v: number) => formatPrice(v, 0)}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "var(--oracle-panel)",
+                      border: "1px solid var(--oracle-border)",
+                      borderRadius: "8px",
+                      fontSize: "12px",
+                      color: "var(--oracle-text)",
+                    }}
+                    formatter={(value: number) => [
+                      formatPrice(value),
+                      "Price",
+                    ]}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="close"
+                    stroke={isPositive ? "#10b981" : "#ef4444"}
+                    strokeWidth={2}
+                    fill="url(#colorPrice)"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            )}
           </div>
         </div>
       )}

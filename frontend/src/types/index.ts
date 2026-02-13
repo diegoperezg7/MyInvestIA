@@ -145,6 +145,7 @@ export interface AIStatus {
 
 export interface MacroIndicatorDetail {
   name: string;
+  ticker: string;
   value: number;
   change_percent: number;
   previous_close: number;
@@ -206,4 +207,251 @@ export interface ScanAndNotifyResponse {
   total_alerts: number;
   total_notified: number;
   telegram_configured: boolean;
+}
+
+// --- Signals ---
+
+export interface StructuredSignal {
+  direction: "strong_buy" | "buy" | "neutral" | "sell" | "strong_sell";
+  confidence: number;
+  source: string;
+  reasoning: string;
+}
+
+export interface SignalSummary {
+  symbol: string;
+  overall: string;
+  overall_confidence: number;
+  oscillators_rating: string;
+  oscillators_buy: number;
+  oscillators_sell: number;
+  oscillators_neutral: number;
+  moving_averages_rating: string;
+  moving_averages_buy: number;
+  moving_averages_sell: number;
+  moving_averages_neutral: number;
+  signals: StructuredSignal[];
+}
+
+// --- Personas ---
+
+export interface Persona {
+  id: string;
+  name: string;
+  title: string;
+  avatar: string;
+  style: string;
+  description: string;
+}
+
+// --- Pipeline ---
+
+export interface PipelineStep {
+  id: string;
+  name: string;
+  description: string;
+  status: "pending" | "running" | "completed" | "failed" | "skipped";
+  result: Record<string, unknown> | null;
+  error: string | null;
+  duration_ms: number | null;
+}
+
+export interface PipelineStatus {
+  symbol: string;
+  current_step: number;
+  total_steps: number;
+  steps: PipelineStep[];
+  completed: boolean;
+  final_analysis: string | null;
+  signal: string;
+  confidence: number;
+}
+
+// --- Paper Trading ---
+
+export interface PaperPosition {
+  symbol: string;
+  quantity: number;
+  avg_price: number;
+  current_price: number;
+  market_value: number;
+  unrealized_pnl: number;
+  unrealized_pnl_percent: number;
+}
+
+export interface PaperAccount {
+  id: string;
+  name: string;
+  balance: number;
+  initial_balance: number;
+  total_value: number;
+  total_pnl: number;
+  total_pnl_percent: number;
+  positions: PaperPosition[];
+  created_at: string;
+}
+
+export interface PaperTrade {
+  id: string;
+  symbol: string;
+  side: "buy" | "sell";
+  quantity: number;
+  price: number;
+  total: number;
+  created_at: string;
+}
+
+// --- Transactions ---
+
+export interface Transaction {
+  id: string;
+  symbol: string;
+  type: "buy" | "sell" | "dividend";
+  quantity: number;
+  price: number;
+  total: number;
+  date: string;
+  notes: string;
+}
+
+export interface CostBasis {
+  symbol: string;
+  total_shares: number;
+  average_cost: number;
+  total_invested: number;
+  realized_pnl: number;
+  transactions_count: number;
+}
+
+// --- Briefing & News ---
+
+export interface BriefingData {
+  briefing: string;
+  suggestions: string[];
+  generated_at: string;
+}
+
+export interface NewsArticle {
+  headline: string;
+  summary: string;
+  source: string;
+  url: string;
+  datetime: number;
+  related: string;
+}
+
+export interface NewsResponse {
+  articles: NewsArticle[];
+  source: string;
+  configured: boolean;
+}
+
+// --- AI Recommendations ---
+
+export interface Recommendation {
+  category:
+    | "opportunity"
+    | "risk_alert"
+    | "rebalance"
+    | "trend"
+    | "macro_shift"
+    | "social_signal"
+    | "earnings_watch"
+    | "sector_rotation";
+  title: string;
+  reasoning: string;
+  confidence: number;
+  tickers: string[];
+  action: string;
+  urgency: "low" | "medium" | "high";
+}
+
+export interface RecommendationsResponse {
+  market_mood: string;
+  mood_score: number;
+  recommendations: Recommendation[];
+  generated_at: string;
+}
+
+// --- AI News Feed ---
+
+export interface ArticleAIAnalysis {
+  impact_score: number;
+  affected_tickers: string[];
+  sentiment: "positive" | "negative" | "neutral";
+  urgency: "breaking" | "high" | "normal";
+  brief_analysis: string;
+}
+
+export interface AnalyzedArticle {
+  id: string;
+  headline: string;
+  summary: string;
+  source: string;
+  source_provider: string;
+  url: string;
+  datetime: number;
+  ai_analysis: ArticleAIAnalysis | null;
+}
+
+export interface NewsFeedResponse {
+  articles: AnalyzedArticle[];
+  total: number;
+  sources_active: Record<string, boolean>;
+  generated_at: string;
+}
+
+// --- Enhanced Sentiment ---
+
+export interface EnhancedSentimentSource {
+  source_name: string;
+  score: number;
+  weight: number;
+  details: Record<string, unknown>;
+}
+
+export interface EnhancedSentimentResponse {
+  symbol: string;
+  unified_score: number;
+  unified_label: "bullish" | "bearish" | "neutral";
+  sources: EnhancedSentimentSource[];
+  total_data_points: number;
+  generated_at: string;
+}
+
+// --- Social Sentiment ---
+
+export interface SocialPlatformData {
+  mentions: number;
+  positive_mentions: number;
+  negative_mentions: number;
+  positive_score: number;
+  negative_score: number;
+  score: number;
+}
+
+export interface SocialSentimentData {
+  symbol: string;
+  reddit: SocialPlatformData;
+  twitter: SocialPlatformData;
+  total_mentions: number;
+  combined_score: number;
+  buzz_level: "none" | "low" | "moderate" | "high" | "viral";
+  sentiment_label: "bullish" | "bearish" | "neutral";
+  configured: boolean;
+}
+
+// --- Volatility ---
+
+export interface VolatilityData {
+  symbol: string;
+  historical_volatility: number;
+  atr: number;
+  atr_percent: number;
+  rsi: number;
+  bollinger_bandwidth: number;
+  daily_range: { high: number; low: number; range_percent: number };
+  weekly_range: { high: number; low: number; range_percent: number };
+  current_price: number;
+  volatility_rating: "low" | "moderate" | "high" | "extreme";
 }

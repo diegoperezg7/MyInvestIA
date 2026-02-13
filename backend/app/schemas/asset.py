@@ -252,7 +252,7 @@ class ChatRequest(BaseModel):
 
 class ChatResponse(BaseModel):
     response: str
-    model: str = "claude-sonnet-4-5-20250929"
+    model: str = "mistral-large-latest"
 
 
 class AIAnalysisResponse(BaseModel):
@@ -267,6 +267,7 @@ class AIAnalysisResponse(BaseModel):
 
 class MacroIndicatorDetail(BaseModel):
     name: str
+    ticker: str = ""
     value: float
     change_percent: float = 0.0
     previous_close: float = 0.0

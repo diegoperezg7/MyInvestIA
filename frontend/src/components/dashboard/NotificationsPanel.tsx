@@ -100,7 +100,7 @@ export default function NotificationsPanel() {
                 status.configured ? "bg-oracle-green" : "bg-oracle-red"
               }`}
             />
-            <span className="text-sm text-white">
+            <span className="text-sm text-oracle-text">
               {status.configured
                 ? `Connected${status.bot_name ? ` — ${status.bot_name}` : ""}`
                 : "Not configured"}
@@ -131,7 +131,7 @@ export default function NotificationsPanel() {
                   onChange={(e) => setMessage(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleSend()}
                   placeholder="Send a custom message..."
-                  className="flex-1 bg-oracle-bg border border-oracle-border rounded px-3 py-1.5 text-sm text-white placeholder:text-oracle-muted focus:outline-none focus:border-oracle-accent"
+                  className="flex-1 bg-oracle-bg border border-oracle-border rounded px-3 py-1.5 text-sm text-oracle-text placeholder:text-oracle-muted focus:outline-none focus:border-oracle-accent"
                 />
                 <button
                   onClick={handleSend}

@@ -189,8 +189,30 @@ def score_asset(symbol: str, quote: dict | None, indicators: dict | None) -> lis
     return alerts
 
 
+async def _scan_single(item: dict) -> list[Alert]:
+    """Scan a single symbol for alerts."""
+    symbol = item["symbol"].upper()
+    asset_type = item.get("type")
+
+    try:
+        quote = await market_data_service.get_quote(symbol, asset_type)
+
+        indicators = None
+        history = await market_data_service.get_history(symbol, period="6mo", interval="1d")
+        if history and len(history) >= 30:
+            closes = [r["close"] for r in history]
+            indicators = compute_all_indicators(closes)
+
+        return score_asset(symbol, quote, indicators)
+    except Exception as e:
+        logger.warning("Alert scan failed for %s: %s", symbol, e)
+        return []
+
+
 async def scan_symbols(symbols: list[dict]) -> list[Alert]:
-    """Scan a list of symbols and generate alerts for any notable conditions.
+    """Scan a list of symbols in parallel and generate alerts.
+
+    Uses asyncio.gather with a semaphore to limit concurrency.
 
     Args:
         symbols: List of {"symbol": str, "type": str} dicts
@@ -198,28 +220,25 @@ async def scan_symbols(symbols: list[dict]) -> list[Alert]:
     Returns:
         List of alerts sorted by severity (critical first)
     """
+    import asyncio
+
+    semaphore = asyncio.Semaphore(5)
+
+    async def bounded_scan(item: dict) -> list[Alert]:
+        async with semaphore:
+            return await _scan_single(item)
+
+    results = await asyncio.gather(
+        *(bounded_scan(item) for item in symbols),
+        return_exceptions=True,
+    )
+
     all_alerts: list[Alert] = []
-
-    for item in symbols:
-        symbol = item["symbol"].upper()
-        asset_type = item.get("type")
-
-        try:
-            # Get quote
-            quote = await market_data_service.get_quote(symbol, asset_type)
-
-            # Get technical indicators
-            indicators = None
-            history = market_data_service.get_history(symbol, period="6mo", interval="1d")
-            if history and len(history) >= 30:
-                closes = [r["close"] for r in history]
-                indicators = compute_all_indicators(closes)
-
-            alerts = score_asset(symbol, quote, indicators)
-            all_alerts.extend(alerts)
-
-        except Exception as e:
-            logger.warning("Alert scan failed for %s: %s", symbol, e)
+    for result in results:
+        if isinstance(result, list):
+            all_alerts.extend(result)
+        elif isinstance(result, Exception):
+            logger.warning("Parallel scan error: %s", result)
 
     # Sort: critical > high > medium > low
     severity_order = {
