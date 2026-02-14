@@ -1,10 +1,4 @@
-// When accessed from a non-localhost origin (e.g. mobile on LAN), talk directly to backend
-const API_BASE =
-  typeof window !== "undefined" &&
-  window.location.hostname !== "localhost" &&
-  window.location.hostname !== "127.0.0.1"
-    ? `http://${window.location.hostname}:8000`
-    : (process.env.NEXT_PUBLIC_API_URL || "");
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
 
 const CACHE_TTL = 30_000; // 30 seconds — reduced polling means we can cache longer
 

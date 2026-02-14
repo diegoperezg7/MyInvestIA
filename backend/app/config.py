@@ -4,7 +4,7 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     app_name: str = "InvestIA"
     debug: bool = False
-    cors_origins: list[str] = ["*"]
+    cors_origins: list[str] = ["https://myinvestia.agenciainexia.com"]
 
     # Supabase
     supabase_url: str = ""
