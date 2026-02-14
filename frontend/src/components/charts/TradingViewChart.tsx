@@ -178,15 +178,28 @@ export default function TradingViewChart({
     const toDay = (dateStr: string): Time =>
       dateStr.slice(0, 10) as Time; // "2026-01-14T00:00:00-05:00" → "2026-01-14"
 
-    // Prepare data
-    const displayData = chartType === "heikin-ashi" ? toHeikinAshi(data) : data;
+    // Prepare data — deduplicate by date (keep last entry per date, required by lightweight-charts)
+    const rawData = chartType === "heikin-ashi" ? toHeikinAshi(data) : data;
+    const dateMap = new Map<string, OHLCVData>();
+    for (const d of rawData) {
+      dateMap.set(d.date.slice(0, 10), d);
+    }
+    const displayData = Array.from(dateMap.values()).sort(
+      (a, b) => a.date.localeCompare(b.date)
+    );
     const times = displayData.map((d) => toDay(d.date));
-    const closes = data.map((d) => d.close);
+    const closes = displayData.map((d) => d.close);
+
+    // Determine trend color: green if bullish, red if bearish
+    const firstClose = displayData[0]?.close ?? 0;
+    const lastClose = displayData[displayData.length - 1]?.close ?? 0;
+    const isBullish = lastClose >= firstClose;
+    const trendColor = isBullish ? "#10b981" : "#ef4444";
 
     // Main series
     if (chartType === "line") {
       const series = chart.addSeries(LineSeries, {
-        color: "#6366f1",
+        color: trendColor,
         lineWidth: 2,
       });
       series.setData(
@@ -195,9 +208,9 @@ export default function TradingViewChart({
       mainSeriesRef.current = series;
     } else if (chartType === "area") {
       const series = chart.addSeries(AreaSeries, {
-        topColor: "rgba(99, 102, 241, 0.4)",
-        bottomColor: "rgba(99, 102, 241, 0.0)",
-        lineColor: "#6366f1",
+        topColor: isBullish ? "rgba(16, 185, 129, 0.4)" : "rgba(239, 68, 68, 0.4)",
+        bottomColor: isBullish ? "rgba(16, 185, 129, 0.0)" : "rgba(239, 68, 68, 0.0)",
+        lineColor: trendColor,
         lineWidth: 2,
       });
       series.setData(
@@ -228,7 +241,7 @@ export default function TradingViewChart({
 
     // Volume histogram
     const volumeSeries = chart.addSeries(HistogramSeries, {
-      color: "#6366f1",
+      color: trendColor,
       priceFormat: { type: "volume" },
       priceScaleId: "volume",
     });
