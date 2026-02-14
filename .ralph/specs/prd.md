@@ -1,7 +1,7 @@
 # AI Investment Intelligence Dashboard
 
 ## Codename
-ORACLE
+MyInvestIA
 
 ## Version
 1.0.0
@@ -14,7 +14,7 @@ Production
 ## 1. Project Overview
 
 ### Description
-AI Investment Intelligence Dashboard (ORACLE) is an AI-powered investment intelligence system that aggregates real-time market data, technical indicators, sentiment analysis, macroeconomic context, and portfolio tracking into a single explainable decision-support dashboard.
+AI Investment Intelligence Dashboard (MyInvestIA) is an AI-powered investment intelligence system that aggregates real-time market data, technical indicators, sentiment analysis, macroeconomic context, and portfolio tracking into a single explainable decision-support dashboard.
 
 The system does NOT execute trades. Its purpose is to assist the user in deciding when to buy, sell, wait, or monitor assets by providing structured, explainable, and personalized insights.
 

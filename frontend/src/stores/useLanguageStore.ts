@@ -28,6 +28,8 @@ const translations: Translations = {
   "nav.prediction": { es: "Prediccion", en: "Prediction" },
   "nav.recommendations": { es: "Recomendaciones", en: "Recommendations" },
   "nav.connections": { es: "Conexiones", en: "Connections" },
+  "nav.calendar": { es: "Calendario", en: "Calendar" },
+  "nav.heatmap": { es: "Heatmap", en: "Heatmap" },
 
   // --- Nav groups ---
   "group.core": { es: "PRINCIPAL", en: "CORE" },

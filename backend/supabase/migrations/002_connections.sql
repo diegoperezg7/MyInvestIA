@@ -1,5 +1,5 @@
 -- =============================================================================
--- InvestIA (ORACLE) - External Connections Schema
+-- MyInvestIA - External Connections Schema
 -- Adds support for exchange, wallet, broker, and prediction market connections
 -- =============================================================================
 

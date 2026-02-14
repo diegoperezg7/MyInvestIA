@@ -1,4 +1,4 @@
-# ORACLE Heartbeat Monitoring Rules
+# MyInvestIA Heartbeat Monitoring Rules
 
 Every 30 minutes during market hours (9:30 AM - 4:00 PM ET, Mon-Fri), check these conditions and alert the user if any trigger.
 

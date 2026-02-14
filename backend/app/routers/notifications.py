@@ -124,7 +124,7 @@ async def send_test_notification():
 
     if channel == "openclaw":
         result = await openclaw_service.wake(
-            "ORACLE test notification — OpenClaw integration is working correctly."
+            "MyInvestIA test notification — OpenClaw integration is working correctly."
         )
         if result:
             return NotificationResponse(success=True, message="Test sent via OpenClaw", channel="openclaw")

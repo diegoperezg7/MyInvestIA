@@ -319,3 +319,163 @@ class ScanAndNotifyResponse(BaseModel):
     total_alerts: int = 0
     total_notified: int = 0
     telegram_configured: bool = False
+
+
+# --- Fundamentals Schemas ---
+
+
+class CompanyInfo(BaseModel):
+    name: str = ""
+    sector: str = ""
+    industry: str = ""
+    market_cap: float = 0.0
+    employees: int | None = None
+    description: str = ""
+    website: str = ""
+    country: str = ""
+
+
+class FinancialRatios(BaseModel):
+    pe_trailing: float = 0.0
+    pe_forward: float = 0.0
+    price_to_book: float = 0.0
+    price_to_sales: float = 0.0
+    ev_to_ebitda: float = 0.0
+    roe: float = 0.0
+    debt_to_equity: float = 0.0
+    current_ratio: float = 0.0
+    profit_margins: float = 0.0
+    operating_margins: float = 0.0
+    gross_margins: float = 0.0
+    dividend_yield: float = 0.0
+    payout_ratio: float = 0.0
+    beta: float = 0.0
+
+
+class GrowthMetrics(BaseModel):
+    revenue_growth: float = 0.0
+    earnings_growth: float = 0.0
+    revenue_history: list[dict] = []
+    earnings_history: list[dict] = []
+
+
+class PeerComparison(BaseModel):
+    symbol: str
+    name: str = ""
+    pe_trailing: float = 0.0
+    price_to_book: float = 0.0
+    roe: float = 0.0
+    profit_margins: float = 0.0
+    market_cap: float = 0.0
+
+
+class FundamentalsResponse(BaseModel):
+    symbol: str
+    company_info: CompanyInfo = CompanyInfo()
+    ratios: FinancialRatios = FinancialRatios()
+    growth: GrowthMetrics = GrowthMetrics()
+    peers: list[PeerComparison] = []
+
+
+# --- Economic Calendar Schemas ---
+
+
+class EconomicEvent(BaseModel):
+    date: str = ""
+    time: str = ""
+    event: str = ""
+    country: str = ""
+    impact: str = "low"  # low, medium, high
+    forecast: float | None = None
+    previous: float | None = None
+    actual: float | None = None
+
+
+class EarningsEvent(BaseModel):
+    symbol: str = ""
+    name: str = ""
+    date: str = ""
+    eps_estimate: float | None = None
+    eps_actual: float | None = None
+    revenue_estimate: float | None = None
+    revenue_actual: float | None = None
+
+
+class EconomicCalendarResponse(BaseModel):
+    events: list[EconomicEvent] = []
+    earnings: list[EarningsEvent] = []
+    date_range: dict = {}
+
+
+# --- Portfolio Risk Schemas ---
+
+
+class PortfolioRiskMetrics(BaseModel):
+    var_95: float = 0.0
+    var_99: float = 0.0
+    sharpe_ratio: float = 0.0
+    sortino_ratio: float = 0.0
+    beta: float = 0.0
+    max_drawdown: float = 0.0
+    annual_volatility: float = 0.0
+    daily_return_mean: float = 0.0
+
+
+class ConcentrationRisk(BaseModel):
+    positions: list[dict] = []
+    top3_concentration: float = 0.0
+    hhi_score: float = 0.0
+    diversification_score: float = 0.0
+    alerts: list[str] = []
+
+
+class CorrelationData(BaseModel):
+    symbols: list[str] = []
+    matrix: list[list[float]] = []
+    high_correlations: list[dict] = []
+
+
+class StressTestScenario(BaseModel):
+    name: str = ""
+    description: str = ""
+    market_drop: float = 0.0
+    estimated_portfolio_loss: float = 0.0
+    estimated_portfolio_loss_pct: float = 0.0
+
+
+class PortfolioRiskResponse(BaseModel):
+    metrics: PortfolioRiskMetrics = PortfolioRiskMetrics()
+    concentration: ConcentrationRisk = ConcentrationRisk()
+    correlation: CorrelationData = CorrelationData()
+    stress_tests: list[StressTestScenario] = []
+    portfolio_value: float = 0.0
+
+
+# --- Sector Heatmap & Market Breadth Schemas ---
+
+
+class SectorPerformance(BaseModel):
+    symbol: str
+    name: str
+    performance_1d: float = 0.0
+    performance_1w: float = 0.0
+    performance_1m: float = 0.0
+    market_cap_weight: float = 0.0
+
+
+class SectorHeatmapResponse(BaseModel):
+    sectors: list[SectorPerformance] = []
+    last_updated: str = ""
+
+
+class MarketBreadthIndicators(BaseModel):
+    advancing: int = 0
+    declining: int = 0
+    unchanged: int = 0
+    advance_decline_ratio: float = 0.0
+    new_highs: int = 0
+    new_lows: int = 0
+    pct_above_sma50: float = 0.0
+    pct_above_sma200: float = 0.0
+    sentiment: str = "neutral"  # bullish, neutral, bearish
+    last_updated: str = ""

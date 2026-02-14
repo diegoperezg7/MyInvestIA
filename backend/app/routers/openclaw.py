@@ -3,7 +3,7 @@
 Provides endpoints for:
 - OpenClaw status and health checks
 - Triggering alerts/summaries through OpenClaw
-- Callback webhook for OpenClaw to query ORACLE data
+- Callback webhook for OpenClaw to query MyInvestIA data
 - Portfolio Q&A via OpenClaw (Telegram chat)
 """
 
@@ -208,11 +208,11 @@ async def ask_portfolio_question(req: OpenClawMessage):
     return OpenClawResponse(success=False, message="Failed to send question")
 
 
-# --- Callback endpoint for OpenClaw to query ORACLE ---
+# --- Callback endpoint for OpenClaw to query MyInvestIA ---
 
 @router.post("/callback")
 async def openclaw_callback(request: Request):
-    """Webhook endpoint for OpenClaw to call back to ORACLE.
+    """Webhook endpoint for OpenClaw to call back to MyInvestIA.
 
     OpenClaw can POST here to fetch aggregated data for its analysis.
     Returns a snapshot of portfolio, alerts, and market conditions.

@@ -15,7 +15,9 @@ export type View =
   | "chat"
   | "macro"
   | "recommendations"
-  | "prediction";
+  | "prediction"
+  | "calendar"
+  | "heatmap";
 
 interface ViewContextType {
   activeView: View;

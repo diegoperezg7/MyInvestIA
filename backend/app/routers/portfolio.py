@@ -9,6 +9,7 @@ from app.schemas.asset import (
     Asset,
     Portfolio,
     PortfolioHolding,
+    PortfolioRiskResponse,
     UpdateHoldingRequest,
 )
 from app.services.csv_service import export_portfolio_csv, parse_portfolio_csv
@@ -84,6 +85,31 @@ async def _build_holding(h: dict) -> PortfolioHolding:
         source=h.get("source", "manual"),
         connection_id=h.get("connection_id"),
     )
+
+
+@router.get("/risk", response_model=PortfolioRiskResponse)
+async def get_portfolio_risk():
+    """Get portfolio risk analytics (VaR, Sharpe, correlation, stress tests)."""
+    from app.services.portfolio_risk import calculate_portfolio_risk
+
+    raw_holdings = store.get_holdings()
+    if not raw_holdings:
+        return PortfolioRiskResponse()
+
+    # Build holdings with live prices
+    built = list(await asyncio.gather(*[_build_holding(h) for h in raw_holdings]))
+    holdings_for_risk = [
+        {
+            "symbol": h.asset.symbol,
+            "quantity": h.quantity,
+            "current_value": h.current_value,
+        }
+        for h in built
+        if h.current_value > 0
+    ]
+
+    result = await calculate_portfolio_risk(holdings_for_risk)
+    return PortfolioRiskResponse(**result)
 
 
 @router.get("/", response_model=Portfolio)
