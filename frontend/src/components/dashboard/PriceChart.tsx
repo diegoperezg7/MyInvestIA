@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { fetchAPI } from "@/lib/api";
 import type { HistoricalData } from "@/types";
 import TradingViewChart, {
@@ -12,15 +12,24 @@ import useCurrencyStore from "@/stores/useCurrencyStore";
 import useLanguageStore from "@/stores/useLanguageStore";
 import { Search, Maximize2, Minimize2 } from "lucide-react";
 
+/* ── Period config ──
+   value     = display period (used as key / reference)
+   fetch     = initial API period to request (bigger than value for scroll buffer)
+   interval  = bar granularity
+   visible   = how many bars to show initially (≈ the "value" window)
+*/
 const PERIODS = [
-  { value: "1d", label: "1D", interval: "5m" },
-  { value: "5d", label: "5D", interval: "15m" },
-  { value: "1mo", label: "1M", interval: "1d" },
-  { value: "3mo", label: "3M", interval: "1d" },
-  { value: "6mo", label: "6M", interval: "1d" },
-  { value: "1y", label: "1Y", interval: "1d" },
-  { value: "5y", label: "5Y", interval: "1wk" },
+  { value: "1d",  fetch: "1mo",  label: "1D", interval: "5m",  visible: 78  },
+  { value: "5d",  fetch: "1mo",  label: "5D", interval: "15m", visible: 130 },
+  { value: "1mo", fetch: "1y",   label: "1M", interval: "1d",  visible: 22  },
+  { value: "3mo", fetch: "2y",   label: "3M", interval: "1d",  visible: 65  },
+  { value: "6mo", fetch: "5y",   label: "6M", interval: "1d",  visible: 130 },
+  { value: "1y",  fetch: "5y",   label: "1Y", interval: "1d",  visible: 252 },
+  { value: "5y",  fetch: "max",  label: "5Y", interval: "1wk", visible: 260 },
 ] as const;
+
+/* Escalation ladder: when user scrolls to the edge we fetch a bigger period */
+const FETCH_LADDER = ["1mo", "3mo", "6mo", "1y", "2y", "5y", "max"] as const;
 
 const CHART_TYPES: { value: ChartType; label: string }[] = [
   { value: "candlestick", label: "Candle" },
@@ -63,37 +72,66 @@ export default function PriceChart() {
   const didMount = useRef(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  // Track current fetch level for dynamic loading
+  const currentFetchRef = useRef<string>("");
+  const loadingMoreRef = useRef(false);
+
   const activePeriod = PERIODS[periodIdx];
 
-  const fetchHistory = async (sym: string, per: typeof PERIODS[number]) => {
+  const fetchHistory = async (
+    sym: string,
+    interval: string,
+    fetchPeriod: string,
+    isLoadMore = false,
+  ) => {
     const target = sym.trim().toUpperCase();
     if (!target) return;
-    setLoading(true);
-    setError(null);
+    if (!isLoadMore) {
+      setLoading(true);
+      setError(null);
+    }
     try {
       const result = await fetchAPI<HistoricalData>(
-        `/api/v1/market/history/${target}?period=${per.value}&interval=${per.interval}`
+        `/api/v1/market/history/${target}?period=${fetchPeriod}&interval=${interval}`,
       );
+      currentFetchRef.current = fetchPeriod;
       setData(result);
       setActiveSymbol(target);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load chart");
-      setData(null);
+      if (!isLoadMore) {
+        setError(e instanceof Error ? e.message : "Failed to load chart");
+        setData(null);
+      }
     } finally {
-      setLoading(false);
+      if (!isLoadMore) setLoading(false);
+      loadingMoreRef.current = false;
     }
   };
 
-  const handleSearch = () => fetchHistory(symbol, activePeriod);
+  const handleSearch = () =>
+    fetchHistory(symbol, activePeriod.interval, activePeriod.fetch);
 
   const handlePeriodChange = (idx: number) => {
     setPeriodIdx(idx);
-    if (activeSymbol) fetchHistory(activeSymbol, PERIODS[idx]);
+    const p = PERIODS[idx];
+    if (activeSymbol) fetchHistory(activeSymbol, p.interval, p.fetch);
   };
+
+  /** Called by the chart when the user scrolls near the left edge */
+  const handleLoadMore = useCallback(() => {
+    if (loadingMoreRef.current || !activeSymbol) return;
+    const cur = currentFetchRef.current;
+    const ladderIdx = FETCH_LADDER.indexOf(cur as any);
+    if (ladderIdx < 0 || ladderIdx >= FETCH_LADDER.length - 1) return; // already at max
+    const next = FETCH_LADDER[ladderIdx + 1];
+    loadingMoreRef.current = true;
+    fetchHistory(activeSymbol, activePeriod.interval, next, true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeSymbol, activePeriod.interval]);
 
   const toggleIndicator = (id: string) => {
     setIndicators((prev) =>
-      prev.map((ind) => (ind.id === id ? { ...ind, enabled: !ind.enabled } : ind))
+      prev.map((ind) => (ind.id === id ? { ...ind, enabled: !ind.enabled } : ind)),
     );
   };
 
@@ -109,7 +147,7 @@ export default function PriceChart() {
   useEffect(() => {
     if (!didMount.current) {
       didMount.current = true;
-      fetchHistory(DEFAULT_SYMBOL, activePeriod);
+      fetchHistory(DEFAULT_SYMBOL, activePeriod.interval, activePeriod.fetch);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -180,7 +218,7 @@ export default function PriceChart() {
           onChange={setSymbol}
           onSubmit={(s) => {
             setSymbol(s);
-            fetchHistory(s, activePeriod);
+            fetchHistory(s, activePeriod.interval, activePeriod.fetch);
           }}
           placeholder={t("chart.placeholder")}
           className="flex-1"
@@ -203,7 +241,7 @@ export default function PriceChart() {
               key={pick.symbol}
               onClick={() => {
                 setSymbol(pick.symbol);
-                fetchHistory(pick.symbol, activePeriod);
+                fetchHistory(pick.symbol, activePeriod.interval, activePeriod.fetch);
               }}
               className={`text-xs px-2 py-0.5 rounded border transition-colors ${
                 activeSymbol === pick.symbol
@@ -287,6 +325,8 @@ export default function PriceChart() {
               indicators={indicators}
               fullscreen={fullscreen}
               formatPrice={(v) => formatPrice(v)}
+              visibleBars={activePeriod.visible}
+              onLoadMore={handleLoadMore}
             />
           </div>
         </div>

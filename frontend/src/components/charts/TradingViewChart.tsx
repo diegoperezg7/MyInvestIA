@@ -38,6 +38,8 @@ interface Props {
   indicators?: Indicator[];
   fullscreen?: boolean;
   formatPrice?: (v: number) => string;
+  visibleBars?: number;
+  onLoadMore?: () => void;
 }
 
 function toHeikinAshi(data: OHLCVData[]): OHLCVData[] {
@@ -119,14 +121,23 @@ export default function TradingViewChart({
   indicators = [],
   fullscreen = false,
   formatPrice,
+  visibleBars,
+  onLoadMore,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const mainSeriesRef = useRef<ISeriesApi<SeriesType> | null>(null);
   const volumeSeriesRef = useRef<ISeriesApi<SeriesType> | null>(null);
+  const onLoadMoreRef = useRef(onLoadMore);
+  const loadMoreFiredRef = useRef(false);
   const [tooltipData, setTooltipData] = useState<{
     time: string; open: number; high: number; low: number; close: number; volume: number;
   } | null>(null);
+
+  // Keep onLoadMore ref up to date without triggering chart rebuild
+  useEffect(() => {
+    onLoadMoreRef.current = onLoadMore;
+  }, [onLoadMore]);
 
   const isIndicatorEnabled = useCallback(
     (id: string) => indicators.find((ind) => ind.id === id)?.enabled ?? false,
@@ -143,6 +154,7 @@ export default function TradingViewChart({
       mainSeriesRef.current = null;
       volumeSeriesRef.current = null;
     }
+    loadMoreFiredRef.current = false;
 
     const container = containerRef.current;
     const styles = getComputedStyle(document.documentElement);
@@ -167,13 +179,12 @@ export default function TradingViewChart({
       rightPriceScale: {
         borderColor: borderColor,
       },
-      handleScroll: { mouseWheel: true, pressedMouseMove: true },
+      handleScroll: { mouseWheel: false, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: false },
       handleScale: { axisPressedMouseMove: true, mouseWheel: true, pinch: true },
       timeScale: {
         borderColor: borderColor,
         timeVisible: false,
         rightOffset: 5,
-        minBarSpacing: 3,
       },
     });
     chartRef.current = chart;
@@ -315,7 +326,25 @@ export default function TradingViewChart({
       });
     });
 
-    chart.timeScale().fitContent();
+    // Show only the last N bars (selected period) but keep earlier data for scrolling
+    if (visibleBars && displayData.length > visibleBars) {
+      const fromIdx = displayData.length - visibleBars;
+      const from = toDay(displayData[fromIdx].date);
+      const to = toDay(displayData[displayData.length - 1].date);
+      chart.timeScale().setVisibleRange({ from, to });
+    } else {
+      chart.timeScale().fitContent();
+    }
+
+    // Dynamic load-more: detect when user scrolls near the left edge
+    chart.timeScale().subscribeVisibleLogicalRangeChange((logicalRange) => {
+      if (!logicalRange || loadMoreFiredRef.current) return;
+      // If the left visible bar index is close to 0, request more data
+      if (logicalRange.from <= 5) {
+        loadMoreFiredRef.current = true;
+        onLoadMoreRef.current?.();
+      }
+    });
 
     // ResizeObserver
     const ro = new ResizeObserver((entries) => {
@@ -331,7 +360,7 @@ export default function TradingViewChart({
       chart.remove();
       chartRef.current = null;
     };
-  }, [data, chartType, isIndicatorEnabled]);
+  }, [data, chartType, isIndicatorEnabled, visibleBars]);
 
   const fmt = formatPrice || ((v: number) => v.toFixed(2));
 
