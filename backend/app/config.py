@@ -4,7 +4,7 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     app_name: str = "InvestIA"
     debug: bool = False
-    cors_origins: list[str] = ["http://localhost:3000", "http://localhost:3001", "http://localhost:3002"]
+    cors_origins: list[str] = ["*"]
 
     # Supabase
     supabase_url: str = ""
@@ -32,6 +32,13 @@ class Settings(BaseSettings):
     openclaw_url: str = "http://localhost:18789"
     openclaw_token: str = ""
     openclaw_enabled: bool = False
+
+    # Connections / Encryption
+    encryption_master_key: str = ""
+    moralis_api_key: str = ""
+    etoro_api_key: str = ""
+    etoro_api_secret: str = ""
+    polymarket_api_key: str = ""
 
     # Display currency
     display_currency: str = "USD"
