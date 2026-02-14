@@ -302,7 +302,7 @@ export default function BreakingNewsFeed({ defaultCollapsed = true, className = 
               return (
                 <button
                   key={tab}
-                  onClick={() => { setActiveTab(tab); setShowAll(false); }}
+                  onClick={() => setActiveTab(tab)}
                   className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs whitespace-nowrap transition-colors ${
                     isActive
                       ? "bg-oracle-accent/20 text-oracle-accent border border-oracle-accent/30"
@@ -338,7 +338,7 @@ export default function BreakingNewsFeed({ defaultCollapsed = true, className = 
 
           {/* Articles list */}
           {displayed.length > 0 && (
-            <div className="max-h-[400px] overflow-y-auto scrollbar-thin">
+            <div className="max-h-[50vh] overflow-y-auto scrollbar-thin">
               {displayed.map((article) => (
                 <ArticleItem key={article.id} article={article} t={t} />
               ))}
