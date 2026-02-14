@@ -1,15 +1,23 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { fetchAPI } from "@/lib/api";
-import type { AnalyzedArticle, NewsFeedResponse } from "@/types";
+import type { AnalyzedArticle, NewsFeedResponse, SourceCategory } from "@/types";
 
 const REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutes
+
+export type NewsTab = "all" | SourceCategory;
 
 export function useNewsFeed() {
   const [articles, setArticles] = useState<AnalyzedArticle[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [categoryCounts, setCategoryCounts] = useState<Record<string, number>>({
+    news: 0,
+    social: 0,
+    blog: 0,
+  });
+  const [activeTab, setActiveTab] = useState<NewsTab>("all");
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const load = useCallback(async (skipCache = false) => {
@@ -18,6 +26,9 @@ export function useNewsFeed() {
       setError(null);
       const result = await fetchAPI<NewsFeedResponse>("/api/v1/news/feed", { skipCache });
       setArticles(result.articles || []);
+      setCategoryCounts(
+        result.category_counts || { news: 0, social: 0, blog: 0 }
+      );
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Error al cargar noticias"
@@ -38,5 +49,20 @@ export function useNewsFeed() {
     };
   }, [load]);
 
-  return { articles, loading, error, refresh };
+  // Client-side filtering by category
+  const filteredArticles = useMemo(() => {
+    if (activeTab === "all") return articles;
+    return articles.filter((a) => a.source_category === activeTab);
+  }, [articles, activeTab]);
+
+  return {
+    articles: filteredArticles,
+    allArticles: articles,
+    loading,
+    error,
+    refresh,
+    activeTab,
+    setActiveTab,
+    categoryCounts,
+  };
 }

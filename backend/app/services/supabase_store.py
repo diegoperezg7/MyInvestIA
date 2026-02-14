@@ -71,7 +71,11 @@ class SupabaseStore:
     def get_holdings(self) -> list[dict]:
         try:
             result = self._get_client().table("holdings").select("*").execute()
-            return result.data or []
+            holdings = result.data or []
+            for h in holdings:
+                h.setdefault("source", "manual")
+                h.setdefault("connection_id", None)
+            return holdings
         except Exception as e:
             logger.warning("Supabase get_holdings failed: %s", e)
             return []
@@ -344,3 +348,209 @@ class SupabaseStore:
         except Exception as e:
             logger.warning("Supabase delete_memory failed: %s", e)
             return False
+
+    # --- Synced Holdings ---
+
+    def upsert_synced_holding(
+        self, symbol: str, name: str, asset_type: str,
+        quantity: float, avg_buy_price: float, source: str, connection_id: str,
+    ) -> dict:
+        """Upsert a holding from an external connection."""
+        symbol = symbol.upper()
+        try:
+            client = self._get_client()
+            # Check if exists
+            result = (
+                client.table("holdings")
+                .select("*")
+                .eq("symbol", symbol)
+                .eq("connection_id", connection_id)
+                .execute()
+            )
+            if result.data:
+                # Update existing
+                updated = (
+                    client.table("holdings")
+                    .update({
+                        "name": name,
+                        "type": asset_type,
+                        "quantity": quantity,
+                        "avg_buy_price": avg_buy_price,
+                        "updated_at": "now()",
+                    })
+                    .eq("id", result.data[0]["id"])
+                    .execute()
+                )
+                return updated.data[0] if updated.data else result.data[0]
+            else:
+                # Insert new
+                holding = {
+                    "id": str(uuid.uuid4()),
+                    "symbol": symbol,
+                    "name": name,
+                    "type": asset_type,
+                    "quantity": quantity,
+                    "avg_buy_price": avg_buy_price,
+                    "source": source,
+                    "connection_id": connection_id,
+                }
+                inserted = client.table("holdings").insert(holding).execute()
+                return inserted.data[0] if inserted.data else holding
+        except Exception as e:
+            logger.warning("Supabase upsert_synced_holding failed: %s", e)
+            return {"symbol": symbol, "name": name, "type": asset_type, "quantity": quantity,
+                    "avg_buy_price": avg_buy_price, "source": source, "connection_id": connection_id}
+
+    def delete_synced_holding(self, symbol: str, connection_id: str) -> bool:
+        """Delete a specific synced holding."""
+        try:
+            result = (
+                self._get_client()
+                .table("holdings")
+                .delete()
+                .eq("symbol", symbol.upper())
+                .eq("connection_id", connection_id)
+                .execute()
+            )
+            return len(result.data) > 0 if result.data else False
+        except Exception as e:
+            logger.warning("Supabase delete_synced_holding failed: %s", e)
+            return False
+
+    def delete_holdings_by_connection(self, connection_id: str) -> int:
+        """Delete all holdings for a connection."""
+        try:
+            result = (
+                self._get_client()
+                .table("holdings")
+                .delete()
+                .eq("connection_id", connection_id)
+                .execute()
+            )
+            return len(result.data) if result.data else 0
+        except Exception as e:
+            logger.warning("Supabase delete_holdings_by_connection failed: %s", e)
+            return 0
+
+    def get_holdings_by_connection(self, connection_id: str) -> list[dict]:
+        """Get all holdings for a specific connection."""
+        try:
+            result = (
+                self._get_client()
+                .table("holdings")
+                .select("*")
+                .eq("connection_id", connection_id)
+                .execute()
+            )
+            return result.data or []
+        except Exception as e:
+            logger.warning("Supabase get_holdings_by_connection failed: %s", e)
+            return []
+
+    # --- Connections ---
+
+    def get_connections(self) -> list[dict]:
+        """List all connections."""
+        try:
+            result = self._get_client().table("connections").select("*").order("created_at", desc=True).execute()
+            return result.data or []
+        except Exception as e:
+            logger.warning("Supabase get_connections failed: %s", e)
+            return []
+
+    def get_connection(self, connection_id: str) -> dict | None:
+        """Get a single connection by ID."""
+        try:
+            result = (
+                self._get_client()
+                .table("connections")
+                .select("*")
+                .eq("id", connection_id)
+                .execute()
+            )
+            return result.data[0] if result.data else None
+        except Exception as e:
+            logger.warning("Supabase get_connection failed: %s", e)
+            return None
+
+    def create_connection(self, data: dict) -> dict:
+        """Create a new connection."""
+        try:
+            result = self._get_client().table("connections").insert(data).execute()
+            return result.data[0] if result.data else data
+        except Exception as e:
+            logger.warning("Supabase create_connection failed: %s", e)
+            return data
+
+    def update_connection(self, connection_id: str, data: dict) -> dict | None:
+        """Update an existing connection."""
+        try:
+            result = (
+                self._get_client()
+                .table("connections")
+                .update(data)
+                .eq("id", connection_id)
+                .execute()
+            )
+            return result.data[0] if result.data else None
+        except Exception as e:
+            logger.warning("Supabase update_connection failed: %s", e)
+            return None
+
+    def delete_connection(self, connection_id: str) -> bool:
+        """Delete a connection (sync_history cascades)."""
+        try:
+            result = (
+                self._get_client()
+                .table("connections")
+                .delete()
+                .eq("id", connection_id)
+                .execute()
+            )
+            return len(result.data) > 0 if result.data else False
+        except Exception as e:
+            logger.warning("Supabase delete_connection failed: %s", e)
+            return False
+
+    # --- Sync History ---
+
+    def add_sync_history(self, data: dict) -> dict:
+        """Add a sync history entry."""
+        try:
+            result = self._get_client().table("sync_history").insert(data).execute()
+            return result.data[0] if result.data else data
+        except Exception as e:
+            logger.warning("Supabase add_sync_history failed: %s", e)
+            return data
+
+    def update_sync_history(self, sync_id: str, data: dict) -> dict | None:
+        """Update a sync history entry."""
+        try:
+            result = (
+                self._get_client()
+                .table("sync_history")
+                .update(data)
+                .eq("id", sync_id)
+                .execute()
+            )
+            return result.data[0] if result.data else None
+        except Exception as e:
+            logger.warning("Supabase update_sync_history failed: %s", e)
+            return None
+
+    def get_sync_history(self, connection_id: str, limit: int = 20) -> list[dict]:
+        """Get sync history for a connection."""
+        try:
+            result = (
+                self._get_client()
+                .table("sync_history")
+                .select("*")
+                .eq("connection_id", connection_id)
+                .order("started_at", desc=True)
+                .limit(limit)
+                .execute()
+            )
+            return result.data or []
+        except Exception as e:
+            logger.warning("Supabase get_sync_history failed: %s", e)
+            return []

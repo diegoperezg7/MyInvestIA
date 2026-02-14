@@ -81,13 +81,20 @@ async def _build_holding(h: dict) -> PortfolioHolding:
         current_value=round(current_value, 2),
         unrealized_pnl=round(unrealized_pnl, 2),
         unrealized_pnl_percent=round(unrealized_pnl_pct, 2),
+        source=h.get("source", "manual"),
+        connection_id=h.get("connection_id"),
     )
 
 
 @router.get("/", response_model=Portfolio)
-async def get_portfolio():
-    """Get the full portfolio with all holdings and live prices."""
+async def get_portfolio(source: str | None = None):
+    """Get the full portfolio with all holdings and live prices.
+
+    Optional source filter: manual, exchange, wallet, broker, prediction
+    """
     raw_holdings = store.get_holdings()
+    if source:
+        raw_holdings = [h for h in raw_holdings if h.get("source", "manual") == source]
     holdings = list(await asyncio.gather(*[_build_holding(h) for h in raw_holdings]))
     total_value = sum(h.current_value for h in holdings)
     daily_pnl = sum(
@@ -140,7 +147,16 @@ async def update_holding(symbol: str, req: UpdateHoldingRequest):
 
 @router.delete("/{symbol}", status_code=204)
 async def delete_holding(symbol: str):
-    """Remove a holding from the portfolio."""
+    """Remove a manual holding from the portfolio. Synced holdings cannot be deleted here."""
+    raw = store.get_holding(symbol)
+    if not raw:
+        raise HTTPException(status_code=404, detail=f"Holding '{symbol.upper()}' not found")
+    if raw.get("source", "manual") != "manual":
+        raise HTTPException(
+            status_code=400,
+            detail=f"Holding '{symbol.upper()}' is synced from an external connection. "
+                   "Delete the connection to remove its holdings.",
+        )
     if not store.delete_holding(symbol):
         raise HTTPException(status_code=404, detail=f"Holding '{symbol.upper()}' not found")
 

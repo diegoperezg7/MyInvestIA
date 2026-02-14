@@ -1,4 +1,4 @@
-"""News aggregator: combines Finnhub + NewsAPI + RSS with AI analysis.
+"""News aggregator: combines Finnhub + NewsAPI + RSS + Reddit + StockTwits + Twitter with AI analysis.
 
 Merges articles from all sources, deduplicates by headline similarity,
 and batch-analyzes with Mistral for impact scoring.
@@ -16,6 +16,9 @@ from app.services.cache import get_or_fetch
 from app.services.news_service import news_service
 from app.services.newsapi_service import newsapi_service
 from app.services.rss_service import get_rss_news
+from app.services.reddit_service import get_reddit_posts
+from app.services.stocktwits_service import get_trending as get_stocktwits_trending
+from app.services.twitter_service import get_twitter_posts
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +38,18 @@ def _headline_key(headline: str) -> str:
     return hashlib.md5(normalized.encode()).hexdigest()[:12]
 
 
-async def get_aggregated_news(limit: int = 30) -> list[dict]:
+# Default source_category by provider
+_PROVIDER_CATEGORY: dict[str, str] = {
+    "finnhub": "news",
+    "newsapi": "news",
+    "rss": "news",       # overridden per-article from RSS feed config
+    "reddit": "social",
+    "stocktwits": "social",
+    "twitter": "social",
+}
+
+
+async def get_aggregated_news(limit: int = 40) -> list[dict]:
     """Fetch from all sources in parallel, merge, deduplicate, sort by time."""
 
     async def _fetch():
@@ -44,8 +58,11 @@ async def get_aggregated_news(limit: int = 30) -> list[dict]:
             tasks["finnhub"] = tg.create_task(news_service.get_market_news(limit=15))
             tasks["newsapi"] = tg.create_task(newsapi_service.get_business_news(limit=15))
             tasks["rss"] = tg.create_task(get_rss_news(limit=20))
+            tasks["reddit"] = tg.create_task(get_reddit_posts(limit=15))
+            tasks["stocktwits"] = tg.create_task(get_stocktwits_trending(limit=15))
+            tasks["twitter"] = tg.create_task(get_twitter_posts(limit=10))
 
-        # Tag each article with source_provider
+        # Tag each article with source_provider and source_category
         all_articles: list[dict] = []
         seen_keys: set[str] = set()
 
@@ -58,6 +75,10 @@ async def get_aggregated_news(limit: int = 30) -> list[dict]:
                         seen_keys.add(key)
                         article["source_provider"] = provider
                         article["id"] = str(uuid.uuid4())
+                        # Use article-level category if set (RSS propagates it),
+                        # otherwise fall back to provider default
+                        if "source_category" not in article:
+                            article["source_category"] = _PROVIDER_CATEGORY.get(provider, "news")
                         all_articles.append(article)
             except Exception as e:
                 logger.warning("News source %s failed: %s", provider, e)
@@ -69,7 +90,16 @@ async def get_aggregated_news(limit: int = 30) -> list[dict]:
     return await get_or_fetch("news:aggregated", _fetch, FEED_TTL) or []
 
 
-async def get_ai_analyzed_feed(limit: int = 20) -> dict:
+def _count_categories(articles: list[dict]) -> dict[str, int]:
+    """Count articles by source_category."""
+    counts: dict[str, int] = {"news": 0, "social": 0, "blog": 0}
+    for a in articles:
+        cat = a.get("source_category", "news")
+        counts[cat] = counts.get(cat, 0) + 1
+    return counts
+
+
+async def get_ai_analyzed_feed(limit: int = 30) -> dict:
     """Get news feed with AI analysis for each article."""
 
     async def _fetch():
@@ -78,6 +108,7 @@ async def get_ai_analyzed_feed(limit: int = 20) -> dict:
             return {
                 "articles": [],
                 "sources_active": _get_sources_status(),
+                "category_counts": {"news": 0, "social": 0, "blog": 0},
             }
 
         # Batch AI analysis
@@ -90,11 +121,13 @@ async def get_ai_analyzed_feed(limit: int = 20) -> dict:
         return {
             "articles": analyzed,
             "sources_active": _get_sources_status(),
+            "category_counts": _count_categories(analyzed),
         }
 
     return await get_or_fetch("news:ai_feed", _fetch, FEED_TTL) or {
         "articles": [],
         "sources_active": _get_sources_status(),
+        "category_counts": {"news": 0, "social": 0, "blog": 0},
     }
 
 
@@ -140,7 +173,9 @@ async def _analyze_batch(articles: list[dict]) -> list[dict]:
             headlines.append(f"   Summary: {a['summary'][:200]}")
 
     prompt = (
-        "Analyze these financial news articles. For EACH article, provide a JSON analysis.\n\n"
+        "Analyze these financial news articles and social media posts. For EACH item, provide a JSON analysis.\n"
+        "Items may include traditional news, Reddit posts, StockTwits messages, or tweets — "
+        "interpret informal language, memes, and slang in a financial context.\n\n"
         + "\n".join(headlines)
         + "\n\nRespond with ONLY a JSON array (no markdown, no explanation). Each item must have:\n"
         '{"impact_score": 1-10, "affected_tickers": ["SYM"], "sentiment": "positive"|"negative"|"neutral", '
@@ -211,5 +246,8 @@ def _get_sources_status() -> dict[str, bool]:
     return {
         "finnhub": news_service.is_configured,
         "newsapi": newsapi_service.is_configured,
-        "rss": True,  # RSS is always available
+        "rss": True,       # RSS is always available
+        "reddit": True,    # Public JSON API, no key needed
+        "stocktwits": True, # Public API, no key needed
+        "twitter": True,   # Best-effort via Nitter
     }

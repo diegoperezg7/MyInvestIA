@@ -8,6 +8,7 @@ import {
   Activity,
   Gem,
   PlayCircle,
+  Link2,
   Bell,
   MessageSquare,
   Globe,
@@ -61,6 +62,7 @@ const NAV_GROUPS: NavGroup[] = [
   {
     titleKey: "group.tools",
     items: [
+      { key: "connections", labelKey: "nav.connections", icon: Link2, shortcut: "" },
       { key: "paper-trade", labelKey: "nav.paper_trade", icon: PlayCircle, shortcut: "" },
       { key: "alerts", labelKey: "nav.alerts", icon: Bell, shortcut: "0" },
     ],

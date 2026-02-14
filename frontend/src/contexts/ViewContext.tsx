@@ -10,6 +10,7 @@ export type View =
   | "volatility"
   | "commodities"
   | "paper-trade"
+  | "connections"
   | "alerts"
   | "chat"
   | "macro"

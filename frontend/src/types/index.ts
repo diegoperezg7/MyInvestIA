@@ -1,7 +1,7 @@
 export interface Asset {
   symbol: string;
   name: string;
-  type: "stock" | "etf" | "crypto" | "commodity";
+  type: "stock" | "etf" | "crypto" | "commodity" | "prediction";
   price: number;
   change_percent: number;
   volume: number;
@@ -14,6 +14,8 @@ export interface PortfolioHolding {
   current_value: number;
   unrealized_pnl: number;
   unrealized_pnl_percent: number;
+  source?: string;
+  connection_id?: string;
 }
 
 export interface Portfolio {
@@ -375,6 +377,8 @@ export interface RecommendationsResponse {
 
 // --- AI News Feed ---
 
+export type SourceCategory = "news" | "social" | "blog";
+
 export interface ArticleAIAnalysis {
   impact_score: number;
   affected_tickers: string[];
@@ -389,15 +393,22 @@ export interface AnalyzedArticle {
   summary: string;
   source: string;
   source_provider: string;
+  source_category: SourceCategory;
   url: string;
   datetime: number;
   ai_analysis: ArticleAIAnalysis | null;
+  // Social-specific fields
+  author?: string;
+  score?: number;
+  num_comments?: number;
+  sentiment_label?: string; // StockTwits: "Bullish" | "Bearish"
 }
 
 export interface NewsFeedResponse {
   articles: AnalyzedArticle[];
   total: number;
   sources_active: Record<string, boolean>;
+  category_counts: Record<SourceCategory, number>;
   generated_at: string;
 }
 
@@ -547,4 +558,63 @@ export interface VolatilityData {
   weekly_range: { high: number; low: number; range_percent: number };
   current_price: number;
   volatility_rating: "low" | "moderate" | "high" | "extreme";
+}
+
+// --- Connections ---
+
+export type ConnectionType = "exchange" | "wallet" | "broker" | "prediction";
+export type ConnectionStatus = "pending" | "active" | "error" | "disconnected";
+export type SyncStatus = "never" | "success" | "partial" | "failed";
+
+export interface ConnectionSummary {
+  id: string;
+  type: ConnectionType;
+  provider: string;
+  label: string;
+  status: ConnectionStatus;
+  last_sync_at: string | null;
+  last_sync_status: string | null;
+  last_sync_error: string | null;
+  sync_count: number;
+  holdings_count: number;
+  total_value: number;
+  created_at: string | null;
+}
+
+export interface ConnectionDetail extends ConnectionSummary {
+  metadata: Record<string, unknown>;
+  wallet_address: string | null;
+  chain: string | null;
+  holdings: Record<string, unknown>[];
+}
+
+export interface ConnectionList {
+  connections: ConnectionSummary[];
+  total: number;
+}
+
+export interface SyncResult {
+  connection_id: string;
+  status: string;
+  holdings_synced: number;
+  holdings_added: number;
+  holdings_updated: number;
+  holdings_removed: number;
+  duration_ms: number;
+  error: string | null;
+}
+
+export interface TestConnectionResult {
+  success: boolean;
+  message: string;
+  account_info: Record<string, unknown>;
+}
+
+export interface SupportedProvider {
+  id: string;
+  name: string;
+  type: ConnectionType;
+  description: string;
+  fields_required: string[];
+  logo_url: string | null;
 }

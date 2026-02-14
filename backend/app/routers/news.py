@@ -14,13 +14,14 @@ router = APIRouter(prefix="/news", tags=["news"])
 
 @router.get("/feed")
 async def get_news_feed():
-    """Get AI-analyzed news feed from all sources (Finnhub + NewsAPI + RSS)."""
+    """Get AI-analyzed news feed from all sources (Finnhub + NewsAPI + RSS + Reddit + StockTwits + Twitter)."""
     try:
-        result = await get_ai_analyzed_feed(limit=20)
+        result = await get_ai_analyzed_feed(limit=30)
         return {
             "articles": result.get("articles", []),
             "total": len(result.get("articles", [])),
             "sources_active": result.get("sources_active", {}),
+            "category_counts": result.get("category_counts", {"news": 0, "social": 0, "blog": 0}),
             "generated_at": datetime.now(timezone.utc).isoformat(),
         }
     except Exception as e:
