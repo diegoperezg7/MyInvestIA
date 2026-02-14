@@ -19,7 +19,7 @@ export default function RootLayout({
   return (
     <html lang="es" suppressHydrationWarning>
       <body className="bg-oracle-bg text-oracle-text min-h-screen" suppressHydrationWarning>
-        <ThemeProvider>
+<ThemeProvider>
           <ViewProvider>{children}</ViewProvider>
         </ThemeProvider>
       </body>

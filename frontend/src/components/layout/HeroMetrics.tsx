@@ -294,34 +294,34 @@ function MarketStatusCard({
         />
       </div>
 
-      <div className="p-5 pb-4">
-        <p className="text-oracle-muted text-xs font-semibold uppercase tracking-wide mb-1">
+      <div className="p-3 sm:p-5 pb-3 sm:pb-4">
+        <p className="text-oracle-muted text-[10px] sm:text-xs font-semibold uppercase tracking-wide mb-1">
           {t("hero.market_status")}
         </p>
 
         {marketOpen ? (
           <>
             <div className="flex items-center gap-2">
-              <span className="relative flex h-2.5 w-2.5 shrink-0">
+              <span className="relative flex h-2 w-2 sm:h-2.5 sm:w-2.5 shrink-0">
                 <span
                   className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75"
                   style={{ backgroundColor: color }}
                 />
                 <span
-                  className="relative inline-flex rounded-full h-2.5 w-2.5"
+                  className="relative inline-flex rounded-full h-2 w-2 sm:h-2.5 sm:w-2.5"
                   style={{ backgroundColor: color }}
                 />
               </span>
               <p
-                className="text-xl font-bold font-mono transition-colors duration-1000"
+                className="text-base sm:text-xl font-bold font-mono transition-colors duration-1000"
                 style={{ color }}
               >
                 {t("hero.open")}
               </p>
             </div>
-            <p className="text-oracle-muted text-xs mt-1">{t("hero.us_markets")}</p>
+            <p className="text-oracle-muted text-[10px] sm:text-xs mt-1 hidden sm:block">{t("hero.us_markets")}</p>
             <p
-              className="font-mono text-sm font-bold mt-2 transition-colors duration-1000"
+              className="font-mono text-xs sm:text-sm font-bold mt-1.5 sm:mt-2 transition-colors duration-1000"
               style={{ color }}
             >
               {countdownText}
@@ -330,23 +330,23 @@ function MarketStatusCard({
         ) : (
           <>
             <div className="flex items-center gap-2">
-              <span className="relative flex h-2.5 w-2.5 shrink-0">
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-oracle-muted/40 animate-pulse" />
+              <span className="relative flex h-2 w-2 sm:h-2.5 sm:w-2.5 shrink-0">
+                <span className="relative inline-flex rounded-full h-2 w-2 sm:h-2.5 sm:w-2.5 bg-oracle-muted/40 animate-pulse" />
               </span>
-              <p className="text-xl font-bold font-mono text-oracle-muted/60">
+              <p className="text-base sm:text-xl font-bold font-mono text-oracle-muted/60">
                 {t("hero.closed")}
               </p>
             </div>
-            <p className="text-oracle-muted text-xs mt-1">{t("hero.us_markets")}</p>
-            <p className="font-mono text-sm font-bold mt-2 text-oracle-muted/80 animate-pulse">
+            <p className="text-oracle-muted text-[10px] sm:text-xs mt-1 hidden sm:block">{t("hero.us_markets")}</p>
+            <p className="font-mono text-xs sm:text-sm font-bold mt-1.5 sm:mt-2 text-oracle-muted/80 animate-pulse">
               {countdownText}
             </p>
           </>
         )}
 
         {/* Trading session progress bar — always visible */}
-        <div className="mt-3">
-          <div className="relative h-2 rounded-full bg-oracle-bg overflow-hidden">
+        <div className="mt-2 sm:mt-3">
+          <div className="relative h-1.5 sm:h-2 rounded-full bg-oracle-bg overflow-hidden">
             {marketOpen && (
               <div
                 className="absolute inset-y-0 left-0 rounded-full transition-all duration-1000"
@@ -354,12 +354,12 @@ function MarketStatusCard({
               />
             )}
           </div>
-          <div className="flex justify-between mt-1.5">
-            <span className="text-[10px] font-mono text-oracle-muted leading-none">
-              {localOpen} <span className="text-oracle-muted/50">({t("hero.et_open")})</span>
+          <div className="flex justify-between mt-1 sm:mt-1.5">
+            <span className="text-[8px] sm:text-[10px] font-mono text-oracle-muted leading-none">
+              {localOpen} <span className="text-oracle-muted/50 hidden sm:inline">({t("hero.et_open")})</span>
             </span>
-            <span className="text-[10px] font-mono text-oracle-muted leading-none">
-              {localClose} <span className="text-oracle-muted/50">({t("hero.et_close")})</span>
+            <span className="text-[8px] sm:text-[10px] font-mono text-oracle-muted leading-none">
+              {localClose} <span className="text-oracle-muted/50 hidden sm:inline">({t("hero.et_close")})</span>
             </span>
           </div>
         </div>
@@ -409,18 +409,18 @@ function OverviewHero() {
   const holdings = portfolio?.holdings ?? [];
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 mb-4 sm:mb-6">
       {/* Portfolio Value card with mini area chart background */}
       <div className="bg-oracle-panel border border-oracle-border rounded-xl overflow-hidden shadow-sm transition-all duration-300 hover:border-oracle-border-hover hover:shadow-md relative">
         <div className="h-[2px] bg-gradient-to-r from-[#12b5b0] to-[#0e9a96]" />
-        <div className="p-5 relative z-10">
-          <p className="text-oracle-muted text-xs font-semibold uppercase tracking-wide mb-1">
+        <div className="p-3 sm:p-5 relative z-10">
+          <p className="text-oracle-muted text-[10px] sm:text-xs font-semibold uppercase tracking-wide mb-1">
             {t("hero.portfolio_value")}
           </p>
-          <p className="text-xl font-bold font-mono text-oracle-text">
+          <p className="text-base sm:text-xl font-bold font-mono text-oracle-text">
             {portfolio ? formatPrice(portfolio.total_value) : "--"}
           </p>
-          <p className="text-oracle-muted text-xs mt-1">
+          <p className="text-oracle-muted text-[10px] sm:text-xs mt-1">
             {portfolio
               ? t("hero.holdings", { count: String(portfolio.holdings.length) })
               : t("hero.loading")}
@@ -434,14 +434,14 @@ function OverviewHero() {
       {/* Daily P&L card with contribution bar */}
       <div className="bg-oracle-panel border border-oracle-border rounded-xl overflow-hidden shadow-sm transition-all duration-300 hover:border-oracle-border-hover hover:shadow-md">
         <div className="h-[2px] bg-gradient-to-r from-[#12b5b0] to-[#0e9a96]" />
-        <div className="p-5">
-          <p className="text-oracle-muted text-xs font-semibold uppercase tracking-wide mb-1">
+        <div className="p-3 sm:p-5">
+          <p className="text-oracle-muted text-[10px] sm:text-xs font-semibold uppercase tracking-wide mb-1">
             {t("hero.daily_pnl")}
           </p>
-          <p className={`text-xl font-bold font-mono ${portfolio ? (pnlPositive ? "text-oracle-green" : "text-oracle-red") : "text-oracle-text"}`}>
+          <p className={`text-base sm:text-xl font-bold font-mono ${portfolio ? (pnlPositive ? "text-oracle-green" : "text-oracle-red") : "text-oracle-text"}`}>
             {portfolio ? `${pnlPositive ? "+" : ""}${formatPrice(portfolio.daily_pnl)}` : "--"}
           </p>
-          <p className={`text-xs mt-1 ${portfolio ? (pnlPositive ? "text-oracle-green" : "text-oracle-red") : "text-oracle-muted"}`}>
+          <p className={`text-[10px] sm:text-xs mt-1 ${portfolio ? (pnlPositive ? "text-oracle-green" : "text-oracle-red") : "text-oracle-muted"}`}>
             {portfolio ? `${pnlPositive ? "+" : ""}${portfolio.daily_pnl_percent.toFixed(2)}%` : t("hero.loading")}
           </p>
           {holdings.length > 0 && <PnlContributionBar holdings={holdings} />}
@@ -458,22 +458,22 @@ function OverviewHero() {
       {/* 4th card: Market Sentiment Gauge */}
       <div className="bg-oracle-panel border border-oracle-border rounded-xl overflow-hidden shadow-sm transition-all duration-300 hover:border-oracle-border-hover hover:shadow-md flex flex-col">
         <div className="h-[2px] bg-gradient-to-r from-[#12b5b0] to-[#0e9a96]" />
-        <div className="p-5 flex flex-col items-center justify-center flex-1">
-          <p className="text-oracle-muted text-xs font-semibold uppercase tracking-wide mb-1">
+        <div className="p-3 sm:p-5 flex flex-col items-center justify-center flex-1">
+          <p className="text-oracle-muted text-[10px] sm:text-xs font-semibold uppercase tracking-wide mb-1">
             {t("hero.sentiment")}
           </p>
           {sentimentScore !== null ? (
             <>
               <SentimentGauge score={sentimentScore} />
-              <p className={`text-sm font-bold mt-0.5 ${sentiment?.color || "text-oracle-text"}`}>
+              <p className={`text-xs sm:text-sm font-bold mt-0.5 ${sentiment?.color || "text-oracle-text"}`}>
                 {sentiment?.label}
               </p>
-              <p className="text-oracle-muted text-[10px] font-mono mt-0.5">
+              <p className="text-oracle-muted text-[8px] sm:text-[10px] font-mono mt-0.5">
                 VIX {vixValue?.toFixed(1)}
               </p>
             </>
           ) : (
-            <div className="w-[100px] h-[50px] bg-oracle-bg rounded animate-pulse mt-1" />
+            <div className="w-[80px] sm:w-[100px] h-[40px] sm:h-[50px] bg-oracle-bg rounded animate-pulse mt-1" />
           )}
         </div>
       </div>
