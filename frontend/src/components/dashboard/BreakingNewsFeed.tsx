@@ -245,11 +245,9 @@ export default function BreakingNewsFeed({ defaultCollapsed = true, className = 
     categoryCounts,
   } = useNewsFeed();
   const [collapsed, setCollapsed] = useState(defaultCollapsed);
-  const [showAll, setShowAll] = useState(false);
   const t = useLanguageStore((s) => s.t);
 
-  const VISIBLE_COUNT = 4;
-  const displayed = showAll ? articles : articles.slice(0, VISIBLE_COUNT);
+  const displayed = articles;
 
   const getTabCount = (tab: NewsTab): number => {
     if (tab === "all") return allArticles.length;
@@ -340,26 +338,14 @@ export default function BreakingNewsFeed({ defaultCollapsed = true, className = 
 
           {/* Articles list */}
           {displayed.length > 0 && (
-            <div>
+            <div className="max-h-[400px] overflow-y-auto scrollbar-thin">
               {displayed.map((article) => (
                 <ArticleItem key={article.id} article={article} t={t} />
               ))}
             </div>
           )}
 
-          {/* Show more / less */}
-          {articles.length > VISIBLE_COUNT && (
-            <button
-              onClick={() => setShowAll(!showAll)}
-              className="w-full mt-2 py-1.5 text-xs text-oracle-accent hover:bg-oracle-bg rounded transition-colors flex items-center justify-center gap-1"
-            >
-              {showAll ? (
-                <>{t("news.show_less")} <ChevronUp className="w-3 h-3" /></>
-              ) : (
-                <>{t("news.show_more", { count: String(articles.length - VISIBLE_COUNT) })} <ChevronDown className="w-3 h-3" /></>
-              )}
-            </button>
-          )}
+          {/* Show more / less removed — scroll container handles overflow */}
 
           {!loading && articles.length === 0 && !error && (
             <p className="text-oracle-muted text-sm text-center py-4">
