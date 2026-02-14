@@ -24,6 +24,7 @@ import PredictionView from "@/components/views/PredictionView";
 import ConnectionsView from "@/components/views/ConnectionsView";
 import EconomicCalendarView from "@/components/views/EconomicCalendarView";
 import HeatmapView from "@/components/views/HeatmapView";
+import SettingsView from "@/components/views/SettingsView";
 
 const VIEW_MAP: Record<string, React.ComponentType> = {
   overview: OverviewView,
@@ -41,6 +42,7 @@ const VIEW_MAP: Record<string, React.ComponentType> = {
   prediction: PredictionView,
   calendar: EconomicCalendarView,
   heatmap: HeatmapView,
+  settings: SettingsView,
 };
 
 export default function Dashboard() {

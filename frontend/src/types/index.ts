@@ -746,6 +746,61 @@ export interface PortfolioRiskResponse {
   portfolio_value: number;
 }
 
+// --- Agent Orchestration ---
+
+export interface AgentStatus {
+  running: boolean;
+  last_run: string | null;
+  agents: string[];
+  last_alert_count: number;
+}
+
+export interface AgentRunResult {
+  success: boolean;
+  alerts_generated: number;
+  alerts: {
+    id: string;
+    type: string;
+    severity: string;
+    title: string;
+    symbol: string | null;
+    confidence: number;
+    action: string;
+  }[];
+}
+
+export interface AlertHistoryEntry {
+  id: string;
+  type: string;
+  severity: string;
+  title: string;
+  description: string;
+  reasoning: string;
+  symbol: string | null;
+  confidence: number;
+  suggested_action: string;
+  created_at: string;
+}
+
+export interface AlertHistoryResponse {
+  alerts: AlertHistoryEntry[];
+  total: number;
+}
+
+// --- User Profile ---
+
+export interface UserProfile {
+  display_name: string;
+  risk_tolerance: "conservative" | "moderate" | "aggressive";
+  investment_horizon: "short" | "medium" | "long";
+  goals: string[];
+  preferred_currency: string;
+  notification_frequency: "all" | "important" | "critical_only" | "none";
+  notification_channels: string[];
+  language: string;
+  theme: string;
+}
+
 // --- Sector Heatmap & Market Breadth ---
 
 export interface SectorPerformance {
