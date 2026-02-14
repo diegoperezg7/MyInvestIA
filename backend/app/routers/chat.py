@@ -43,10 +43,56 @@ async def chat(req: ChatRequest):
         )
 
     try:
+        # Enrich context with portfolio risk & user profile
+        enriched_context = req.context
+        try:
+            context_parts = [req.context] if req.context else []
+
+            # User profile
+            from app.routers.user_profile import _load_profile
+            profile = _load_profile()
+            if profile.get("risk_tolerance"):
+                context_parts.append(
+                    f"User profile: risk_tolerance={profile['risk_tolerance']}, "
+                    f"horizon={profile.get('investment_horizon', 'medium')}, "
+                    f"goals={', '.join(profile.get('goals', [])) or 'not set'}"
+                )
+
+            # Portfolio risk snapshot
+            holdings = store.get_holdings()
+            if holdings:
+                from app.services.portfolio_risk import calculate_portfolio_risk
+                from app.services.market_data import market_data_service
+                import asyncio
+                enriched = []
+                for h in holdings[:10]:  # limit to avoid slow context
+                    q = await market_data_service.get_quote(h["symbol"], h.get("type"))
+                    p = q.get("price", h["avg_buy_price"]) if q else h["avg_buy_price"]
+                    enriched.append({**h, "current_price": p, "current_value": p * h["quantity"]})
+                risk = await calculate_portfolio_risk(enriched)
+                m = risk.get("metrics", {})
+                context_parts.append(
+                    f"Portfolio risk: VaR95={m.get('var_95', 0):.0f}, "
+                    f"Sharpe={m.get('sharpe_ratio', 0):.2f}, "
+                    f"Beta={m.get('beta', 0):.2f}, "
+                    f"MaxDD={m.get('max_drawdown', 0):.1%}, "
+                    f"Volatility={m.get('annual_volatility', 0):.1%}"
+                )
+
+            # Recent alerts
+            recent_alerts = store.get_memories(category="alert_history", limit=5)
+            if recent_alerts:
+                alert_lines = [f"- {a['content']} ({a.get('metadata', {}).get('severity', '?')})" for a in recent_alerts]
+                context_parts.append("Recent alerts:\n" + "\n".join(alert_lines))
+
+            enriched_context = "\n\n".join(context_parts)
+        except Exception as ctx_err:
+            logger.debug("Context enrichment partial failure: %s", ctx_err)
+
         messages = [{"role": m.role, "content": m.content} for m in req.messages]
         response_text = await ai_service.chat(
             messages=messages,
-            context=req.context,
+            context=enriched_context,
         )
 
         # Auto-save last user message as interaction memory

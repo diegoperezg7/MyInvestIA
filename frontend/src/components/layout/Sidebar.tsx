@@ -18,6 +18,7 @@ import {
   ChevronsRight,
   CalendarDays,
   LayoutGrid,
+  Settings,
 } from "lucide-react";
 import { useView, type View } from "@/contexts/ViewContext";
 import useLanguageStore from "@/stores/useLanguageStore";
@@ -69,6 +70,7 @@ const NAV_GROUPS: NavGroup[] = [
       { key: "connections", labelKey: "nav.connections", icon: Link2, shortcut: "" },
       { key: "paper-trade", labelKey: "nav.paper_trade", icon: PlayCircle, shortcut: "" },
       { key: "alerts", labelKey: "nav.alerts", icon: Bell, shortcut: "0" },
+      { key: "settings", labelKey: "nav.settings", icon: Settings, shortcut: "" },
     ],
   },
 ];

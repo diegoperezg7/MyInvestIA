@@ -45,6 +45,8 @@ _MOVERS_CACHE_TTL = 180  # 3 minutes
 @router.get("/", response_model=MarketOverview)
 async def get_market_overview():
     """Get market overview with top movers from major stocks."""
+    from app.services.sentiment_aggregator import compute_market_sentiment
+
     movers = await market_data_service.get_top_movers()
 
     gainers = [
@@ -70,8 +72,12 @@ async def get_market_overview():
         for q in movers.get("losers", [])
     ]
 
-    # Fetch macro indicators for the overview
-    macro_raw = await get_all_macro_indicators()
+    # Fetch macro indicators and sentiment in parallel
+    import asyncio
+    macro_task = get_all_macro_indicators()
+    sentiment_task = compute_market_sentiment()
+    macro_raw, sentiment_index = await asyncio.gather(macro_task, sentiment_task)
+
     macro_indicators = [
         MacroIndicator(
             name=m["name"],
@@ -83,7 +89,7 @@ async def get_market_overview():
     ]
 
     return MarketOverview(
-        sentiment_index=0.0,
+        sentiment_index=sentiment_index,
         top_gainers=gainers,
         top_losers=losers,
         macro_indicators=macro_indicators,

@@ -17,7 +17,8 @@ export type View =
   | "recommendations"
   | "prediction"
   | "calendar"
-  | "heatmap";
+  | "heatmap"
+  | "settings";
 
 interface ViewContextType {
   activeView: View;

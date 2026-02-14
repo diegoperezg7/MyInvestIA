@@ -30,6 +30,7 @@ const translations: Translations = {
   "nav.connections": { es: "Conexiones", en: "Connections" },
   "nav.calendar": { es: "Calendario", en: "Calendar" },
   "nav.heatmap": { es: "Heatmap", en: "Heatmap" },
+  "nav.settings": { es: "Ajustes", en: "Settings" },
 
   // --- Nav groups ---
   "group.core": { es: "PRINCIPAL", en: "CORE" },
