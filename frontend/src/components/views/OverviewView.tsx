@@ -23,7 +23,7 @@ export default function OverviewView() {
       <div className="flex flex-col gap-4">
         <QuoteLookup />
         <WatchlistCard />
-        <BreakingNewsFeed defaultCollapsed={false} className="flex-1" />
+        <BreakingNewsFeed defaultCollapsed={false} />
       </div>
     </div>
   );
