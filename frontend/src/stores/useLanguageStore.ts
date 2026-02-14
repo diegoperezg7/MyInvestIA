@@ -115,6 +115,12 @@ const translations: Translations = {
   "view.prediction.desc": { es: "Prediccion todo-en-uno sintetizando todas las fuentes de datos", en: "All-in-one prediction synthesizing every data source" },
   "view.recommendations.title": { es: "Recomendaciones IA", en: "AI Recommendations" },
   "view.recommendations.desc": { es: "Recomendaciones diarias basadas en tu portafolio", en: "Daily recommendations based on your portfolio" },
+  "view.heatmap.title": { es: "Mapa de Calor Sectorial", en: "Sector Heatmap" },
+  "view.heatmap.desc": { es: "Rendimiento por sector con mapa de calor interactivo", en: "Sector performance with interactive heatmap" },
+  "view.calendar.title": { es: "Calendario Economico", en: "Economic Calendar" },
+  "view.calendar.desc": { es: "Eventos economicos y reportes de ganancias", en: "Economic events and earnings reports" },
+  "view.settings.title": { es: "Ajustes", en: "Settings" },
+  "view.settings.desc": { es: "Configuracion de la aplicacion y preferencias", en: "Application settings and preferences" },
 
   // --- Prediction ---
   "prediction.enter_symbol": { es: "Ingresa un simbolo para generar prediccion", en: "Enter a symbol to generate prediction" },
