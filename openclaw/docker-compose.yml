@@ -1,4 +1,4 @@
-# OpenClaw + ORACLE Integration
+# OpenClaw + MyInvestIA Integration
 #
 # Usage:
 #   1. Copy this file to your OpenClaw directory (or run from here)
@@ -12,7 +12,7 @@
 # After starting:
 #   1. Send any message to your Telegram bot
 #   2. Approve pairing: docker compose run --rm openclaw-cli pairing approve telegram <CODE>
-#   3. Set in ORACLE backend .env:
+#   3. Set in MyInvestIA backend .env:
 #      OPENCLAW_ENABLED=true
 #      OPENCLAW_TOKEN=<your OPENCLAW_HOOKS_TOKEN>
 #      OPENCLAW_URL=http://localhost:18789
@@ -20,7 +20,7 @@
 services:
   openclaw-gateway:
     image: openclaw/openclaw:latest
-    container_name: openclaw-oracle
+    container_name: openclaw-myinvestia
     ports:
       - "18789:18789"
     volumes:

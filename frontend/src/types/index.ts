@@ -618,3 +618,159 @@ export interface SupportedProvider {
   fields_required: string[];
   logo_url: string | null;
 }
+
+// --- Fundamentals ---
+
+export interface CompanyInfo {
+  name: string;
+  sector: string;
+  industry: string;
+  market_cap: number;
+  employees: number | null;
+  description: string;
+  website: string;
+  country: string;
+}
+
+export interface FinancialRatios {
+  pe_trailing: number;
+  pe_forward: number;
+  price_to_book: number;
+  price_to_sales: number;
+  ev_to_ebitda: number;
+  roe: number;
+  debt_to_equity: number;
+  current_ratio: number;
+  profit_margins: number;
+  operating_margins: number;
+  gross_margins: number;
+  dividend_yield: number;
+  payout_ratio: number;
+  beta: number;
+}
+
+export interface GrowthMetrics {
+  revenue_growth: number;
+  earnings_growth: number;
+  revenue_history: { period: string; value: number }[];
+  earnings_history: { period: string; value: number }[];
+}
+
+export interface PeerComparison {
+  symbol: string;
+  name: string;
+  pe_trailing: number;
+  price_to_book: number;
+  roe: number;
+  profit_margins: number;
+  market_cap: number;
+}
+
+export interface FundamentalsResponse {
+  symbol: string;
+  company_info: CompanyInfo;
+  ratios: FinancialRatios;
+  growth: GrowthMetrics;
+  peers: PeerComparison[];
+}
+
+// --- Economic Calendar ---
+
+export interface EconomicEvent {
+  date: string;
+  time: string;
+  event: string;
+  country: string;
+  impact: "low" | "medium" | "high";
+  forecast: number | null;
+  previous: number | null;
+  actual: number | null;
+}
+
+export interface EarningsEvent {
+  symbol: string;
+  name: string;
+  date: string;
+  eps_estimate: number | null;
+  eps_actual: number | null;
+  revenue_estimate: number | null;
+  revenue_actual: number | null;
+}
+
+export interface EconomicCalendarResponse {
+  events: EconomicEvent[];
+  earnings: EarningsEvent[];
+  date_range: { start: string; end: string };
+}
+
+// --- Portfolio Risk Analytics ---
+
+export interface PortfolioRiskMetrics {
+  var_95: number;
+  var_99: number;
+  sharpe_ratio: number;
+  sortino_ratio: number;
+  beta: number;
+  max_drawdown: number;
+  annual_volatility: number;
+  daily_return_mean: number;
+}
+
+export interface ConcentrationRisk {
+  positions: { symbol: string; weight: number; value: number }[];
+  top3_concentration: number;
+  hhi_score: number;
+  diversification_score: number;
+  alerts: string[];
+}
+
+export interface CorrelationData {
+  symbols: string[];
+  matrix: number[][];
+  high_correlations: { pair: string; value: number }[];
+}
+
+export interface StressTestScenario {
+  name: string;
+  description: string;
+  market_drop: number;
+  estimated_portfolio_loss: number;
+  estimated_portfolio_loss_pct: number;
+}
+
+export interface PortfolioRiskResponse {
+  metrics: PortfolioRiskMetrics;
+  concentration: ConcentrationRisk;
+  correlation: CorrelationData;
+  stress_tests: StressTestScenario[];
+  portfolio_value: number;
+}
+
+// --- Sector Heatmap & Market Breadth ---
+
+export interface SectorPerformance {
+  symbol: string;
+  name: string;
+  performance_1d: number;
+  performance_1w: number;
+  performance_1m: number;
+  market_cap_weight: number;
+}
+
+export interface SectorHeatmapResponse {
+  sectors: SectorPerformance[];
+  last_updated: string;
+}
+
+export interface MarketBreadthIndicators {
+  advancing: number;
+  declining: number;
+  unchanged: number;
+  advance_decline_ratio: number;
+  new_highs: number;
+  new_lows: number;
+  pct_above_sma50: number;
+  pct_above_sma200: number;
+  sentiment: "bullish" | "neutral" | "bearish";
+  last_updated: string;
+}

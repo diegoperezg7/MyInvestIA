@@ -74,7 +74,7 @@ class OpenClawService:
     async def run_agent(
         self,
         message: str,
-        name: str = "ORACLE Alert",
+        name: str = "MyInvestIA Alert",
         session_key: str | None = None,
     ) -> dict | None:
         """Run an isolated agent task on OpenClaw.
@@ -120,7 +120,7 @@ class OpenClawService:
         reasoning = alert.get("reasoning", "")
 
         message = (
-            f"ORACLE Investment Alert — Severity: {severity}\n\n"
+            f"MyInvestIA Investment Alert — Severity: {severity}\n\n"
             f"**{title}**\n"
             f"Symbol: {symbol}\n"
             f"{description}\n\n"
@@ -200,11 +200,11 @@ class OpenClawService:
         """Let OpenClaw answer a question about the portfolio.
 
         This enables Telegram chat: user asks question in Telegram,
-        OpenClaw calls ORACLE API, reasons over data, and replies.
+        OpenClaw calls MyInvestIA API, reasons over data, and replies.
         """
         message = (
             f"The user is asking about their portfolio: \"{question}\"\n\n"
-            f"Use the ORACLE API at http://host.docker.internal:8000/api/v1 to look up:\n"
+            f"Use the MyInvestIA API at http://host.docker.internal:8000/api/v1 to look up:\n"
             f"- GET /portfolio/ for holdings and P&L\n"
             f"- GET /market/quote/{{symbol}} for current prices\n"
             f"- GET /market/analysis/{{symbol}} for technical analysis\n"

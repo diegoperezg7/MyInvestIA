@@ -16,6 +16,8 @@ import {
   Crosshair,
   ChevronsLeft,
   ChevronsRight,
+  CalendarDays,
+  LayoutGrid,
 } from "lucide-react";
 import { useView, type View } from "@/contexts/ViewContext";
 import useLanguageStore from "@/stores/useLanguageStore";
@@ -48,6 +50,7 @@ const NAV_GROUPS: NavGroup[] = [
       { key: "movers", labelKey: "nav.movers", icon: TrendingUp, shortcut: "4" },
       { key: "volatility", labelKey: "nav.volatility", icon: Activity, shortcut: "5" },
       { key: "commodities", labelKey: "nav.commodities", icon: Gem, shortcut: "6" },
+      { key: "heatmap", labelKey: "nav.heatmap", icon: LayoutGrid, shortcut: "" },
     ],
   },
   {
@@ -57,6 +60,7 @@ const NAV_GROUPS: NavGroup[] = [
       { key: "recommendations", labelKey: "nav.recommendations", icon: Lightbulb, shortcut: "8" },
       { key: "chat", labelKey: "nav.chat", icon: MessageSquare, shortcut: "9" },
       { key: "macro", labelKey: "nav.macro", icon: Globe, shortcut: "" },
+      { key: "calendar", labelKey: "nav.calendar", icon: CalendarDays, shortcut: "" },
     ],
   },
   {

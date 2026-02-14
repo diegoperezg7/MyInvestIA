@@ -1,5 +1,5 @@
 -- =============================================================================
--- InvestIA (ORACLE) - Initial Database Schema
+-- MyInvestIA - Initial Database Schema
 -- Run this in the Supabase SQL Editor
 -- =============================================================================
 

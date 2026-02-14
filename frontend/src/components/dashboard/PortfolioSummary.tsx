@@ -2,9 +2,10 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { fetchAPI } from "@/lib/api";
-import type { Portfolio, PortfolioHolding } from "@/types";
+import type { Portfolio, PortfolioHolding, PortfolioRiskResponse } from "@/types";
 import FlashCell from "@/components/ui/FlashCell";
 import Sparkline from "@/components/ui/Sparkline";
+import CorrelationHeatmap from "@/components/charts/CorrelationHeatmap";
 import useCurrencyStore from "@/stores/useCurrencyStore";
 import useSparklines from "@/hooks/useSparklines";
 import { AreaChart, Area, ResponsiveContainer } from "recharts";
@@ -182,10 +183,133 @@ function HoldingCard({ holding, sparkData, formatPrice, color }: {
   );
 }
 
+type PortfolioTab = "holdings" | "risk";
+
+function RiskMetricCard({ label, value, suffix = "" }: { label: string; value: number; suffix?: string }) {
+  return (
+    <div className="bg-oracle-bg rounded-lg p-2.5">
+      <p className="text-oracle-muted text-[10px] uppercase tracking-wide mb-0.5">{label}</p>
+      <p className="text-oracle-text text-sm font-mono font-medium">
+        {typeof value === "number" ? value.toFixed(value < 1 ? 3 : 2) : "N/A"}{suffix}
+      </p>
+    </div>
+  );
+}
+
+function RiskAnalyticsPanel({ formatPrice }: { formatPrice: (v: number, d?: number) => string }) {
+  const [riskData, setRiskData] = useState<PortfolioRiskResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchAPI<PortfolioRiskResponse>("/api/v1/portfolio/risk")
+      .then(setRiskData)
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="animate-pulse space-y-2 mt-3">
+        <div className="grid grid-cols-4 gap-2">
+          {[...Array(8)].map((_, i) => (
+            <div key={i} className="h-12 bg-oracle-bg rounded" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (!riskData || riskData.portfolio_value === 0) {
+    return (
+      <p className="text-oracle-muted text-sm mt-3">
+        Add holdings to see risk analytics.
+      </p>
+    );
+  }
+
+  const m = riskData.metrics;
+
+  return (
+    <div className="mt-3 space-y-4">
+      {/* Risk metrics grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        <RiskMetricCard label="VaR 95%" value={m.var_95} suffix={""} />
+        <RiskMetricCard label="VaR 99%" value={m.var_99} suffix={""} />
+        <RiskMetricCard label="Sharpe" value={m.sharpe_ratio} />
+        <RiskMetricCard label="Sortino" value={m.sortino_ratio} />
+        <RiskMetricCard label="Beta" value={m.beta} />
+        <RiskMetricCard label="Max DD" value={m.max_drawdown * 100} suffix="%" />
+        <RiskMetricCard label="Volatility" value={m.annual_volatility * 100} suffix="%" />
+        <div className="bg-oracle-bg rounded-lg p-2.5">
+          <p className="text-oracle-muted text-[10px] uppercase tracking-wide mb-0.5">Diversification</p>
+          <p className={`text-sm font-mono font-medium ${
+            riskData.concentration.diversification_score > 0.7 ? "text-oracle-green" :
+            riskData.concentration.diversification_score > 0.4 ? "text-oracle-text" : "text-oracle-red"
+          }`}>
+            {(riskData.concentration.diversification_score * 100).toFixed(0)}%
+          </p>
+        </div>
+      </div>
+
+      {/* Concentration alerts */}
+      {riskData.concentration.alerts.length > 0 && (
+        <div className="border border-amber-500/30 bg-amber-500/5 rounded-lg p-2.5">
+          <p className="text-amber-400 text-xs font-medium mb-1">Concentration Alerts</p>
+          {riskData.concentration.alerts.map((alert, i) => (
+            <p key={i} className="text-oracle-muted text-xs">{alert}</p>
+          ))}
+        </div>
+      )}
+
+      {/* Correlation heatmap */}
+      {riskData.correlation.symbols.length >= 2 && (
+        <div>
+          <h4 className="text-oracle-muted text-[10px] font-semibold uppercase tracking-widest mb-2">
+            Correlation Matrix
+          </h4>
+          <CorrelationHeatmap
+            symbols={riskData.correlation.symbols}
+            matrix={riskData.correlation.matrix}
+          />
+          {riskData.correlation.high_correlations.length > 0 && (
+            <div className="mt-2 text-xs text-oracle-muted">
+              <span className="font-medium">Highly correlated:</span>{" "}
+              {riskData.correlation.high_correlations.map((c) => `${c.pair} (${c.value.toFixed(2)})`).join(", ")}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Stress tests */}
+      {riskData.stress_tests.length > 0 && (
+        <div>
+          <h4 className="text-oracle-muted text-[10px] font-semibold uppercase tracking-widest mb-2">
+            Stress Tests
+          </h4>
+          <div className="space-y-1">
+            {riskData.stress_tests.map((test) => (
+              <div key={test.name} className="flex items-center justify-between text-xs bg-oracle-bg rounded px-2.5 py-1.5">
+                <div>
+                  <span className="text-oracle-text font-medium">{test.name}</span>
+                  <span className="text-oracle-muted ml-2">({(test.market_drop * 100).toFixed(0)}% mkt)</span>
+                </div>
+                <span className="text-oracle-red font-mono font-medium">
+                  -{formatPrice(test.estimated_portfolio_loss)} ({(test.estimated_portfolio_loss_pct * 100).toFixed(1)}%)
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function PortfolioSummary() {
   const [portfolio, setPortfolio] = useState<Portfolio | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<PortfolioTab>("holdings");
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const { formatPrice } = useCurrencyStore();
 
@@ -268,33 +392,50 @@ export default function PortfolioSummary() {
         </div>
       )}
 
-      {/* Allocation bar */}
+      {/* Tab bar */}
       {holdings.length > 0 && (
         <div className="mt-4 border-t border-oracle-border pt-3">
-          <h4 className="text-oracle-muted text-xs font-medium mb-2 uppercase tracking-wide">
-            Allocation
-          </h4>
-          <AllocationBar holdings={holdings} totalValue={totalValue} formatPrice={formatPrice} />
-        </div>
-      )}
-
-      {/* Holdings */}
-      {holdings.length > 0 && (
-        <div className="mt-4 border-t border-oracle-border pt-3">
-          <h4 className="text-oracle-muted text-xs font-medium mb-2 uppercase tracking-wide">
-            Holdings ({holdings.length})
-          </h4>
-          <div className="space-y-2 max-h-64 overflow-y-auto">
-            {holdings.map((h, i) => (
-              <HoldingCard
-                key={h.asset.symbol}
-                holding={h}
-                sparkData={sparklines[h.asset.symbol] ?? []}
-                formatPrice={formatPrice}
-                color={COLORS[i % COLORS.length]}
-              />
-            ))}
+          <div className="flex gap-1 mb-3">
+            <button
+              onClick={() => setActiveTab("holdings")}
+              className={`text-xs px-3 py-1 rounded transition-colors ${
+                activeTab === "holdings"
+                  ? "bg-oracle-accent text-white"
+                  : "bg-oracle-bg text-oracle-muted hover:text-oracle-text"
+              }`}
+            >
+              Holdings ({holdings.length})
+            </button>
+            <button
+              onClick={() => setActiveTab("risk")}
+              className={`text-xs px-3 py-1 rounded transition-colors ${
+                activeTab === "risk"
+                  ? "bg-oracle-accent text-white"
+                  : "bg-oracle-bg text-oracle-muted hover:text-oracle-text"
+              }`}
+            >
+              Risk Analytics
+            </button>
           </div>
+
+          {activeTab === "holdings" && (
+            <>
+              <AllocationBar holdings={holdings} totalValue={totalValue} formatPrice={formatPrice} />
+              <div className="space-y-2 mt-3 max-h-64 overflow-y-auto">
+                {holdings.map((h, i) => (
+                  <HoldingCard
+                    key={h.asset.symbol}
+                    holding={h}
+                    sparkData={sparklines[h.asset.symbol] ?? []}
+                    formatPrice={formatPrice}
+                    color={COLORS[i % COLORS.length]}
+                  />
+                ))}
+              </div>
+            </>
+          )}
+
+          {activeTab === "risk" && <RiskAnalyticsPanel formatPrice={formatPrice} />}
         </div>
       )}
 

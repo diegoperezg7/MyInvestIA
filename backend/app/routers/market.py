@@ -8,6 +8,8 @@ from app.schemas.asset import (
     AssetType,
     BollingerBandsIndicator,
     EMAIndicator,
+    EconomicCalendarResponse,
+    FundamentalsResponse,
     HistoricalData,
     HistoricalDataPoint,
     MACDIndicator,
@@ -15,9 +17,11 @@ from app.schemas.asset import (
     MacroIndicatorDetail,
     MacroIntelligenceResponse,
     MacroSummary,
+    MarketBreadthIndicators,
     MarketOverview,
     RSIIndicator,
     SMAIndicator,
+    SectorHeatmapResponse,
     SentimentAnalysisResponse,
     TechnicalAnalysis,
 )
@@ -750,3 +754,40 @@ async def convert_currency(
     if result is None:
         raise HTTPException(status_code=400, detail="Currency conversion failed")
     return result
+
+
+@router.get("/fundamentals/{symbol}", response_model=FundamentalsResponse)
+async def get_fundamentals(symbol: str):
+    """Get fundamental data (ratios, growth, peers) for a symbol."""
+    from app.services.fundamentals_service import get_fundamentals as fetch_fundamentals
+    result = await fetch_fundamentals(symbol)
+    if not result:
+        raise HTTPException(status_code=404, detail=f"No fundamentals for '{symbol.upper()}'")
+    return FundamentalsResponse(**result)
+
+
+@router.get("/calendar", response_model=EconomicCalendarResponse)
+async def get_economic_calendar(
+    start_date: str = Query(default="", description="Start date YYYY-MM-DD"),
+    end_date: str = Query(default="", description="End date YYYY-MM-DD"),
+):
+    """Get economic calendar events and upcoming earnings."""
+    from app.services.economic_calendar import fetch_economic_calendar
+    result = await fetch_economic_calendar(start_date, end_date)
+    return EconomicCalendarResponse(**result)
+
+
+@router.get("/sectors/heatmap", response_model=SectorHeatmapResponse)
+async def get_sector_heatmap():
+    """Get sector performance heatmap data."""
+    from app.services.sector_heatmap import get_sector_performance
+    result = await get_sector_performance()
+    return SectorHeatmapResponse(**result)
+
+
+@router.get("/breadth", response_model=MarketBreadthIndicators)
+async def get_market_breadth():
+    """Get market breadth indicators (advance/decline, % above SMA)."""
+    from app.services.sector_heatmap import get_market_breadth as fetch_breadth
+    result = await fetch_breadth()
+    return MarketBreadthIndicators(**result)

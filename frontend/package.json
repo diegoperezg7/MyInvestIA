@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@tailwindcss/typography": "^0.5.19",
+    "lightweight-charts": "^5.1.0",
     "lucide-react": "^0.564.0",
     "next": "15.1.0",
     "react": "^19.0.0",
