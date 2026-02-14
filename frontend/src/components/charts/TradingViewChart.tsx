@@ -167,9 +167,13 @@ export default function TradingViewChart({
       rightPriceScale: {
         borderColor: borderColor,
       },
+      handleScroll: { mouseWheel: true, pressedMouseMove: true },
+      handleScale: { axisPressedMouseMove: true, mouseWheel: true, pinch: true },
       timeScale: {
         borderColor: borderColor,
         timeVisible: false,
+        rightOffset: 5,
+        minBarSpacing: 3,
       },
     });
     chartRef.current = chart;

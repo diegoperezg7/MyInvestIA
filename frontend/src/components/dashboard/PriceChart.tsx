@@ -280,7 +280,7 @@ export default function PriceChart() {
           </div>
 
           {/* Chart */}
-          <div className={fullscreen ? "h-[calc(100vh-220px)]" : "h-64"}>
+          <div className={fullscreen ? "h-[calc(100vh-220px)]" : "h-80"}>
             <TradingViewChart
               data={chartData}
               chartType={chartType}
