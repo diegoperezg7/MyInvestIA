@@ -23,11 +23,19 @@ class InMemoryStore:
         self.holdings: dict[str, dict] = {}  # keyed by symbol
         self.watchlists: dict[str, dict] = {}  # keyed by watchlist id
         self._ai_memories: list[dict] = []
+        self._connections: dict[str, dict] = {}  # keyed by connection id
+        self._sync_history: list[dict] = []
+        self._synced_holdings: dict[str, dict] = {}  # keyed by "symbol:connection_id"
 
     # --- Portfolio ---
 
     def get_holdings(self) -> list[dict]:
-        return list(self.holdings.values())
+        manual = list(self.holdings.values())
+        for h in manual:
+            h.setdefault("source", "manual")
+            h.setdefault("connection_id", None)
+        synced = list(self._synced_holdings.values())
+        return manual + synced
 
     def get_holding(self, symbol: str) -> dict | None:
         return self.holdings.get(symbol.upper())
@@ -143,6 +151,79 @@ class InMemoryStore:
                 self._ai_memories.pop(i)
                 return True
         return False
+
+    # --- Synced Holdings ---
+
+    def upsert_synced_holding(
+        self, symbol: str, name: str, asset_type: str,
+        quantity: float, avg_buy_price: float, source: str, connection_id: str,
+    ) -> dict:
+        key = f"{symbol.upper()}:{connection_id}"
+        holding = {
+            "id": self._synced_holdings.get(key, {}).get("id", str(uuid.uuid4())),
+            "symbol": symbol.upper(),
+            "name": name,
+            "type": asset_type,
+            "quantity": quantity,
+            "avg_buy_price": avg_buy_price,
+            "source": source,
+            "connection_id": connection_id,
+        }
+        self._synced_holdings[key] = holding
+        return holding
+
+    def delete_synced_holding(self, symbol: str, connection_id: str) -> bool:
+        key = f"{symbol.upper()}:{connection_id}"
+        return self._synced_holdings.pop(key, None) is not None
+
+    def delete_holdings_by_connection(self, connection_id: str) -> int:
+        keys_to_delete = [k for k, v in self._synced_holdings.items() if v.get("connection_id") == connection_id]
+        for k in keys_to_delete:
+            del self._synced_holdings[k]
+        return len(keys_to_delete)
+
+    def get_holdings_by_connection(self, connection_id: str) -> list[dict]:
+        return [v for v in self._synced_holdings.values() if v.get("connection_id") == connection_id]
+
+    # --- Connections ---
+
+    def get_connections(self) -> list[dict]:
+        return list(self._connections.values())
+
+    def get_connection(self, connection_id: str) -> dict | None:
+        return self._connections.get(connection_id)
+
+    def create_connection(self, data: dict) -> dict:
+        self._connections[data["id"]] = data
+        return data
+
+    def update_connection(self, connection_id: str, data: dict) -> dict | None:
+        conn = self._connections.get(connection_id)
+        if not conn:
+            return None
+        conn.update(data)
+        return conn
+
+    def delete_connection(self, connection_id: str) -> bool:
+        return self._connections.pop(connection_id, None) is not None
+
+    # --- Sync History ---
+
+    def add_sync_history(self, data: dict) -> dict:
+        self._sync_history.insert(0, data)
+        return data
+
+    def update_sync_history(self, sync_id: str, data: dict) -> dict | None:
+        for i, entry in enumerate(self._sync_history):
+            if entry.get("id") == sync_id:
+                self._sync_history[i].update(data)
+                return self._sync_history[i]
+        return None
+
+    def get_sync_history(self, connection_id: str, limit: int = 20) -> list[dict]:
+        return [
+            s for s in self._sync_history if s.get("connection_id") == connection_id
+        ][:limit]
 
 
 def _create_store() -> InMemoryStore:

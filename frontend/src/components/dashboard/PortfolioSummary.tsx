@@ -112,6 +112,23 @@ function PortfolioChart({ sparklines, holdings }: {
   );
 }
 
+const SOURCE_BADGE_STYLES: Record<string, string> = {
+  exchange: "bg-blue-500/15 text-blue-400",
+  wallet: "bg-purple-500/15 text-purple-400",
+  broker: "bg-green-500/15 text-green-400",
+  prediction: "bg-yellow-500/15 text-yellow-400",
+};
+
+function SourceBadge({ source }: { source: string }) {
+  const style = SOURCE_BADGE_STYLES[source] || "bg-oracle-muted/15 text-oracle-muted";
+  const label = source.charAt(0).toUpperCase() + source.slice(1);
+  return (
+    <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${style}`}>
+      {label}
+    </span>
+  );
+}
+
 /** Holding card with details */
 function HoldingCard({ holding, sparkData, formatPrice, color }: {
   holding: PortfolioHolding;
@@ -130,6 +147,9 @@ function HoldingCard({ holding, sparkData, formatPrice, color }: {
           <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: color }} />
           <span className="font-semibold text-oracle-text text-sm">{holding.asset.symbol}</span>
           <span className="text-oracle-muted text-xs">{holding.quantity} shares</span>
+          {holding.source && holding.source !== "manual" && (
+            <SourceBadge source={holding.source} />
+          )}
         </div>
         <Sparkline data={sparkData} width={64} height={22} />
       </div>

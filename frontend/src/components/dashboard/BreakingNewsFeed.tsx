@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useNewsFeed } from "@/hooks/useNewsFeed";
+import { useNewsFeed, type NewsTab } from "@/hooks/useNewsFeed";
 import useLanguageStore from "@/stores/useLanguageStore";
 import type { AnalyzedArticle } from "@/types";
 import {
@@ -12,12 +12,17 @@ import {
   Minus,
   ChevronDown,
   ChevronUp,
+  ArrowUp,
+  MessageCircle,
 } from "lucide-react";
 
 const SOURCE_COLORS: Record<string, string> = {
   finnhub: "bg-blue-500/20 text-blue-400 border-blue-500/30",
   newsapi: "bg-purple-500/20 text-purple-400 border-purple-500/30",
   rss: "bg-orange-500/20 text-orange-400 border-orange-500/30",
+  reddit: "bg-red-500/20 text-red-400 border-red-500/30",
+  stocktwits: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
+  twitter: "bg-sky-500/20 text-sky-400 border-sky-500/30",
 };
 
 const SENTIMENT_ICON: Record<string, React.ElementType> = {
@@ -63,6 +68,43 @@ function ImpactMeter({ score, label }: { score: number; label: string }) {
   );
 }
 
+function SocialMetrics({ article, t }: { article: AnalyzedArticle; t: (key: string) => string }) {
+  const hasRedditMetrics = article.source_provider === "reddit" && (article.score || article.num_comments);
+  const hasStockTwitsSentiment = article.source_provider === "stocktwits" && article.sentiment_label;
+
+  if (!hasRedditMetrics && !hasStockTwitsSentiment) return null;
+
+  return (
+    <div className="flex items-center gap-3 mt-1">
+      {hasRedditMetrics && (
+        <>
+          <span className="flex items-center gap-1 text-xs text-oracle-muted">
+            <ArrowUp className="w-3 h-3" />
+            {article.score?.toLocaleString()} {t("news.upvotes")}
+          </span>
+          <span className="flex items-center gap-1 text-xs text-oracle-muted">
+            <MessageCircle className="w-3 h-3" />
+            {article.num_comments?.toLocaleString()} {t("news.comments")}
+          </span>
+        </>
+      )}
+      {hasStockTwitsSentiment && (
+        <span
+          className={`text-xs px-1.5 py-0.5 rounded ${
+            article.sentiment_label === "Bullish"
+              ? "bg-oracle-green/20 text-oracle-green"
+              : article.sentiment_label === "Bearish"
+                ? "bg-oracle-red/20 text-oracle-red"
+                : "bg-oracle-bg text-oracle-muted"
+          }`}
+        >
+          {article.sentiment_label}
+        </span>
+      )}
+    </div>
+  );
+}
+
 function ArticleItem({ article, t }: { article: AnalyzedArticle; t: (key: string, params?: Record<string, string>) => string }) {
   const [expanded, setExpanded] = useState(false);
   const analysis = article.ai_analysis;
@@ -96,7 +138,7 @@ function ArticleItem({ article, t }: { article: AnalyzedArticle; t: (key: string
         {/* Content */}
         <div className="flex-1 min-w-0">
           <p className={`text-sm text-oracle-text ${expanded ? "" : "truncate"}`}>{article.headline}</p>
-          <div className="flex items-center gap-2 mt-1">
+          <div className="flex items-center gap-2 mt-1 flex-wrap">
             {/* Source badge */}
             <span
               className={`text-xs px-1.5 py-0.5 rounded border ${
@@ -106,6 +148,12 @@ function ArticleItem({ article, t }: { article: AnalyzedArticle; t: (key: string
             >
               {article.source}
             </span>
+            {/* Author for social */}
+            {article.author && (article.source_provider === "reddit" || article.source_provider === "twitter") && (
+              <span className="text-xs text-oracle-muted">
+                {article.source_provider === "reddit" ? `u/${article.author}` : `@${article.author}`}
+              </span>
+            )}
             {/* Tickers */}
             {analysis?.affected_tickers?.slice(0, 3).map((tk) => (
               <span
@@ -120,6 +168,8 @@ function ArticleItem({ article, t }: { article: AnalyzedArticle; t: (key: string
               {timeAgo(article.datetime, t("news.now"))}
             </span>
           </div>
+          {/* Social metrics inline */}
+          <SocialMetrics article={article} t={t} />
         </div>
 
         {/* Sentiment indicator */}
@@ -176,14 +226,35 @@ function ArticleItem({ article, t }: { article: AnalyzedArticle; t: (key: string
   );
 }
 
+const TAB_KEYS: { tab: NewsTab; labelKey: string }[] = [
+  { tab: "all", labelKey: "news.tab_all" },
+  { tab: "news", labelKey: "news.tab_news" },
+  { tab: "social", labelKey: "news.tab_social" },
+  { tab: "blog", labelKey: "news.tab_blogs" },
+];
+
 export default function BreakingNewsFeed({ defaultCollapsed = true, className = "" }: { defaultCollapsed?: boolean; className?: string }) {
-  const { articles, loading, error, refresh } = useNewsFeed();
+  const {
+    articles,
+    allArticles,
+    loading,
+    error,
+    refresh,
+    activeTab,
+    setActiveTab,
+    categoryCounts,
+  } = useNewsFeed();
   const [collapsed, setCollapsed] = useState(defaultCollapsed);
   const [showAll, setShowAll] = useState(false);
   const t = useLanguageStore((s) => s.t);
 
   const VISIBLE_COUNT = 4;
   const displayed = showAll ? articles : articles.slice(0, VISIBLE_COUNT);
+
+  const getTabCount = (tab: NewsTab): number => {
+    if (tab === "all") return allArticles.length;
+    return categoryCounts[tab] || 0;
+  };
 
   return (
     <div className={`bg-oracle-panel border border-oracle-border rounded-lg p-4 flex flex-col ${className}`}>
@@ -200,9 +271,9 @@ export default function BreakingNewsFeed({ defaultCollapsed = true, className = 
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-oracle-green opacity-50" />
             <span className="relative inline-flex rounded-full h-2 w-2 bg-oracle-green" />
           </span>
-          {articles.length > 0 && (
+          {allArticles.length > 0 && (
             <span className="text-oracle-muted text-xs">
-              {t("news.articles_count", { count: String(articles.length) })}
+              {t("news.articles_count", { count: String(allArticles.length) })}
             </span>
           )}
           {collapsed
@@ -212,7 +283,7 @@ export default function BreakingNewsFeed({ defaultCollapsed = true, className = 
         </button>
         <button
           onClick={(e) => { e.stopPropagation(); refresh(); }}
-          disabled={loading && articles.length === 0}
+          disabled={loading && allArticles.length === 0}
           className="p-1 rounded text-oracle-muted hover:text-oracle-accent hover:bg-oracle-bg transition-colors disabled:opacity-50"
           title={t("news.refresh")}
         >
@@ -225,8 +296,38 @@ export default function BreakingNewsFeed({ defaultCollapsed = true, className = 
       {/* Collapsible content */}
       {!collapsed && (
         <div className="mt-3">
+          {/* Tab bar */}
+          <div className="flex gap-1 mb-3 overflow-x-auto scrollbar-none">
+            {TAB_KEYS.map(({ tab, labelKey }) => {
+              const count = getTabCount(tab);
+              const isActive = activeTab === tab;
+              return (
+                <button
+                  key={tab}
+                  onClick={() => { setActiveTab(tab); setShowAll(false); }}
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs whitespace-nowrap transition-colors ${
+                    isActive
+                      ? "bg-oracle-accent/20 text-oracle-accent border border-oracle-accent/30"
+                      : "text-oracle-muted hover:text-oracle-text hover:bg-oracle-bg border border-transparent"
+                  }`}
+                >
+                  {t(labelKey)}
+                  {count > 0 && (
+                    <span
+                      className={`text-[10px] px-1 py-0.5 rounded-full min-w-[18px] text-center ${
+                        isActive ? "bg-oracle-accent/30" : "bg-oracle-bg"
+                      }`}
+                    >
+                      {count}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
           {/* Loading */}
-          {loading && articles.length === 0 && (
+          {loading && allArticles.length === 0 && (
             <div className="space-y-3">
               {Array.from({ length: 3 }).map((_, i) => (
                 <div key={i} className="animate-pulse">

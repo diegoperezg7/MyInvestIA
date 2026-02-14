@@ -8,6 +8,7 @@ class AssetType(str, Enum):
     ETF = "etf"
     CRYPTO = "crypto"
     COMMODITY = "commodity"
+    PREDICTION = "prediction"
 
 
 class Asset(BaseModel):
@@ -42,6 +43,8 @@ class PortfolioHolding(BaseModel):
     current_value: float = 0.0
     unrealized_pnl: float = 0.0
     unrealized_pnl_percent: float = 0.0
+    source: str = "manual"
+    connection_id: str | None = None
 
 
 class Portfolio(BaseModel):

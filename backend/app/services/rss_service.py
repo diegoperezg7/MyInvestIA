@@ -1,7 +1,9 @@
 """RSS feed aggregator for financial news.
 
-Fetches from free RSS feeds: Reuters Business, CNBC, MarketWatch, Investing.com.
+Fetches from free RSS feeds: Reuters, CNBC, MarketWatch, Investing.com,
+Yahoo Finance, Seeking Alpha, Motley Fool.
 Uses stdlib xml.etree.ElementTree for parsing.
+Each feed carries a `category` ("news" or "blog") propagated to articles.
 """
 
 import hashlib
@@ -22,26 +24,48 @@ RSS_FEEDS = [
         "name": "Reuters Business",
         "url": "https://feeds.reuters.com/reuters/businessNews",
         "source": "Reuters",
+        "category": "news",
     },
     {
         "name": "CNBC Top News",
         "url": "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=100003114",
         "source": "CNBC",
+        "category": "news",
     },
     {
         "name": "MarketWatch",
         "url": "https://feeds.marketwatch.com/marketwatch/topstories/",
         "source": "MarketWatch",
+        "category": "news",
     },
     {
         "name": "Investing.com",
         "url": "https://www.investing.com/rss/news.rss",
         "source": "Investing.com",
+        "category": "news",
+    },
+    {
+        "name": "Yahoo Finance",
+        "url": "https://finance.yahoo.com/news/rssindex",
+        "source": "Yahoo Finance",
+        "category": "news",
+    },
+    {
+        "name": "Seeking Alpha",
+        "url": "https://seekingalpha.com/market_currents.xml",
+        "source": "Seeking Alpha",
+        "category": "blog",
+    },
+    {
+        "name": "Motley Fool",
+        "url": "https://www.fool.com/feeds/index.aspx?id=foolwatch",
+        "source": "Motley Fool",
+        "category": "blog",
     },
 ]
 
 
-def _parse_rss(xml_text: str, source: str) -> list[dict]:
+def _parse_rss(xml_text: str, source: str, category: str = "news") -> list[dict]:
     """Parse RSS XML into article dicts."""
     articles = []
     try:
@@ -80,6 +104,7 @@ def _parse_rss(xml_text: str, source: str) -> list[dict]:
                 "source": source,
                 "url": url,
                 "datetime": dt,
+                "source_category": category,
             })
     except ET.ParseError as e:
         logger.warning("RSS parse error for %s: %s", source, e)
@@ -96,7 +121,7 @@ async def _fetch_single_feed(feed: dict) -> list[dict]:
                 follow_redirects=True,
             )
             resp.raise_for_status()
-            return _parse_rss(resp.text, feed["source"])
+            return _parse_rss(resp.text, feed["source"], feed.get("category", "news"))
     except Exception as e:
         logger.debug("RSS feed %s unavailable: %s", feed["name"], e)
         return []

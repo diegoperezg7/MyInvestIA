@@ -17,6 +17,12 @@ class NewsSentiment(str, Enum):
     neutral = "neutral"
 
 
+class SourceCategory(str, Enum):
+    news = "news"
+    social = "social"
+    blog = "blog"
+
+
 class ArticleAIAnalysis(BaseModel):
     impact_score: int  # 1-10
     affected_tickers: list[str]
@@ -30,16 +36,23 @@ class AnalyzedArticle(BaseModel):
     headline: str
     summary: str
     source: str
-    source_provider: str  # "finnhub" | "newsapi" | "rss"
+    source_provider: str  # "finnhub" | "newsapi" | "rss" | "reddit" | "stocktwits" | "twitter"
+    source_category: SourceCategory = SourceCategory.news
     url: str
     datetime: int
     ai_analysis: ArticleAIAnalysis | None = None
+    # Social-specific fields
+    author: str | None = None
+    score: int | None = None
+    num_comments: int | None = None
+    sentiment_label: str | None = None  # StockTwits: "Bullish" | "Bearish"
 
 
 class NewsFeedResponse(BaseModel):
     articles: list[AnalyzedArticle]
     total: int
     sources_active: dict[str, bool]
+    category_counts: dict[str, int]
     generated_at: str
 
 
