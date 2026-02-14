@@ -15,31 +15,43 @@ VALID_PERIODS = {"1d", "5d", "1mo", "3mo", "6mo", "1y", "2y", "5y", "ytd", "max"
 VALID_INTERVALS = {"1m", "5m", "15m", "30m", "1h", "1d", "1wk", "1mo"}
 
 
-def _sync_get_quote(symbol: str) -> dict | None:
-    """Synchronous yfinance quote fetch (runs in thread)."""
-    ticker = yf.Ticker(symbol)
-    info = ticker.fast_info
-    price = info.get("lastPrice", 0.0) or info.get("regularMarketPrice", 0.0)
-    prev_close = info.get("previousClose", 0.0) or info.get("regularMarketPreviousClose", 0.0)
-    volume = info.get("lastVolume", 0) or info.get("regularMarketVolume", 0)
-    market_cap = info.get("marketCap", 0) or 0
-    currency = info.get("currency", "USD")
+def _sync_get_quote(symbol: str, attempt: int = 0) -> dict | None:
+    """Synchronous yfinance quote fetch (runs in thread) with retry on rate limit."""
+    try:
+        ticker = yf.Ticker(symbol)
+        info = ticker.fast_info
+        price = info.get("lastPrice", 0.0) or info.get("regularMarketPrice", 0.0)
+        prev_close = info.get("previousClose", 0.0) or info.get("regularMarketPreviousClose", 0.0)
+        volume = info.get("lastVolume", 0) or info.get("regularMarketVolume", 0)
+        market_cap = info.get("marketCap", 0) or 0
+        currency = info.get("currency", "USD")
 
-    if not price:
-        return None
+        if not price:
+            if attempt < _MAX_RETRIES:
+                logger.info("No price for %s, retrying in %.1fs (attempt %d)", symbol, _RETRY_DELAY * (attempt + 1), attempt + 1)
+                time.sleep(_RETRY_DELAY * (attempt + 1))
+                return _sync_get_quote(symbol, attempt + 1)
+            return None
 
-    change_pct = ((price - prev_close) / prev_close * 100) if prev_close else 0.0
+        change_pct = ((price - prev_close) / prev_close * 100) if prev_close else 0.0
 
-    return {
-        "symbol": symbol,
-        "name": symbol,
-        "price": round(price, 4),
-        "change_percent": round(change_pct, 2),
-        "volume": volume or 0,
-        "previous_close": round(prev_close, 4),
-        "market_cap": market_cap,
-        "currency": currency,
-    }
+        return {
+            "symbol": symbol,
+            "name": symbol,
+            "price": round(price, 4),
+            "change_percent": round(change_pct, 2),
+            "volume": volume or 0,
+            "previous_close": round(prev_close, 4),
+            "market_cap": market_cap,
+            "currency": currency,
+        }
+    except Exception as e:
+        if attempt < _MAX_RETRIES:
+            delay = _RETRY_DELAY * (attempt + 1)
+            logger.warning("Quote fetch for %s failed (%s), retrying in %.1fs", symbol, e, delay)
+            time.sleep(delay)
+            return _sync_get_quote(symbol, attempt + 1)
+        raise
 
 
 _BATCH_CHUNK_SIZE = 50  # keep chunks small to avoid yfinance rate limits
