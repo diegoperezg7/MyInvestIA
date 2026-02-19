@@ -1,0 +1,51 @@
+services:
+  backend:
+    build: ./backend
+    env_file: ./backend/.env
+    ports:
+      - "127.0.0.1:8089:8000"
+    depends_on:
+      - redis
+    networks:
+      - default
+      - supabase_default
+    restart: unless-stopped
+    volumes:
+      - rl-agent-data:/data/rl_agent
+
+  frontend:
+    build: ./frontend
+    environment:
+      - NEXT_PUBLIC_API_URL=
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - "127.0.0.1:80:80"
+      - "127.0.0.1:443:443"
+      - "127.0.0.1:8080:80"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - backend
+      - frontend
+    restart: unless-stopped
+
+networks:
+  supabase_default:
+    external: true
+
+volumes:
+  redis-data:
+  caddy-data:
+  caddy-config:
+  rl-agent-data:
