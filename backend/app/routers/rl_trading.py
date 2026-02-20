@@ -205,7 +205,30 @@ async def get_signal(
 
         signal = await rl_trading_service.get_signal(user.id, df)
         print(f"Signal generated: {signal.get('action')} - {signal.get('reason')}")
-        return {"signal": signal, "current_price": current_price}
+
+        # Prepare chart data for frontend - use last 100 candles
+        chart_data = []
+        if df is not None and len(df) > 0:
+            df_tail = df.tail(100)
+            for i, (idx, row) in enumerate(df_tail.iterrows()):
+                chart_data.append(
+                    {
+                        "date": str(idx)[:10]
+                        if hasattr(idx, "year")
+                        else f"2025-{(i + 1):02d}-15",
+                        "open": float(row["Open"]),
+                        "high": float(row["High"]),
+                        "low": float(row["Low"]),
+                        "close": float(row["Close"]),
+                        "volume": float(row["Volume"]) if "Volume" in row else 0,
+                    }
+                )
+
+        return {
+            "signal": signal,
+            "current_price": current_price,
+            "chart_data": chart_data[-100:] if chart_data else [],  # Last 100 candles
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
