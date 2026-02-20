@@ -174,7 +174,7 @@ export default function RLTradingView() {
       
       if (result.executed) {
         const action = signal?.action === 'buy' ? 'COMPRADO' : 'VENDIDO';
-        setTradeMessage({ type: 'success', text: `✅ ${action} a $${price.toLocaleString()}` });
+        setTradeMessage({ type: 'success', text: `[EJECUTADO] ${action} a $${price.toLocaleString()}` });
         await fetchStatus();
         await fetchPerformance();
         await fetchTrades();
@@ -299,7 +299,7 @@ export default function RLTradingView() {
             status?.mode === 'paper' ? 'bg-oracle-green' :
             status?.mode === 'shadow' ? 'bg-yellow-500' : 'bg-oracle-red'
           }`}>
-            {status?.mode === 'paper' ? '📄 PAPEL' : status?.mode === 'shadow' ? '👁️ SOMBRA' : '💰 REAL'}
+            {status?.mode === 'paper' ? 'PAPEL' : status?.mode === 'shadow' ? 'SOMBRA' : 'REAL'}
           </div>
           <div>
             <h2 className="text-oracle-text text-xl font-bold">BTC/USD</h2>
@@ -325,7 +325,7 @@ export default function RLTradingView() {
             </div>
           </div>
           <span className="text-oracle-text font-medium">
-            🤖 Auto-Trade {autoTrade && 'ON'}
+            Auto-Trade {autoTrade && 'ON'}
           </span>
         </label>
       </div>
@@ -450,7 +450,7 @@ export default function RLTradingView() {
                   : 'bg-oracle-red hover:bg-oracle-red/80 text-white'
               }`}
             >
-              {signal.action === 'buy' ? '✅ COMPRAR' : '✅ VENDER'}
+                {signal.action === 'buy' ? 'COMPRAR' : 'VENDER'}
             </button>
           )}
         </div>
@@ -487,7 +487,7 @@ export default function RLTradingView() {
               <div key={i} className="flex items-center justify-between bg-oracle-bg rounded-lg px-3 py-2">
                 <div className="flex items-center gap-3">
                   <span className={`font-bold ${trade.action === 'buy' ? 'text-oracle-green' : 'text-oracle-red'}`}>
-                    {trade.action === 'buy' ? '🟢 COMPRA' : '🔴 VENTA'}
+                    {trade.action === 'buy' ? 'COMPRA' : 'VENTA'}
                   </span>
                   <span className="text-oracle-muted text-sm">
                     {trade.timestamp ? new Date(trade.timestamp).toLocaleDateString() : ""}
