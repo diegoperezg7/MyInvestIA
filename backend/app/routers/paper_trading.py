@@ -1,6 +1,8 @@
 """Paper trading router."""
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
+
+from app.dependencies import get_current_user
 
 from app.schemas.paper_trading import CreateAccountRequest, TradeRequest
 from app.services.paper_trading_service import (
@@ -10,7 +12,7 @@ from app.services.paper_trading_service import (
     get_trades,
 )
 
-router = APIRouter(prefix="/paper", tags=["paper-trading"])
+router = APIRouter(prefix="/paper", tags=["paper-trading"], dependencies=[Depends(get_current_user)])
 
 
 @router.post("/accounts")

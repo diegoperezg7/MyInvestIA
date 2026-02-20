@@ -165,20 +165,26 @@ export default function RLTradingView() {
       console.log("Signal set:", signalData);
       
       // Auto-trade: ejecutar automáticamente si hay señal clara
-      if (autoTrade && signalData.action !== "hold" && signalData.confidence > 0.5) {
-        console.log("Auto-trade enabled, executing trade...");
-        const result: SignalResponse = await api("/rl-agent/trade", {
-          method: "POST",
-          body: JSON.stringify({
-            data: [],
-            current_price: data.current_price || 45000,
-          }),
-        });
-        
-        if (result.executed) {
-          await fetchStatus();
-          await fetchPerformance();
-          await fetchTrades();
+      if (autoTrade && signalData.action !== "hold" && signalData.confidence >= 0.4) {
+        console.log("Auto-trade enabled, executing trade for:", signalData.action);
+        try {
+          const result: SignalResponse = await api("/rl-agent/trade", {
+            method: "POST",
+            body: JSON.stringify({
+              data: [],
+              current_price: data.current_price || 45000,
+            }),
+          });
+          console.log("Auto-trade result:", result);
+          
+          if (result.executed) {
+            setError(null);
+            await fetchStatus();
+            await fetchPerformance();
+            await fetchTrades();
+          }
+        } catch (tradeError: any) {
+          console.error("Auto-trade error:", tradeError);
         }
       }
     } catch (e: any) {
@@ -249,21 +255,29 @@ export default function RLTradingView() {
 
   const executeTrade = async () => {
     setLoading(true);
+    setError(null);
     try {
+      const price = currentPrice || signal?.current_price || 45000;
+      console.log("Executing trade with price:", price);
       const result: SignalResponse = await api("/rl-agent/trade", {
         method: "POST",
         body: JSON.stringify({
           data: [],
-          current_price: 45000,
+          current_price: price,
         }),
       });
+      console.log("Trade result:", result);
       
       if (result.executed) {
+        setError(null);
         await fetchStatus();
         await fetchPerformance();
         await fetchTrades();
+      } else if (result.signal?.reason) {
+        setError(result.signal.reason);
       }
     } catch (e: any) {
+      console.error("Trade error:", e);
       setError(e.message);
     } finally {
       setLoading(false);

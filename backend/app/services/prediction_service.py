@@ -71,7 +71,7 @@ CRITICAL RULES:
 - Never promise future returns — provide analysis and scenarios"""
 
 
-async def generate_prediction(symbol: str) -> dict:
+async def generate_prediction(user_id: str, symbol: str) -> dict:
     """Generate an all-in-one prediction for a symbol."""
     symbol = symbol.upper()
 
@@ -145,7 +145,7 @@ async def generate_prediction(symbol: str) -> dict:
                 headlines.append(h.strip())
 
         # Portfolio context
-        holdings = store.get_holdings()
+        holdings = store.get_holdings(user_id)
         portfolio_context = ""
         for h in holdings:
             if h["symbol"] == symbol:

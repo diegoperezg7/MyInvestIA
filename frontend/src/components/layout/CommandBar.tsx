@@ -23,6 +23,7 @@ export default function CommandBar() {
     { id: "v-movers", label: "Go to Movers", category: "Views", action: () => setActiveView("movers") },
     { id: "v-volatility", label: "Go to Volatility", category: "Views", action: () => setActiveView("volatility") },
     { id: "v-paper", label: "Go to Paper Trade", category: "Views", action: () => setActiveView("paper-trade") },
+    { id: "v-rl", label: "Go to AI Trading", category: "Views", action: () => setActiveView("rl-trading") },
     { id: "v-alerts", label: "Go to Alerts", category: "Views", action: () => setActiveView("alerts") },
     { id: "v-chat", label: "Go to Chat", category: "Views", action: () => setActiveView("chat") },
     { id: "v-commodities", label: "Go to Commodities", category: "Views", action: () => setActiveView("commodities") },

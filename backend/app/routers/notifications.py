@@ -3,14 +3,15 @@
 Routes through OpenClaw when enabled, falls back to direct Telegram.
 """
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from app.config import settings
+from app.dependencies import get_current_user
 from app.services.openclaw_service import openclaw_service
 from app.services.telegram_service import telegram_service
 
-router = APIRouter(prefix="/notifications", tags=["notifications"])
+router = APIRouter(prefix="/notifications", tags=["notifications"], dependencies=[Depends(get_current_user)])
 
 
 class SendMessageRequest(BaseModel):

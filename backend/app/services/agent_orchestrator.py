@@ -252,7 +252,8 @@ class PortfolioAgent(BaseAgent):
         from app.services.store import store
 
         alerts: list[Alert] = []
-        holdings = store.get_holdings()
+        user_id = context.get("user_id", "")
+        holdings = store.get_holdings(user_id) if user_id else []
         if not holdings:
             return alerts
 
@@ -349,17 +350,17 @@ class AgentOrchestrator:
         self._last_run: str | None = None
         self._last_alerts: list[Alert] = []
 
-    def _gather_symbols(self) -> list[dict]:
+    def _gather_symbols(self, user_id: str) -> list[dict]:
         from app.services.store import store
 
         symbols: list[dict] = []
         seen: set[str] = set()
-        for h in store.get_holdings():
+        for h in store.get_holdings(user_id):
             sym = h["symbol"]
             if sym not in seen:
                 symbols.append({"symbol": sym, "type": h.get("type", "stock")})
                 seen.add(sym)
-        for wl in store.get_watchlists():
+        for wl in store.get_watchlists(user_id):
             for a in wl.get("assets", []):
                 sym = a["symbol"]
                 if sym not in seen:
@@ -367,14 +368,18 @@ class AgentOrchestrator:
                     seen.add(sym)
         return symbols
 
-    async def run_all(self) -> list[Alert]:
+    async def run_all(self, user_id: str = "") -> list[Alert]:
         """Run all agents once and return combined alerts."""
-        symbols = self._gather_symbols()
+        if not user_id:
+            logger.info("No user_id provided — skipping agent run")
+            return []
+
+        symbols = self._gather_symbols(user_id)
         if not symbols:
             logger.info("No symbols to scan — skipping agent run")
             return []
 
-        context = {"symbols": symbols}
+        context = {"symbols": symbols, "user_id": user_id}
         all_alerts: list[Alert] = []
 
         # Run agents in parallel
@@ -402,7 +407,7 @@ class AgentOrchestrator:
         unique.extend(synth_alerts)
 
         # Persist alerts
-        self._persist_alerts(unique)
+        self._persist_alerts(user_id, unique)
 
         self._last_run = _now_iso()
         self._last_alerts = unique
@@ -413,11 +418,12 @@ class AgentOrchestrator:
         logger.info("Agent orchestrator: %d total alerts from %d agents", len(unique), len(self.agents))
         return unique
 
-    def _persist_alerts(self, alerts: list[Alert]):
+    def _persist_alerts(self, user_id: str, alerts: list[Alert]):
         """Store alerts in memory/store for history."""
         from app.services.store import store
         for alert in alerts:
             store.save_memory(
+                user_id=user_id,
                 category="alert_history",
                 content=alert.title,
                 metadata={

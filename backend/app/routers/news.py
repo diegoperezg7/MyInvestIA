@@ -3,13 +3,14 @@
 import logging
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
+from app.dependencies import get_current_user
 from app.services.news_aggregator import get_ai_analyzed_feed, get_article_analysis
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/news", tags=["news"])
+router = APIRouter(prefix="/news", tags=["news"], dependencies=[Depends(get_current_user)])
 
 
 @router.get("/feed")

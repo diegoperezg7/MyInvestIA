@@ -204,6 +204,7 @@ async def get_signal(
             print(f"Using sample data")
 
         signal = await rl_trading_service.get_signal(user.id, df)
+        print(f"Signal generated: {signal.get('action')} - {signal.get('reason')}")
         return {"signal": signal, "current_price": current_price}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

@@ -8,9 +8,27 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.config import settings
-from app.routers import health, portfolio, watchlist, market, alerts, chat, ws, notifications, memory
-from app.routers import screener, transactions, paper_trading, openclaw, news, connections
-from app.routers import agents, user_profile
+from app.routers import (
+    health,
+    portfolio,
+    watchlist,
+    market,
+    alerts,
+    chat,
+    ws,
+    notifications,
+    memory,
+)
+from app.routers import (
+    screener,
+    transactions,
+    paper_trading,
+    openclaw,
+    news,
+    connections,
+)
+from app.routers import agents, user_profile, auth
+from app.routers import rl_trading
 
 logging.basicConfig(level=logging.DEBUG if settings.debug else logging.INFO)
 logger = logging.getLogger(__name__)
@@ -20,6 +38,7 @@ async def _warmup_movers_cache():
     """Pre-warm the movers cache for US region in background on startup."""
     try:
         from app.routers.market import get_movers
+
         await get_movers(region="us", threshold=1.0)
         logger.info("Movers cache warmed up (US)")
     except Exception as e:
@@ -33,6 +52,7 @@ async def lifespan(app: FastAPI):
 
     # Start agent scheduler (runs every 30 min)
     from app.services.agent_orchestrator import orchestrator
+
     orchestrator.start_scheduler(interval_minutes=30)
 
     yield
@@ -52,8 +72,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 
 
@@ -67,6 +87,7 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 
 app.include_router(health.router)
+app.include_router(auth.router, prefix="/api/v1")
 app.include_router(portfolio.router, prefix="/api/v1")
 app.include_router(watchlist.router, prefix="/api/v1")
 app.include_router(market.router, prefix="/api/v1")
@@ -83,3 +104,4 @@ app.include_router(news.router, prefix="/api/v1")
 app.include_router(connections.router, prefix="/api/v1")
 app.include_router(agents.router, prefix="/api/v1")
 app.include_router(user_profile.router, prefix="/api/v1")
+app.include_router(rl_trading.router, prefix="/api/v1")

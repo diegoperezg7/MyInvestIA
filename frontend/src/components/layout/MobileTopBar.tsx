@@ -1,13 +1,13 @@
 "use client";
 
-import { Menu, Sun, Moon } from "lucide-react";
+import { Menu, Sun, Moon, Settings } from "lucide-react";
 import { useView } from "@/contexts/ViewContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import useLanguageStore from "@/stores/useLanguageStore";
 import useCurrencyStore from "@/stores/useCurrencyStore";
 
 export default function MobileTopBar() {
-  const { setSidebarMobileOpen } = useView();
+  const { setSidebarMobileOpen, setActiveView } = useView();
   const { theme, toggleTheme } = useTheme();
   const { language, toggleLanguage } = useLanguageStore();
   const { currency, toggleCurrency } = useCurrencyStore();
@@ -31,6 +31,13 @@ export default function MobileTopBar() {
       </div>
 
       <div className="flex items-center gap-1">
+        <button
+          onClick={() => setActiveView("settings")}
+          className="text-oracle-muted hover:text-oracle-text p-1.5 rounded-md active:bg-oracle-panel-hover"
+          aria-label="Settings"
+        >
+          <Settings size={18} />
+        </button>
         <button
           onClick={toggleTheme}
           className="text-oracle-muted hover:text-oracle-text p-1.5 rounded-md active:bg-oracle-panel-hover"

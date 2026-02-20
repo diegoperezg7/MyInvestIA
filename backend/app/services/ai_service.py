@@ -61,6 +61,7 @@ class AIService:
         max_tokens: int = 1024,
         model: str | None = None,
         system_override: str | None = None,
+        user_id: str = "",
     ) -> str:
         """Send a conversation to Mistral and get a response.
 
@@ -69,6 +70,7 @@ class AIService:
             context: Additional context about portfolio/market data
             max_tokens: Max response length
             model: Override model (defaults to MODEL_CHAT)
+            user_id: User ID for loading personalized memories
 
         Returns:
             The assistant's text response.
@@ -78,7 +80,7 @@ class AIService:
         system = system_override or SYSTEM_PROMPT
 
         # Inject AI memory for personalized context
-        memories = store.get_memories(limit=20)
+        memories = store.get_memories(user_id, limit=20) if user_id else []
         if memories:
             memory_lines = []
             for m in memories:

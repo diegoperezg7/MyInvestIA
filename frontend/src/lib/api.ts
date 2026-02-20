@@ -1,3 +1,5 @@
+import { getToken, clearTokens } from "@/lib/auth";
+
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
 
 const CACHE_TTL = 30_000; // 30 seconds — reduced polling means we can cache longer
@@ -9,6 +11,17 @@ interface CacheEntry {
 
 const cache = new Map<string, CacheEntry>();
 const inflight = new Map<string, Promise<unknown>>();
+
+function authHeaders(): Record<string, string> {
+  const token = getToken();
+  if (token) return { Authorization: `Bearer ${token}` };
+  return {};
+}
+
+function handle401() {
+  clearTokens();
+  window.location.reload();
+}
 
 export async function fetchAPI<T>(endpoint: string, { skipCache = false }: { skipCache?: boolean } = {}): Promise<T> {
   const url = `${API_BASE}${endpoint}`;
@@ -27,8 +40,12 @@ export async function fetchAPI<T>(endpoint: string, { skipCache = false }: { ski
     }
   }
 
-  const promise = fetch(url).then(async (response) => {
+  const promise = fetch(url, { headers: authHeaders(), credentials: "include" }).then(async (response) => {
     inflight.delete(url);
+    if (response.status === 401) {
+      handle401();
+      throw new Error("Unauthorized");
+    }
     if (!response.ok) {
       throw new Error(`API error: ${response.status}`);
     }
@@ -47,9 +64,14 @@ export async function fetchAPI<T>(endpoint: string, { skipCache = false }: { ski
 export async function postAPI<T>(endpoint: string, body: unknown): Promise<T> {
   const response = await fetch(`${API_BASE}${endpoint}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...authHeaders() },
+    credentials: "include",
     body: JSON.stringify(body),
   });
+  if (response.status === 401) {
+    handle401();
+    throw new Error("Unauthorized");
+  }
   if (!response.ok) {
     throw new Error(`API error: ${response.status}`);
   }
@@ -59,9 +81,14 @@ export async function postAPI<T>(endpoint: string, body: unknown): Promise<T> {
 export async function patchAPI<T>(endpoint: string, body: unknown): Promise<T> {
   const response = await fetch(`${API_BASE}${endpoint}`, {
     method: "PATCH",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...authHeaders() },
+    credentials: "include",
     body: JSON.stringify(body),
   });
+  if (response.status === 401) {
+    handle401();
+    throw new Error("Unauthorized");
+  }
   if (!response.ok) {
     throw new Error(`API error: ${response.status}`);
   }
@@ -71,7 +98,13 @@ export async function patchAPI<T>(endpoint: string, body: unknown): Promise<T> {
 export async function deleteAPI(endpoint: string): Promise<void> {
   const response = await fetch(`${API_BASE}${endpoint}`, {
     method: "DELETE",
+    headers: authHeaders(),
+    credentials: "include",
   });
+  if (response.status === 401) {
+    handle401();
+    throw new Error("Unauthorized");
+  }
   if (!response.ok) {
     throw new Error(`API error: ${response.status}`);
   }
@@ -86,7 +119,14 @@ export function fetchSSE(
   onMessage: (data: unknown) => void,
   onError?: (error: Event) => void,
 ): EventSource {
-  const es = new EventSource(`${API_BASE}${endpoint}`);
+  // EventSource doesn't support custom headers, so pass token as query param
+  const token = getToken();
+  const sep = endpoint.includes("?") ? "&" : "?";
+  const url = token
+    ? `${API_BASE}${endpoint}${sep}token=${encodeURIComponent(token)}`
+    : `${API_BASE}${endpoint}`;
+
+  const es = new EventSource(url);
 
   es.onmessage = (event) => {
     try {
