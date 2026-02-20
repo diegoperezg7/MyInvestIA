@@ -350,7 +350,26 @@ export default function RLTradingView() {
         </label>
       </div>
 
-      {/* BIG SIGNAL CARD */}
+      {/* Price Chart - Full Width */}
+      {chartData && chartData.length > 0 && (
+        <div className="bg-oracle-panel border border-oracle-border rounded-xl overflow-hidden">
+          <div className="p-3 border-b border-oracle-border flex items-center justify-between">
+            <h3 className="text-oracle-text font-semibold">Grafico BTC/USD</h3>
+            <span className="text-oracle-muted text-sm">
+              {currentPrice ? `$${currentPrice.toLocaleString()}` : ''}
+            </span>
+          </div>
+          <div className="h-80 w-full">
+            <TradingViewChart 
+              data={chartData} 
+              chartType="candlestick"
+              fullscreen={false}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Signal Card - Full Width on mobile, Left on desktop */}
       <div className={`rounded-2xl p-6 border-2 transition-all ${
         signal?.action === 'buy' ? 'bg-gradient-to-br from-oracle-green/20 to-transparent border-oracle-green' :
         signal?.action === 'sell' ? 'bg-gradient-to-br from-oracle-red/20 to-transparent border-oracle-red' :
@@ -360,29 +379,29 @@ export default function RLTradingView() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
           <div className="flex items-center gap-4">
             {/* Signal Icon */}
-            <div className={`w-16 h-16 rounded-full flex items-center justify-center ${
+            <div className={`w-14 h-14 md:w-16 md:h-16 rounded-full flex items-center justify-center ${
               signal?.action === 'buy' ? 'bg-oracle-green' :
               signal?.action === 'sell' ? 'bg-oracle-red' : 'bg-oracle-border'
             }`}>
               {signal?.action === 'buy' ? (
-                <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="w-7 h-7 md:w-8 md:h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 10l7-7m0 0l7 7m-7-7v18" />
                 </svg>
               ) : signal?.action === 'sell' ? (
-                <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="w-7 h-7 md:w-8 md:h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
                 </svg>
               ) : (
-                <svg className="w-8 h-8 text-oracle-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="w-7 h-7 md:w-8 md:h-8 text-oracle-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
                 </svg>
               )}
             </div>
             <div>
-              <p className="text-oracle-muted text-sm">
+              <p className="text-oracle-muted text-xs md:text-sm">
                 {lastUpdate ? `Actualizado: ${lastUpdate.toLocaleTimeString()}` : "Sin señal"}
               </p>
-              <h2 className={`text-3xl font-bold ${
+              <h2 className={`text-2xl md:text-3xl font-bold ${
                 signal?.action === 'buy' ? 'text-oracle-green' :
                 signal?.action === 'sell' ? 'text-oracle-red' : 'text-oracle-muted'
               }`}>
@@ -392,34 +411,34 @@ export default function RLTradingView() {
           </div>
           
           {/* Price */}
-          <div className="text-right">
-            <p className="text-oracle-muted text-sm">Precio BTC</p>
-            <p className="text-3xl font-bold text-oracle-text font-mono">
+          <div className="text-left md:text-right">
+            <p className="text-oracle-muted text-xs md:text-sm">Precio BTC</p>
+            <p className="text-2xl md:text-3xl font-bold text-oracle-text font-mono">
               ${(currentPrice || signal?.current_price || 0).toLocaleString()}
             </p>
           </div>
         </div>
 
-        {/* Indicators */}
+        {/* Indicators Grid */}
         {signal && (
-          <div className="grid grid-cols-4 gap-3 mb-4">
-            <div className="bg-oracle-bg/50 rounded-lg p-3 text-center">
-              <p className="text-oracle-muted text-xs mb-1">Confianza</p>
-              <p className="text-xl font-bold text-oracle-accent">{Math.round((signal.confidence || 0) * 100)}%</p>
+          <div className="grid grid-cols-4 gap-2 md:gap-3 mb-4">
+            <div className="bg-oracle-bg/50 rounded-lg p-2 md:p-3 text-center">
+              <p className="text-oracle-muted text-xs">Confianza</p>
+              <p className="text-lg md:text-xl font-bold text-oracle-accent">{Math.round((signal.confidence || 0) * 100)}%</p>
             </div>
-            <div className="bg-oracle-bg/50 rounded-lg p-3 text-center">
-              <p className="text-oracle-muted text-xs mb-1">RSI</p>
-              <p className="text-xl font-bold text-oracle-text">{Math.round(signal.rsi || 0)}</p>
+            <div className="bg-oracle-bg/50 rounded-lg p-2 md:p-3 text-center">
+              <p className="text-oracle-muted text-xs">RSI</p>
+              <p className="text-lg md:text-xl font-bold text-oracle-text">{Math.round(signal.rsi || 0)}</p>
             </div>
-            <div className="bg-oracle-bg/50 rounded-lg p-3 text-center">
-              <p className="text-oracle-muted text-xs mb-1">Momentum</p>
-              <p className={`text-xl font-bold ${getPnlColor((signal.momentum || 0) * 100)}`}>
+            <div className="bg-oracle-bg/50 rounded-lg p-2 md:p-3 text-center">
+              <p className="text-oracle-muted text-xs">Momentum</p>
+              <p className={`text-lg md:text-xl font-bold ${getPnlColor((signal.momentum || 0) * 100)}`}>
                 {((signal.momentum || 0) * 100).toFixed(2)}%
               </p>
             </div>
-            <div className="bg-oracle-bg/50 rounded-lg p-3 text-center">
-              <p className="text-oracle-muted text-xs mb-1">Tu Position</p>
-              <p className="text-xl font-bold text-oracle-text">
+            <div className="bg-oracle-bg/50 rounded-lg p-2 md:p-3 text-center">
+              <p className="text-oracle-muted text-xs">Posicion</p>
+              <p className="text-lg md:text-xl font-bold text-oracle-text">
                 {status?.position === 1 ? 'LONG' : 'FLAT'}
               </p>
             </div>
@@ -440,8 +459,8 @@ export default function RLTradingView() {
           </div>
         )}
 
-        {/* Action Button */}
-        <div className="flex gap-3">
+        {/* Action Buttons */}
+        <div className="flex flex-col sm:flex-row gap-3">
           <button
             onClick={fetchSignal}
             disabled={loading}
@@ -457,40 +476,26 @@ export default function RLTradingView() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
             )}
-            {loading ? "Analizando..." : "Obtener Nueva Señal"}
+            {loading ? "Analizando..." : "Obtener Señal"}
           </button>
 
           {signal && signal.action !== 'hold' && (
             <button
               onClick={executeTrade}
               disabled={loading}
-              className={`px-8 py-3 rounded-xl font-bold disabled:opacity-50 transition-all ${
+              className={`px-6 md:px-8 py-3 rounded-xl font-bold disabled:opacity-50 transition-all ${
                 signal.action === 'buy' 
                   ? 'bg-oracle-green hover:bg-oracle-green/80 text-white' 
                   : 'bg-oracle-red hover:bg-oracle-red/80 text-white'
               }`}
             >
-                {signal.action === 'buy' ? 'COMPRAR' : 'VENDER'}
+              {signal.action === 'buy' ? 'COMPRAR' : 'VENDER'}
             </button>
           )}
         </div>
       </div>
 
-      {/* Chart */}
-      {chartData && chartData.length > 0 && (
-        <div className="bg-oracle-panel border border-oracle-border rounded-xl p-4">
-          <h3 className="text-oracle-text font-semibold mb-3">Grafico BTC</h3>
-          <div className="h-64">
-            <TradingViewChart 
-              data={chartData} 
-              chartType="candlestick"
-              fullscreen={false}
-            />
-          </div>
-        </div>
-      )}
-
-      {/* Stats Row */}
+      {/* Stats Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <div className="bg-oracle-panel border border-oracle-border rounded-xl p-4">
           <p className="text-oracle-muted text-xs mb-1">Balance</p>

@@ -46,6 +46,41 @@ def _resolve_supabase_user_by_email(email: str) -> str | None:
     return None
 
 
+def _create_supabase_user_if_not_exists(email: str) -> str | None:
+    """Create a Supabase user if they don't exist. Returns the user ID or None on failure."""
+    try:
+        service_key = settings.supabase_service_key or settings.supabase_key
+        url = f"{settings.supabase_url.rstrip('/')}/auth/v1/admin/users"
+
+        import secrets
+
+        temp_password = secrets.token_urlsafe(16)
+
+        resp = httpx.post(
+            url,
+            headers={"apikey": service_key, "Authorization": f"Bearer {service_key}"},
+            json={
+                "email": email,
+                "password": temp_password,
+                "email_confirm": True,
+                "user_metadata": {"source": "aidentity"},
+            },
+            timeout=10,
+        )
+        if resp.status_code in (200, 201):
+            user_data = resp.json()
+            user_id = user_data.get("id")
+            logger.info("Created Supabase user for AIdentity user: %s", email)
+            return user_id
+        elif resp.status_code == 400:
+            return _resolve_supabase_user_by_email(email)
+        else:
+            logger.warning("Failed to create Supabase user: %s", resp.text)
+    except Exception as e:
+        logger.error("Error creating Supabase user: %s", e)
+    return None
+
+
 def get_current_user(request: Request) -> AuthUser:
     """Extract and validate user from Authorization header or darc3_token cookie."""
     token = ""
@@ -75,6 +110,13 @@ def get_current_user(request: Request) -> AuthUser:
                 if user_id:
                     # Resolve Supabase user_id if Supabase is configured
                     supabase_user_id = _resolve_supabase_user_by_email(email)
+                    if not supabase_user_id:
+                        # Auto-create user in Supabase if not exists
+                        logger.info(
+                            "AIdentity user %s not found in Supabase, creating...",
+                            email,
+                        )
+                        supabase_user_id = _create_supabase_user_if_not_exists(email)
                     if supabase_user_id:
                         return AuthUser(id=supabase_user_id, email=email, role=role)
                     # If no Supabase user found, use AIdentity user_id
