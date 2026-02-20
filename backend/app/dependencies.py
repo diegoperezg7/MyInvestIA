@@ -7,6 +7,7 @@ import logging
 from dataclasses import dataclass
 
 import jwt
+import httpx
 from fastapi import Depends, HTTPException, Request
 
 from app.config import settings
@@ -16,9 +17,33 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class AuthUser:
-    id: str          # UUID from iam_users or auth.users
+    id: str  # UUID from iam_users or auth.users
     email: str
-    role: str        # "admin" or "user"
+    role: str  # "admin" or "user"
+
+
+def _resolve_supabase_user_by_email(email: str) -> str | None:
+    """Look up the Supabase auth user UUID by email using the admin API."""
+    if not settings.supabase_url or not (
+        settings.supabase_service_key or settings.supabase_key
+    ):
+        return None
+    try:
+        service_key = settings.supabase_service_key or settings.supabase_key
+        url = f"{settings.supabase_url.rstrip('/')}/auth/v1/admin/users"
+        resp = httpx.get(
+            url,
+            headers={"apikey": service_key, "Authorization": f"Bearer {service_key}"},
+            params={"email": email},
+            timeout=5,
+        )
+        if resp.status_code == 200:
+            users = resp.json().get("users", [])
+            if users:
+                return users[0].get("id")
+    except Exception as e:
+        logger.warning("Could not resolve Supabase user by email %s: %s", email, e)
+    return None
 
 
 def get_current_user(request: Request) -> AuthUser:
@@ -48,6 +73,12 @@ def get_current_user(request: Request) -> AuthUser:
                 email = payload.get("email", "")
                 role = payload.get("role", "user")
                 if user_id:
+                    # Resolve Supabase user_id if Supabase is configured
+                    supabase_user_id = _resolve_supabase_user_by_email(email)
+                    if supabase_user_id:
+                        return AuthUser(id=supabase_user_id, email=email, role=role)
+                    # If no Supabase user found, use AIdentity user_id
+                    # (for apps using InMemoryStore)
                     return AuthUser(id=user_id, email=email, role=role)
         except jwt.ExpiredSignatureError:
             raise HTTPException(status_code=401, detail="Token expired")

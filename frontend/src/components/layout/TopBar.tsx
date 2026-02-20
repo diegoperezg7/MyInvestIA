@@ -1,6 +1,6 @@
 "use client";
 
-import { Search, Sun, Moon } from "lucide-react";
+import { Search, Sun, Moon, Home } from "lucide-react";
 import { useView } from "@/contexts/ViewContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import useLanguageStore from "@/stores/useLanguageStore";
@@ -32,6 +32,17 @@ export default function TopBar() {
       </button>
 
       <div className="w-px h-5 bg-oracle-border mx-1.5" />
+
+      {/* Portal */}
+      <button
+        onClick={() => window.open("https://portal.darc3.com", "_self")}
+        aria-label="Volver al Portal"
+        className="flex items-center gap-1.5 px-2.5 py-1.5 text-sm rounded-md text-oracle-muted hover:text-oracle-text hover:bg-oracle-panel-hover transition-colors"
+        title="Volver al Portal"
+      >
+        <Home size={16} />
+        <span>Portal</span>
+      </button>
 
       {/* Theme */}
       <button

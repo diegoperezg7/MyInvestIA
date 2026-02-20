@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from "react";
 import { fetchAPI, postAPI } from "@/lib/api";
+import TradingViewChart, { type ChartType } from "@/components/charts/TradingViewChart";
 
 interface Signal {
   action: string;
@@ -22,10 +23,20 @@ interface Trade {
   timestamp?: string;
 }
 
+interface ChartData {
+  date: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+}
+
 interface SignalResponse {
   signal?: Signal;
   current_price?: number;
   executed?: boolean;
+  chart_data?: ChartData[];
 }
 
 interface AgentStatus {
@@ -56,6 +67,7 @@ export default function RLTradingView() {
   const [trades, setTrades] = useState<Trade[]>([]);
   const [signal, setSignal] = useState<Signal | null>(null);
   const [currentPrice, setCurrentPrice] = useState<number | null>(null);
+  const [chartData, setChartData] = useState<ChartData[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
@@ -103,12 +115,15 @@ export default function RLTradingView() {
     try {
       setLoading(true);
       setError(null);
-      const data = await post<Signal>("/api/v1/rl-agent/signal", {
+      const data = await post<SignalResponse>("/api/v1/rl-agent/signal", {
         data: [],
         current_price: 45000,
         _t: Date.now(),
       });
-      setSignal(data);
+      
+      if (data.signal) {
+        setSignal(data.signal);
+      }
       setLastUpdate(new Date());
       
       const price = data.current_price;
@@ -116,15 +131,20 @@ export default function RLTradingView() {
         setCurrentPrice(price);
       }
       
+      // Store chart data
+      if (data.chart_data && data.chart_data.length > 0) {
+        setChartData(data.chart_data);
+      }
+      
       // Auto-trade: ejecutar automáticamente si hay señal clara
-      if (autoTrade && data.action !== "hold" && data.confidence >= 0.4) {
+      if (data.signal && autoTrade && data.signal.action !== "hold" && data.signal.confidence >= 0.4) {
         const result = await post<SignalResponse>("/api/v1/rl-agent/trade", {
           data: [],
           current_price: data.current_price || 45000,
         });
         
         if (result.executed) {
-          setTradeMessage({ type: 'success', text: `Operación ${data.action === 'buy' ? 'COMPRA' : 'VENTA'} ejecutada automáticamente` });
+          setTradeMessage({ type: 'success', text: `Operación ${data.signal.action === 'buy' ? 'COMPRA' : 'VENTA'} ejecutada automáticamente` });
           await fetchStatus();
           await fetchPerformance();
           await fetchTrades();
@@ -455,6 +475,20 @@ export default function RLTradingView() {
           )}
         </div>
       </div>
+
+      {/* Chart */}
+      {chartData && chartData.length > 0 && (
+        <div className="bg-oracle-panel border border-oracle-border rounded-xl p-4">
+          <h3 className="text-oracle-text font-semibold mb-3">Grafico BTC</h3>
+          <div className="h-64">
+            <TradingViewChart 
+              data={chartData} 
+              chartType="candlestick"
+              fullscreen={false}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Stats Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
