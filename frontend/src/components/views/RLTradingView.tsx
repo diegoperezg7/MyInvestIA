@@ -68,7 +68,7 @@ export default function RLTradingView() {
 
   const fetchStatus = useCallback(async () => {
     try {
-      const data = await api<AgentStatus>("/rl-agent/status");
+      const data = await api<AgentStatus>("/api/v1/rl-agent/status");
       setStatus(data);
       if (data && data.position !== undefined) {
         setIsInitialized(true);
@@ -80,7 +80,7 @@ export default function RLTradingView() {
 
   const fetchPerformance = useCallback(async () => {
     try {
-      const data = await api<Performance>("/rl-agent/performance");
+      const data = await api<Performance>("/api/v1/rl-agent/performance");
       setPerformance(data);
     } catch (e) {
       console.error("Error fetching performance:", e);
@@ -89,7 +89,7 @@ export default function RLTradingView() {
 
   const fetchTrades = useCallback(async () => {
     try {
-      const data = await api<any>("/rl-agent/trades?limit=50");
+      const data = await api<any>("/api/v1/rl-agent/trades?limit=50");
       const tradesData = Array.isArray(data) ? data : (data?.trades || []);
       setTrades(tradesData);
     } catch (e) {
@@ -103,7 +103,7 @@ export default function RLTradingView() {
     try {
       setLoading(true);
       setError(null);
-      const data = await post<Signal>("/rl-agent/signal", {
+      const data = await post<Signal>("/api/v1/rl-agent/signal", {
         data: [],
         current_price: 45000,
         _t: Date.now(),
@@ -118,7 +118,7 @@ export default function RLTradingView() {
       
       // Auto-trade: ejecutar automáticamente si hay señal clara
       if (autoTrade && data.action !== "hold" && data.confidence >= 0.4) {
-        const result = await post<SignalResponse>("/rl-agent/trade", {
+        const result = await post<SignalResponse>("/api/v1/rl-agent/trade", {
           data: [],
           current_price: data.current_price || 45000,
         });
@@ -142,7 +142,7 @@ export default function RLTradingView() {
     setLoading(true);
     setError(null);
     try {
-      await post("/rl-agent/init", {
+      await post("/api/v1/rl-agent/init", {
         symbol: "BTC/USD",
         mode,
         initial_balance: 10000,
@@ -167,7 +167,7 @@ export default function RLTradingView() {
     setTradeMessage(null);
     try {
       const price = currentPrice || signal?.current_price || 45000;
-      const result = await post<SignalResponse>("/rl-agent/trade", {
+      const result = await post<SignalResponse>("/api/v1/rl-agent/trade", {
         data: [],
         current_price: price,
       });
