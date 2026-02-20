@@ -206,6 +206,31 @@ async def get_signal(
         signal = await rl_trading_service.get_signal(user.id, df)
         print(f"Signal generated: {signal.get('action')} - {signal.get('reason')}")
 
+        # Enhance with Groq AI analysis
+        try:
+            from app.services.groq_service import groq_service
+
+            if groq_service.is_available():
+                ai_analysis = await groq_service.analyze_trading_signal(
+                    price=current_price,
+                    rsi=signal.get("rsi", 50),
+                    momentum=signal.get("momentum", 0),
+                    volume_ratio=signal.get("volume_ratio", 1),
+                    position="long" if signal.get("position") == 1 else "flat",
+                )
+                # Merge AI analysis with signal
+                if ai_analysis.get("reason"):
+                    signal["reason"] = (
+                        f"{signal.get('reason')}. AI: {ai_analysis.get('reason')}"
+                    )
+                if ai_analysis.get("confidence"):
+                    # Blend with existing confidence
+                    signal["confidence"] = (
+                        signal.get("confidence", 0.5) + ai_analysis["confidence"]
+                    ) / 2
+        except Exception as e:
+            print(f"Groq AI analysis error: {e}")
+
         # Prepare chart data for frontend - use last 100 candles
         chart_data = []
         if df is not None and len(df) > 0:

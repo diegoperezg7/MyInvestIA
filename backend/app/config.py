@@ -20,6 +20,9 @@ class Settings(BaseSettings):
     # Mistral AI
     mistral_api_key: str = ""
 
+    # Groq AI (free, fast inference)
+    groq_api_key: str = "${GROQ_API_KEY}"
+
     # CoinGecko (optional - free tier works without key)
     coingecko_api_key: str = ""
 
