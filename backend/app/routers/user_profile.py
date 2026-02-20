@@ -1,24 +1,21 @@
-"""User profile and personalization endpoints.
+"""User profile and personalization endpoints."""
 
-Stores user financial profile, risk tolerance, investment horizon,
-goals, and communication preferences. Single-user app — no auth needed.
-"""
-
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 
+from app.dependencies import AuthUser, get_current_user
 from app.services.store import store
 
 router = APIRouter(prefix="/user", tags=["user"])
 
-# Default profile stored in memory
+# Default profile
 _DEFAULT_PROFILE = {
     "display_name": "",
-    "risk_tolerance": "moderate",  # conservative, moderate, aggressive
-    "investment_horizon": "medium",  # short (< 1y), medium (1-5y), long (5y+)
+    "risk_tolerance": "moderate",
+    "investment_horizon": "medium",
     "goals": [],
     "preferred_currency": "EUR",
-    "notification_frequency": "important",  # all, important, critical_only, none
+    "notification_frequency": "important",
     "notification_channels": ["telegram"],
     "language": "es",
     "theme": "dark",
@@ -40,22 +37,21 @@ class UserProfile(BaseModel):
     theme: str = "dark"
 
 
-def _load_profile() -> dict:
+def _load_profile(user_id: str) -> dict:
     """Load profile from ai_memory store."""
-    memories = store.get_memories(category="user_profile", limit=1)
+    memories = store.get_memories(user_id, category="user_profile", limit=1)
     if memories:
         return {**_DEFAULT_PROFILE, **memories[0].get("metadata", {})}
     return dict(_DEFAULT_PROFILE)
 
 
-def _save_profile(profile: dict):
+def _save_profile(user_id: str, profile: dict):
     """Save profile to ai_memory store (replace existing)."""
-    # Delete old profile entries
-    memories = store.get_memories(category="user_profile", limit=10)
+    memories = store.get_memories(user_id, category="user_profile", limit=10)
     for m in memories:
-        store.delete_memory(m["id"])
-    # Save new
+        store.delete_memory(user_id, m["id"])
     store.save_memory(
+        user_id=user_id,
         category="user_profile",
         content="User profile settings",
         metadata=profile,
@@ -63,24 +59,24 @@ def _save_profile(profile: dict):
 
 
 @router.get("/profile", response_model=UserProfile)
-async def get_profile():
+async def get_profile(user: AuthUser = Depends(get_current_user)):
     """Get user profile and preferences."""
-    data = _load_profile()
+    data = _load_profile(user.id)
     return UserProfile(**data)
 
 
 @router.put("/profile", response_model=UserProfile)
-async def update_profile(profile: UserProfile):
+async def update_profile(profile: UserProfile, user: AuthUser = Depends(get_current_user)):
     """Update user profile and preferences."""
     data = profile.model_dump()
-    _save_profile(data)
+    _save_profile(user.id, data)
     return profile
 
 
 @router.get("/profile/summary")
-async def get_profile_summary():
+async def get_profile_summary(user: AuthUser = Depends(get_current_user)):
     """Get a summary suitable for AI context injection."""
-    data = _load_profile()
+    data = _load_profile(user.id)
     return {
         "risk_tolerance": data["risk_tolerance"],
         "investment_horizon": data["investment_horizon"],

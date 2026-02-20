@@ -1,6 +1,8 @@
 import time
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
+
+from app.dependencies import get_current_user
 
 from app.schemas.asset import (
     Asset,
@@ -35,7 +37,7 @@ from app.services.signal_aggregator import build_signal_summary
 from app.services.technical_analysis import compute_all_indicators
 from app.services.volatility_service import compute_volatility
 
-router = APIRouter(prefix="/market", tags=["market"])
+router = APIRouter(prefix="/market", tags=["market"], dependencies=[Depends(get_current_user)])
 
 # Endpoint-level cache for movers (avoids re-fetching 400+ symbols on every request)
 _movers_cache: dict[str, tuple[float, dict]] = {}

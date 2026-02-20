@@ -1,5 +1,6 @@
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query
 
+from app.dependencies import AuthUser, get_current_user
 from app.schemas.asset import AlertList, ScanAndNotifyResponse
 from app.services.alert_scorer import scan_symbols
 from app.services.alerts_engine import scan_and_notify
@@ -24,6 +25,7 @@ DEFAULT_SCAN_SYMBOLS = [
 @router.get("/", response_model=AlertList)
 async def get_alerts(
     scan: bool = Query(default=False, description="Run a live scan on portfolio + watchlist assets"),
+    user: AuthUser = Depends(get_current_user),
 ):
     """Get active alerts.
 
@@ -38,14 +40,14 @@ async def get_alerts(
     seen: set[str] = set()
 
     # Portfolio holdings
-    for holding in store.get_holdings():
+    for holding in store.get_holdings(user.id):
         sym = holding["symbol"]
         if sym not in seen:
             symbols_to_scan.append({"symbol": sym, "type": holding["type"]})
             seen.add(sym)
 
     # Watchlist assets
-    for wl in store.get_watchlists():
+    for wl in store.get_watchlists(user.id):
         for asset in wl.get("assets", []):
             sym = asset["symbol"]
             if sym not in seen:
@@ -62,24 +64,24 @@ async def get_alerts(
 
 
 @router.get("/scan/{symbol}", response_model=AlertList)
-async def scan_single_asset(symbol: str):
+async def scan_single_asset(symbol: str, user: AuthUser = Depends(get_current_user)):
     """Run alert scan on a single asset and return any alerts."""
     alerts = await scan_symbols([{"symbol": symbol.upper(), "type": "stock"}])
     return AlertList(alerts=alerts, total=len(alerts))
 
 
-def _gather_user_symbols() -> list[dict]:
+def _gather_user_symbols(user_id: str) -> list[dict]:
     """Gather symbols from portfolio holdings and watchlists."""
     symbols: list[dict] = []
     seen: set[str] = set()
 
-    for holding in store.get_holdings():
+    for holding in store.get_holdings(user_id):
         sym = holding["symbol"]
         if sym not in seen:
             symbols.append({"symbol": sym, "type": holding["type"]})
             seen.add(sym)
 
-    for wl in store.get_watchlists():
+    for wl in store.get_watchlists(user_id):
         for asset in wl.get("assets", []):
             sym = asset["symbol"]
             if sym not in seen:
@@ -95,13 +97,14 @@ async def scan_and_notify_endpoint(
         default="high",
         description="Minimum alert severity to send via Telegram (all, medium, high, critical)",
     ),
+    user: AuthUser = Depends(get_current_user),
 ):
     """Scan portfolio and watchlist assets, then send qualifying alerts via Telegram.
 
     Combines the alert scanner with Telegram delivery. Only alerts meeting
     the min_severity threshold are sent as notifications.
     """
-    symbols = _gather_user_symbols()
+    symbols = _gather_user_symbols(user.id)
     result = await scan_and_notify(symbols, min_severity=min_severity)
 
     return ScanAndNotifyResponse(

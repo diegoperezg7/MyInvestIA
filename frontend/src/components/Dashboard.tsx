@@ -25,6 +25,7 @@ import ConnectionsView from "@/components/views/ConnectionsView";
 import EconomicCalendarView from "@/components/views/EconomicCalendarView";
 import HeatmapView from "@/components/views/HeatmapView";
 import SettingsView from "@/components/views/SettingsView";
+import RLTradingView from "@/components/views/RLTradingView";
 
 const VIEW_MAP: Record<string, React.ComponentType> = {
   overview: OverviewView,
@@ -34,6 +35,7 @@ const VIEW_MAP: Record<string, React.ComponentType> = {
   volatility: VolatilityView,
   commodities: CommoditiesView,
   "paper-trade": PaperTradingView,
+  "rl-trading": RLTradingView,
   connections: ConnectionsView,
   alerts: AlertsView,
   chat: ChatView,

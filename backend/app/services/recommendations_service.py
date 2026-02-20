@@ -75,13 +75,13 @@ Guidelines:
 - Each recommendation should reference specific data points"""
 
 
-async def generate_recommendations() -> dict:
+async def generate_recommendations(user_id: str) -> dict:
     """Generate AI-powered investment recommendations."""
 
     async def _fetch():
         # Collect symbols
-        holdings = store.get_holdings()
-        watchlists = store.get_watchlists()
+        holdings = store.get_holdings(user_id)
+        watchlists = store.get_watchlists(user_id)
 
         holding_symbols = [h["symbol"] for h in holdings]
         watchlist_symbols: list[str] = []

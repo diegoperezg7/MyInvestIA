@@ -4,7 +4,10 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     app_name: str = "InvestIA"
     debug: bool = False
-    cors_origins: list[str] = ["https://myinvestia.agenciainexia.com"]
+    cors_origins: list[str] = [
+        "https://myinvestia.darc3.com",
+        "https://portal.darc3.com",
+    ]
 
     # Supabase
     supabase_url: str = ""
@@ -39,6 +42,11 @@ class Settings(BaseSettings):
     etoro_api_key: str = ""
     etoro_api_secret: str = ""
     polymarket_api_key: str = ""
+
+    # Auth / JWT
+    jwt_secret: str = ""
+    supabase_service_key: str = ""
+    aidentity_secret: str = ""
 
     # Display currency
     display_currency: str = "USD"

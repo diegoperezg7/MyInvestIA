@@ -3,11 +3,12 @@
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
+from app.dependencies import get_current_user
 from app.schemas.transactions import CostBasis, Transaction, TransactionCreate
 
-router = APIRouter(prefix="/transactions", tags=["transactions"])
+router = APIRouter(prefix="/transactions", tags=["transactions"], dependencies=[Depends(get_current_user)])
 
 # In-memory store (would use Supabase in production)
 _transactions: list[Transaction] = []

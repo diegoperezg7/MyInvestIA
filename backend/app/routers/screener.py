@@ -1,11 +1,12 @@
 """Screener router with TradingView integration."""
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
+from app.dependencies import get_current_user
 from app.schemas.screener import ScreenerRequest
 from app.services.screener_service import get_fields, get_presets, run_screener
 
-router = APIRouter(prefix="/screener", tags=["screener"])
+router = APIRouter(prefix="/screener", tags=["screener"], dependencies=[Depends(get_current_user)])
 
 
 @router.post("/scan")

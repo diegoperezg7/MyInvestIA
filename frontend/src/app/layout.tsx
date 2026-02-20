@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { AuthProvider } from "@/contexts/AuthContext";
 import { ViewProvider } from "@/contexts/ViewContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 
@@ -43,9 +44,11 @@ export default function RootLayout({
         />
       </head>
       <body className="bg-oracle-bg text-oracle-text min-h-screen" suppressHydrationWarning>
-<ThemeProvider>
-          <ViewProvider>{children}</ViewProvider>
-        </ThemeProvider>
+<AuthProvider>
+          <ThemeProvider>
+            <ViewProvider>{children}</ViewProvider>
+          </ThemeProvider>
+        </AuthProvider>
       </body>
     </html>
   );

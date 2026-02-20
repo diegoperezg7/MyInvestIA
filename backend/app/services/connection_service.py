@@ -280,12 +280,12 @@ def get_providers() -> list[dict]:
     return SUPPORTED_PROVIDERS
 
 
-def list_connections() -> list[dict]:
+def list_connections(user_id: str) -> list[dict]:
     """List all connections with summary info."""
-    connections = store.get_connections()
+    connections = store.get_connections(user_id)
     result = []
     for conn in connections:
-        holdings = store.get_holdings_by_connection(conn["id"])
+        holdings = store.get_holdings_by_connection(user_id, conn["id"])
         total_value = sum(h.get("quantity", 0) * h.get("avg_buy_price", 0) for h in holdings)
         result.append({
             **conn,
@@ -295,12 +295,12 @@ def list_connections() -> list[dict]:
     return result
 
 
-def get_connection(connection_id: str) -> dict | None:
+def get_connection(user_id: str, connection_id: str) -> dict | None:
     """Get connection detail with holdings."""
-    conn = store.get_connection(connection_id)
+    conn = store.get_connection(user_id, connection_id)
     if not conn:
         return None
-    holdings = store.get_holdings_by_connection(connection_id)
+    holdings = store.get_holdings_by_connection(user_id, connection_id)
     total_value = sum(h.get("quantity", 0) * h.get("avg_buy_price", 0) for h in holdings)
     return {
         **conn,
@@ -311,7 +311,7 @@ def get_connection(connection_id: str) -> dict | None:
 
 
 def create_exchange_connection(
-    provider: str, label: str, api_key: str, api_secret: str, passphrase: str | None = None
+    user_id: str, provider: str, label: str, api_key: str, api_secret: str, passphrase: str | None = None
 ) -> dict:
     """Create and test an exchange connection."""
     # Encrypt credentials
@@ -324,7 +324,7 @@ def create_exchange_connection(
     test = exchange_service.test_connection(provider, creds)
     status = "active" if test["success"] else "error"
 
-    conn = store.create_connection({
+    conn = store.create_connection(user_id, {
         "id": str(uuid.uuid4()),
         "type": "exchange",
         "provider": provider,
@@ -342,11 +342,11 @@ def create_exchange_connection(
     return {**conn, "holdings_count": 0, "total_value": 0.0, "test_result": test}
 
 
-async def create_wallet_connection(label: str, address: str, chain: str, provider: str = "metamask") -> dict:
+async def create_wallet_connection(user_id: str, label: str, address: str, chain: str, provider: str = "metamask") -> dict:
     """Create a wallet connection (no encryption needed — address is public)."""
     # Phantom/Solana not yet supported for balance fetching
     if provider == "phantom" and chain == "solana":
-        conn = store.create_connection({
+        conn = store.create_connection(user_id, {
             "id": str(uuid.uuid4()),
             "type": "wallet",
             "provider": provider,
@@ -366,7 +366,7 @@ async def create_wallet_connection(label: str, address: str, chain: str, provide
     if not wallet_service.validate_address(address, chain):
         raise ValueError(f"Invalid wallet address format for chain {chain}")
 
-    conn = store.create_connection({
+    conn = store.create_connection(user_id, {
         "id": str(uuid.uuid4()),
         "type": "wallet",
         "provider": provider,
@@ -384,7 +384,7 @@ async def create_wallet_connection(label: str, address: str, chain: str, provide
     return {**conn, "holdings_count": 0, "total_value": 0.0}
 
 
-def create_broker_connection(label: str, api_key: str, api_secret: str, provider: str = "etoro") -> dict:
+def create_broker_connection(user_id: str, label: str, api_key: str, api_secret: str, provider: str = "etoro") -> dict:
     """Create a broker connection. Most brokers lack public APIs so start as pending."""
     creds = {"api_key": api_key, "api_secret": api_secret}
     encrypted = encryption_service.encrypt(creds)
@@ -397,7 +397,7 @@ def create_broker_connection(label: str, api_key: str, api_secret: str, provider
         test = {"success": False, "message": f"{provider} API integration pending — credentials saved", "account_info": {}}
         status = "pending"
 
-    conn = store.create_connection({
+    conn = store.create_connection(user_id, {
         "id": str(uuid.uuid4()),
         "type": "broker",
         "provider": provider,
@@ -416,7 +416,7 @@ def create_broker_connection(label: str, api_key: str, api_secret: str, provider
 
 
 def create_prediction_connection(
-    label: str, provider: str = "polymarket", api_key: str | None = None, wallet_address: str | None = None
+    user_id: str, label: str, provider: str = "polymarket", api_key: str | None = None, wallet_address: str | None = None
 ) -> dict:
     """Create a prediction market connection (Polymarket, Kalshi)."""
     creds = {}
@@ -435,7 +435,7 @@ def create_prediction_connection(
 
     encrypted = encryption_service.encrypt(creds) if api_key else None
 
-    conn = store.create_connection({
+    conn = store.create_connection(user_id, {
         "id": str(uuid.uuid4()),
         "type": "prediction",
         "provider": provider,
@@ -453,18 +453,18 @@ def create_prediction_connection(
     return {**conn, "holdings_count": 0, "total_value": 0.0, "test_result": test}
 
 
-def delete_connection(connection_id: str) -> bool:
+def delete_connection(user_id: str, connection_id: str) -> bool:
     """Delete a connection and all its synced holdings."""
-    conn = store.get_connection(connection_id)
+    conn = store.get_connection(user_id, connection_id)
     if not conn:
         return False
-    store.delete_holdings_by_connection(connection_id)
-    return store.delete_connection(connection_id)
+    store.delete_holdings_by_connection(user_id, connection_id)
+    return store.delete_connection(user_id, connection_id)
 
 
-async def sync_connection(connection_id: str) -> dict:
+async def sync_connection(user_id: str, connection_id: str) -> dict:
     """Sync a single connection: fetch balances and upsert holdings."""
-    conn = store.get_connection(connection_id)
+    conn = store.get_connection(user_id, connection_id)
     if not conn:
         raise ValueError(f"Connection {connection_id} not found")
 
@@ -478,14 +478,14 @@ async def sync_connection(connection_id: str) -> dict:
         "started_at": datetime.now(timezone.utc).isoformat(),
         "status": "running",
     }
-    store.add_sync_history(sync_record)
+    store.add_sync_history(user_id, sync_record)
 
     try:
         # Fetch balances from the appropriate service
         balances = await _fetch_balances(conn)
 
         # Get existing synced holdings for this connection
-        existing = store.get_holdings_by_connection(connection_id)
+        existing = store.get_holdings_by_connection(user_id, connection_id)
         existing_symbols = {h["symbol"] for h in existing}
         new_symbols = {b["symbol"] for b in balances}
 
@@ -500,6 +500,7 @@ async def sync_connection(connection_id: str) -> dict:
             else:
                 added += 1
             store.upsert_synced_holding(
+                user_id,
                 symbol=b["symbol"],
                 name=b["name"],
                 asset_type=b["type"],
@@ -512,7 +513,7 @@ async def sync_connection(connection_id: str) -> dict:
         # Remove holdings no longer in source
         for h in existing:
             if h["symbol"] not in new_symbols:
-                store.delete_synced_holding(h["symbol"], connection_id)
+                store.delete_synced_holding(user_id, h["symbol"], connection_id)
                 removed += 1
 
         duration_ms = int((time.time() - start) * 1000)
@@ -527,10 +528,10 @@ async def sync_connection(connection_id: str) -> dict:
             "holdings_updated": updated,
             "holdings_removed": removed,
         })
-        store.update_sync_history(sync_record["id"], sync_record)
+        store.update_sync_history(user_id, sync_record["id"], sync_record)
 
         # Update connection
-        store.update_connection(connection_id, {
+        store.update_connection(user_id, connection_id, {
             "last_sync_at": now,
             "last_sync_status": "success",
             "last_sync_error": None,
@@ -559,9 +560,9 @@ async def sync_connection(connection_id: str) -> dict:
             "status": "failed",
             "error_message": error_msg,
         })
-        store.update_sync_history(sync_record["id"], sync_record)
+        store.update_sync_history(user_id, sync_record["id"], sync_record)
 
-        store.update_connection(connection_id, {
+        store.update_connection(user_id, connection_id, {
             "last_sync_at": now,
             "last_sync_status": "failed",
             "last_sync_error": error_msg,
@@ -580,20 +581,20 @@ async def sync_connection(connection_id: str) -> dict:
         }
 
 
-async def sync_all() -> list[dict]:
+async def sync_all(user_id: str) -> list[dict]:
     """Sync all active connections."""
-    connections = store.get_connections()
+    connections = store.get_connections(user_id)
     results = []
     for conn in connections:
         if conn["status"] in ("active", "error"):
-            result = await sync_connection(conn["id"])
+            result = await sync_connection(user_id, conn["id"])
             results.append(result)
     return results
 
 
-async def test_connection_by_id(connection_id: str) -> dict:
+async def test_connection_by_id(user_id: str, connection_id: str) -> dict:
     """Test an existing connection's credentials."""
-    conn = store.get_connection(connection_id)
+    conn = store.get_connection(user_id, connection_id)
     if not conn:
         raise ValueError(f"Connection {connection_id} not found")
 
@@ -623,9 +624,9 @@ async def test_connection_by_id(connection_id: str) -> dict:
     return {"success": False, "message": f"Unknown connection type: {conn_type}", "account_info": {}}
 
 
-def get_sync_history(connection_id: str, limit: int = 20) -> list[dict]:
+def get_sync_history(user_id: str, connection_id: str, limit: int = 20) -> list[dict]:
     """Get sync history for a connection."""
-    return store.get_sync_history(connection_id, limit)
+    return store.get_sync_history(user_id, connection_id, limit)
 
 
 async def _fetch_balances(conn: dict) -> list[dict]:

@@ -1,8 +1,9 @@
 import logging
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 
+from app.dependencies import AuthUser, get_current_user
 from app.schemas.asset import (
     AIAnalysisResponse,
     ChatRequest,
@@ -25,7 +26,7 @@ router = APIRouter(prefix="/chat", tags=["chat"])
 
 
 @router.get("/status")
-async def get_ai_status():
+async def get_ai_status(user: AuthUser = Depends(get_current_user)):
     """Check if AI service is configured and ready."""
     return {
         "configured": ai_service.is_configured,
@@ -34,7 +35,7 @@ async def get_ai_status():
 
 
 @router.post("/", response_model=ChatResponse)
-async def chat(req: ChatRequest):
+async def chat(req: ChatRequest, user: AuthUser = Depends(get_current_user)):
     """Send a message to the AI assistant and get a response."""
     if not ai_service.is_configured:
         raise HTTPException(
@@ -50,7 +51,7 @@ async def chat(req: ChatRequest):
 
             # User profile
             from app.routers.user_profile import _load_profile
-            profile = _load_profile()
+            profile = _load_profile(user.id)
             if profile.get("risk_tolerance"):
                 context_parts.append(
                     f"User profile: risk_tolerance={profile['risk_tolerance']}, "
@@ -59,11 +60,9 @@ async def chat(req: ChatRequest):
                 )
 
             # Portfolio risk snapshot
-            holdings = store.get_holdings()
+            holdings = store.get_holdings(user.id)
             if holdings:
                 from app.services.portfolio_risk import calculate_portfolio_risk
-                from app.services.market_data import market_data_service
-                import asyncio
                 enriched = []
                 for h in holdings[:10]:  # limit to avoid slow context
                     q = await market_data_service.get_quote(h["symbol"], h.get("type"))
@@ -80,7 +79,7 @@ async def chat(req: ChatRequest):
                 )
 
             # Recent alerts
-            recent_alerts = store.get_memories(category="alert_history", limit=5)
+            recent_alerts = store.get_memories(user.id, category="alert_history", limit=5)
             if recent_alerts:
                 alert_lines = [f"- {a['content']} ({a.get('metadata', {}).get('severity', '?')})" for a in recent_alerts]
                 context_parts.append("Recent alerts:\n" + "\n".join(alert_lines))
@@ -93,6 +92,7 @@ async def chat(req: ChatRequest):
         response_text = await ai_service.chat(
             messages=messages,
             context=enriched_context,
+            user_id=user.id,
         )
 
         # Auto-save last user message as interaction memory
@@ -101,6 +101,7 @@ async def chat(req: ChatRequest):
         )
         if last_user:
             store.save_memory(
+                user_id=user.id,
                 category="interaction",
                 content=last_user[:500],
                 metadata={"response_preview": response_text[:200]},
@@ -114,7 +115,7 @@ async def chat(req: ChatRequest):
 
 
 @router.get("/analyze/{symbol}", response_model=AIAnalysisResponse)
-async def analyze_asset(symbol: str):
+async def analyze_asset(symbol: str, user: AuthUser = Depends(get_current_user)):
     """Get AI-powered analysis for an asset."""
     if not ai_service.is_configured:
         raise HTTPException(
@@ -147,17 +148,14 @@ async def analyze_asset(symbol: str):
 
 
 @router.get("/personas")
-async def list_personas():
+async def list_personas(user: AuthUser = Depends(get_current_user)):
     """List available AI investor personas."""
     return {"personas": get_all_personas()}
 
 
 @router.post("/persona-analyze")
-async def persona_analyze(req: dict):
-    """Analyze a symbol from a specific persona's perspective.
-
-    Body: { "symbol": str, "persona_id": str, "question": str (optional) }
-    """
+async def persona_analyze(req: dict, user: AuthUser = Depends(get_current_user)):
+    """Analyze a symbol from a specific persona's perspective."""
     symbol = req.get("symbol", "").upper()
     persona_id = req.get("persona_id", "buffett")
     question = req.get("question", "")
@@ -169,7 +167,6 @@ async def persona_analyze(req: dict):
     if not persona_prompt:
         raise HTTPException(status_code=404, detail=f"Persona '{persona_id}' not found")
 
-    # Gather data
     quote = await market_data_service.get_quote(symbol)
     quote_data = quote if quote else None
 
@@ -182,7 +179,6 @@ async def persona_analyze(req: dict):
     if not ai_service.is_configured:
         raise HTTPException(status_code=503, detail="AI service not configured")
 
-    # Build context
     context_parts = [f"Asset: {symbol}"]
     if quote_data:
         context_parts.append(
@@ -199,6 +195,7 @@ async def persona_analyze(req: dict):
             messages=[{"role": "user", "content": user_prompt}],
             context="\n".join(context_parts),
             system_override=persona_prompt,
+            user_id=user.id,
         )
         return {
             "symbol": symbol,
@@ -210,27 +207,27 @@ async def persona_analyze(req: dict):
 
 
 @router.get("/briefing")
-async def get_briefing():
+async def get_briefing(user: AuthUser = Depends(get_current_user)):
     """Generate a proactive AI briefing from portfolio, watchlist, news, and macro data."""
     try:
-        return await generate_briefing()
+        return await generate_briefing(user_id=user.id)
     except Exception as e:
         logger.error("Briefing generation failed: %s", e)
         raise HTTPException(status_code=500, detail=f"Briefing generation error: {e}")
 
 
 @router.get("/recommendations")
-async def get_recommendations():
+async def get_recommendations(user: AuthUser = Depends(get_current_user)):
     """Generate AI-powered investment recommendations from all data sources."""
     try:
-        return await generate_recommendations()
+        return await generate_recommendations(user_id=user.id)
     except Exception as e:
         logger.error("Recommendations generation failed: %s", e)
         raise HTTPException(status_code=500, detail=f"Recommendations error: {e}")
 
 
 @router.get("/news")
-async def get_news(symbol: str | None = None):
+async def get_news(symbol: str | None = None, user: AuthUser = Depends(get_current_user)):
     """Get market or company-specific news from Finnhub."""
     if not news_service.is_configured:
         return {"articles": [], "source": "finnhub", "configured": False}
@@ -247,17 +244,17 @@ async def get_news(symbol: str | None = None):
 
 
 @router.get("/predict/{symbol}")
-async def predict_symbol(symbol: str):
-    """Generate an all-in-one prediction for a symbol, synthesizing all data sources."""
+async def predict_symbol(symbol: str, user: AuthUser = Depends(get_current_user)):
+    """Generate an all-in-one prediction for a symbol."""
     try:
-        return await generate_prediction(symbol)
+        return await generate_prediction(user_id=user.id, symbol=symbol)
     except Exception as e:
         logger.error("Prediction generation failed for %s: %s", symbol, e)
         raise HTTPException(status_code=500, detail=f"Prediction error: {e}")
 
 
 @router.get("/analyze-pipeline/{symbol}")
-async def analyze_pipeline(symbol: str):
+async def analyze_pipeline(symbol: str, user: AuthUser = Depends(get_current_user)):
     """Run multi-step analysis pipeline with SSE progress streaming."""
     return StreamingResponse(
         run_analysis_pipeline(symbol),

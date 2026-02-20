@@ -148,7 +148,7 @@ def _build_context(
     return "\n\n".join(parts)
 
 
-async def generate_briefing() -> dict:
+async def generate_briefing(user_id: str) -> dict:
     """Generate a proactive AI briefing with suggestion chips.
 
     Gathers all data in parallel, sends to AI, returns cached result.
@@ -156,8 +156,8 @@ async def generate_briefing() -> dict:
 
     async def _fetch():
         # Collect all symbols from portfolio + watchlists
-        holdings = store.get_holdings()
-        watchlists = store.get_watchlists()
+        holdings = store.get_holdings(user_id)
+        watchlists = store.get_watchlists(user_id)
 
         holding_symbols = [h["symbol"] for h in holdings]
         watchlist_symbols: list[str] = []
