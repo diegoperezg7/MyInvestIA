@@ -19,6 +19,35 @@ interface MoversResponse {
   losers: Mover[];
 }
 
+function MoverRow({ mover, isGainer, formatPrice }: { mover: Mover; isGainer: boolean; formatPrice: (price: number) => string }) {
+  return (
+    <div className="flex items-center justify-between py-2 px-3 hover:bg-oracle-bg/50 rounded transition-colors">
+      <div className="flex items-center gap-3 min-w-[120px]">
+        <span className="font-medium text-oracle-text text-sm">{mover.symbol}</span>
+        <span className="text-oracle-muted text-xs truncate max-w-[100px]">{mover.name}</span>
+      </div>
+      <div className="w-24 h-8">
+        {mover.sparkline?.length > 1 && (
+          <SparklineChart data={mover.sparkline} positive={isGainer} />
+        )}
+      </div>
+      <div className="flex items-center gap-4 min-w-[180px] justify-end">
+        <span className="text-oracle-text font-mono text-sm">{formatPrice(mover.price)}</span>
+        <span
+          className={`font-mono text-sm font-medium w-20 text-right ${
+            isGainer ? "text-oracle-green" : "text-oracle-red"
+          }`}
+        >
+          {isGainer ? "+" : ""}{mover.change_percent.toFixed(2)}%
+        </span>
+        <span className="text-oracle-muted text-xs font-mono w-16 text-right">
+          {(mover.volume / 1e6).toFixed(1)}M
+        </span>
+      </div>
+    </div>
+  );
+}
+
 export default function MoversView() {
   const [data, setData] = useState<MoversResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -46,33 +75,6 @@ export default function MoversView() {
   }, [region, threshold]);
 
   const { formatPrice } = useCurrencyStore();
-
-  const MoverRow = ({ mover, isGainer }: { mover: Mover; isGainer: boolean }) => (
-    <div className="flex items-center justify-between py-2 px-3 hover:bg-oracle-bg/50 rounded transition-colors">
-      <div className="flex items-center gap-3 min-w-[120px]">
-        <span className="font-medium text-oracle-text text-sm">{mover.symbol}</span>
-        <span className="text-oracle-muted text-xs truncate max-w-[100px]">{mover.name}</span>
-      </div>
-      <div className="w-24 h-8">
-        {mover.sparkline?.length > 1 && (
-          <SparklineChart data={mover.sparkline} positive={isGainer} />
-        )}
-      </div>
-      <div className="flex items-center gap-4 min-w-[180px] justify-end">
-        <span className="text-oracle-text font-mono text-sm">{formatPrice(mover.price)}</span>
-        <span
-          className={`font-mono text-sm font-medium w-20 text-right ${
-            isGainer ? "text-oracle-green" : "text-oracle-red"
-          }`}
-        >
-          {isGainer ? "+" : ""}{mover.change_percent.toFixed(2)}%
-        </span>
-        <span className="text-oracle-muted text-xs font-mono w-16 text-right">
-          {(mover.volume / 1e6).toFixed(1)}M
-        </span>
-      </div>
-    </div>
-  );
 
   return (
     <div>
@@ -129,7 +131,7 @@ export default function MoversView() {
             <p className="text-oracle-muted text-sm">No gainers above threshold</p>
           )}
           {data?.gainers.map((m) => (
-            <MoverRow key={m.symbol} mover={m} isGainer={true} />
+            <MoverRow key={m.symbol} mover={m} isGainer={true} formatPrice={formatPrice} />
           ))}
         </div>
 
@@ -148,7 +150,7 @@ export default function MoversView() {
             <p className="text-oracle-muted text-sm">No losers above threshold</p>
           )}
           {data?.losers.map((m) => (
-            <MoverRow key={m.symbol} mover={m} isGainer={false} />
+            <MoverRow key={m.symbol} mover={m} isGainer={false} formatPrice={formatPrice} />
           ))}
         </div>
       </div>

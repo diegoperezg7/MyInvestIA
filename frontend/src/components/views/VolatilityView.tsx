@@ -25,6 +25,18 @@ const RATING_STYLES: Record<string, string> = {
   extreme: "bg-oracle-red/20 text-oracle-red border-oracle-red/50",
 };
 
+function MetricCard({ label, value, suffix }: { label: string; value: string; suffix?: string }) {
+  return (
+    <div className="bg-oracle-bg rounded-lg p-3">
+      <p className="text-oracle-muted text-xs mb-1">{label}</p>
+      <p className="text-oracle-text font-mono text-lg">
+        {value}
+        {suffix && <span className="text-oracle-muted text-sm ml-1">{suffix}</span>}
+      </p>
+    </div>
+  );
+}
+
 export default function VolatilityView() {
   const [symbol, setSymbol] = useState("");
   const [data, setData] = useState<VolatilityData | null>(null);
@@ -51,16 +63,6 @@ export default function VolatilityView() {
       setLoading(false);
     }
   };
-
-  const MetricCard = ({ label, value, suffix }: { label: string; value: string; suffix?: string }) => (
-    <div className="bg-oracle-bg rounded-lg p-3">
-      <p className="text-oracle-muted text-xs mb-1">{label}</p>
-      <p className="text-oracle-text font-mono text-lg">
-        {value}
-        {suffix && <span className="text-oracle-muted text-sm ml-1">{suffix}</span>}
-      </p>
-    </div>
-  );
 
   return (
     <div>

@@ -209,13 +209,18 @@ async def get_signal(
         # Prepare chart data for frontend - use last 100 candles
         chart_data = []
         if df is not None and len(df) > 0:
-            df_tail = df.tail(100)
-            for i, (idx, row) in enumerate(df_tail.iterrows()):
+            from datetime import datetime, timedelta
+
+            df_tail = df.tail(100).reset_index(drop=True)
+            base_date = datetime.now() - timedelta(days=100)
+            for i in range(len(df_tail)):
+                row = df_tail.iloc[i]
+                # Generate valid date string
+                day_offset = int(i * 365 / 100)
+                date_str = (base_date + timedelta(days=day_offset)).strftime("%Y-%m-%d")
                 chart_data.append(
                     {
-                        "date": str(idx)[:10]
-                        if hasattr(idx, "year")
-                        else f"2025-{(i + 1):02d}-15",
+                        "date": date_str,
                         "open": float(row["Open"]),
                         "high": float(row["High"]),
                         "low": float(row["Low"]),
