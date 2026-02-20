@@ -198,12 +198,23 @@ class RLTradingAgent:
             }
 
         # No position - look for buy signal
-        # Buy when RSI oversold < 30 and positive momentum
-        if rsi < 35 and momentum > 0:
+        # Buy when RSI oversold < 40 OR strong positive momentum
+        if rsi < 40 or momentum > 0.005:
+            action = "buy"
+            confidence = 0.7
+            if rsi < 35:
+                reason = f"RSI sobrevendido: {rsi:.1f}"
+                confidence = 0.85
+            elif momentum > 0.01:
+                reason = f"Fuerte momentum positivo: {momentum * 100:.2f}%"
+                confidence = 0.8
+            else:
+                reason = f"Momentum positivo: {momentum * 100:.2f}%, RSI: {rsi:.1f}"
+
             return {
-                "action": "buy",
-                "confidence": 0.8,
-                "reason": f"RSI sobrevendido: {rsi:.1f}, Momentum: {momentum * 100:.2f}%",
+                "action": action,
+                "confidence": confidence,
+                "reason": reason,
                 "momentum": float(momentum),
                 "rsi": float(rsi),
                 "volume_ratio": float(volume_ratio),
@@ -212,12 +223,23 @@ class RLTradingAgent:
                 "current_price": current_price,
             }
 
-        # Buy on strong positive momentum
-        if momentum > 0.01:
+        # Sell signal: RSI overbought OR negative momentum
+        if rsi > 60 or momentum < -0.005:
+            action = "sell"
+            confidence = 0.7
+            if rsi > 70:
+                reason = f"RSI sobrecomprado: {rsi:.1f}"
+                confidence = 0.9
+            elif momentum < -0.01:
+                reason = f"Fuerte momentum negativo: {momentum * 100:.2f}%"
+                confidence = 0.8
+            else:
+                reason = f"Momentum negativo: {momentum * 100:.2f}%, RSI: {rsi:.1f}"
+
             return {
-                "action": "buy",
-                "confidence": 0.7,
-                "reason": f"Fuerte momentum positivo: {momentum * 100:.2f}%",
+                "action": action,
+                "confidence": confidence,
+                "reason": reason,
                 "momentum": float(momentum),
                 "rsi": float(rsi),
                 "volume_ratio": float(volume_ratio),
