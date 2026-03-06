@@ -34,7 +34,7 @@ AI-powered investment intelligence dashboard that aggregates real-time market da
 - Enhanced multi-source aggregation
 
 ### AI Chat & Reasoning
-- Conversational asset analysis powered by Mistral AI
+- Conversational asset analysis powered by Groq
 - Persona-based analysis (bullish, bearish, balanced analysts)
 - AI-generated market briefings
 - What-if scenario simulation
@@ -153,7 +153,9 @@ Create `backend/.env` from `backend/.env.example`:
 |----------|----------|-------------|
 | `SUPABASE_URL` | Yes | Supabase project URL |
 | `SUPABASE_KEY` | Yes | Supabase anon/public key |
-| `MISTRAL_API_KEY` | Yes | Mistral AI key (chat, sentiment, reasoning) |
+| `SUPABASE_SERVICE_KEY` | No | Supabase service role key for admin operations and persistence helpers |
+| `CEREBRAS_API_KEY` | No | Cerebras / OpenAI-compatible key used by legacy briefing, recommendation, and analysis flows |
+| `GROQ_API_KEY` | No | Groq key used by active chat and low-latency AI flows |
 | `TELEGRAM_BOT_TOKEN` | No | Telegram Bot for alerts |
 | `TELEGRAM_CHAT_ID` | No | Telegram chat to receive alerts |
 | `NEWSAPI_KEY` | No | NewsAPI.org key (100 req/day free) |
@@ -182,9 +184,13 @@ All endpoints are under `/api/v1/`. Full interactive docs at `/docs` when the ba
 | **Chat** | `POST /chat/`, `GET /chat/analyze/{symbol}`, `/chat/briefing`, `/chat/recommendations` | AI chat, analysis, briefings, persona-based analysis |
 | **Alerts** | `GET /alerts/`, `GET /alerts/scan/{symbol}`, `POST /alerts/scan-and-notify` | Alert engine with Telegram delivery |
 | **News** | `GET /news/feed` | Aggregated news with sentiment |
+| **Inbox** | `GET /inbox/`, `POST /inbox/refresh`, `PATCH /inbox/{id}` | Workflow inbox with actionable insights |
+| **Theses** | `GET /theses/`, `POST /theses/`, `POST /theses/{id}/review` | Thesis lifecycle and review workflow |
+| **Research** | `GET /research/rankings`, `GET /research/factors/{symbol}`, `GET /research/snapshots` | Quant ranking, factor review, and saved screens |
+| **Connections** | `GET /connections/`, `POST /connections/{type}`, `POST /connections/{id}/sync` | External exchange, wallet, broker, and prediction connections |
 | **Screener** | `POST /screener/scan`, `GET /screener/presets` | Market scanning with custom filters |
-| **Paper Trading** | `POST /paper-trade/accounts`, `/accounts/{id}/trade` | Virtual trading simulator |
-| **Notifications** | `POST /notifications/send`, `/notifications/test` | Telegram/email notifications |
+| **Paper Trading** | `POST /paper/accounts`, `/paper/accounts/{id}/trade` | Virtual trading simulator |
+| **Notifications** | `POST /notifications/send`, `/notifications/test` | Telegram/OpenClaw notifications |
 
 ---
 
@@ -195,13 +201,14 @@ All endpoints are under `/api/v1/`. Full interactive docs at `/docs` when the ba
 │   ├── app/
 │   │   ├── main.py              # FastAPI app & router registration
 │   │   ├── config.py            # Settings (env vars)
-│   │   ├── routers/             # API endpoint handlers (15 modules)
+│   │   ├── routers/             # API endpoint handlers (20+ modules)
 │   │   ├── schemas/             # Pydantic v2 data models
-│   │   └── services/            # Business logic (30+ services)
+│   │   └── services/            # Business logic (60+ services)
 │   │       ├── providers/       # Market data provider plugins
 │   │       ├── cache.py         # In-memory TTL cache with stale-while-revalidate
 │   │       ├── market_data.py   # Quotes, history, movers (batch fetch)
-│   │       ├── ai_service.py    # Mistral AI integration
+│   │       ├── ai_service.py    # Cerebras / OpenAI-compatible AI integration
+│   │       ├── groq_service.py  # Groq chat and low-latency AI integration
 │   │       ├── macro_intelligence.py
 │   │       ├── sentiment_service.py
 │   │       ├── alert_scorer.py
@@ -250,7 +257,7 @@ The system is optimized for fast dashboard loads:
 | Frontend | Next.js 15, React 19, Tailwind CSS 4, Recharts, Zustand, TypeScript |
 | Backend | Python 3.14, FastAPI, Pydantic v2, Uvicorn |
 | Database | Supabase (PostgreSQL) with Row Level Security |
-| AI | Mistral AI (chat, sentiment, reasoning, recommendations) |
+| AI | Groq + Cerebras-compatible OpenAI client |
 | Market Data | Yahoo Finance (primary), AlphaVantage, Finnhub, TwelveData (fallbacks), CoinGecko (crypto) |
 | Notifications | Telegram Bot API, OpenClaw |
 | Testing | pytest, pytest-asyncio |
