@@ -60,20 +60,24 @@ async def get_alert_history(
     user: AuthUser = Depends(get_current_user),
 ):
     """Get persisted alert history from AI memory."""
-    memories = store.get_memories(user.id, category="alert_history", limit=limit)
+    memories = store.get_memories(
+        user.id, category="alert_history", limit=limit, tenant_id=user.tenant_id
+    )
     alerts = []
     for m in memories:
         meta = m.get("metadata", {})
-        alerts.append({
-            "id": meta.get("alert_id", m.get("id")),
-            "type": meta.get("type", "unknown"),
-            "severity": meta.get("severity", "medium"),
-            "title": m.get("content", ""),
-            "description": meta.get("description", ""),
-            "reasoning": meta.get("reasoning", ""),
-            "symbol": meta.get("symbol"),
-            "confidence": meta.get("confidence", 0.5),
-            "suggested_action": meta.get("action", "monitor"),
-            "created_at": m.get("created_at", ""),
-        })
+        alerts.append(
+            {
+                "id": meta.get("alert_id", m.get("id")),
+                "type": meta.get("type", "unknown"),
+                "severity": meta.get("severity", "medium"),
+                "title": m.get("content", ""),
+                "description": meta.get("description", ""),
+                "reasoning": meta.get("reasoning", ""),
+                "symbol": meta.get("symbol"),
+                "confidence": meta.get("confidence", 0.5),
+                "suggested_action": meta.get("action", "monitor"),
+                "created_at": m.get("created_at", ""),
+            }
+        )
     return {"alerts": alerts, "total": len(alerts)}

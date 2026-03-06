@@ -37,19 +37,24 @@ async def get_memories(
 
     Categories: alert_history, user_preference, interaction, market_note
     """
-    memories = store.get_memories(user.id, category=category, limit=limit)
+    memories = store.get_memories(
+        user.id, category=category, limit=limit, tenant_id=user.tenant_id
+    )
     entries = [MemoryEntry(**m) for m in memories]
     return MemoryList(memories=entries, total=len(entries))
 
 
 @router.post("/", response_model=MemoryEntry, status_code=201)
-async def save_memory(request: SaveMemoryRequest, user: AuthUser = Depends(get_current_user)):
+async def save_memory(
+    request: SaveMemoryRequest, user: AuthUser = Depends(get_current_user)
+):
     """Save an AI memory entry for personalized context."""
     entry = store.save_memory(
         user_id=user.id,
         category=request.category,
         content=request.content,
         metadata=request.metadata,
+        tenant_id=user.tenant_id,
     )
     return MemoryEntry(**entry)
 
@@ -57,7 +62,7 @@ async def save_memory(request: SaveMemoryRequest, user: AuthUser = Depends(get_c
 @router.delete("/{memory_id}")
 async def delete_memory(memory_id: str, user: AuthUser = Depends(get_current_user)):
     """Delete an AI memory entry."""
-    deleted = store.delete_memory(user.id, memory_id)
+    deleted = store.delete_memory(user.id, memory_id, user.tenant_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="Memory entry not found")
     return {"deleted": True}

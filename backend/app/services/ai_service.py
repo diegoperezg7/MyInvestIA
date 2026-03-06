@@ -1,16 +1,16 @@
-"""AI service wrapping the Mistral AI API.
+"""AI service wrapping the Cerebras AI API (OpenAI-compatible).
 
 Provides conversational chat about markets/portfolio and AI-driven asset analysis
 that synthesizes technical indicators, market data, and reasoning.
 
 Model strategy:
-- mistral-large-latest: Chat, asset analysis, decision synthesis (complex reasoning)
-- mistral-small-latest: Sentiment analysis (classification, faster/cheaper)
+- llama-3.3-70b: Chat, asset analysis, decision synthesis (complex reasoning)
+- llama3.1-8b: Sentiment analysis (classification, faster/cheaper)
 """
 
 import logging
 
-from mistralai import Mistral
+from openai import AsyncOpenAI
 
 from app.config import settings
 from app.services.store import store
@@ -32,27 +32,32 @@ Key guidelines:
 You have access to real-time market data, technical analysis (RSI, MACD, SMA, EMA, Bollinger Bands), portfolio holdings, and watchlists. When the user asks about specific assets, use the context provided to give informed analysis."""
 
 # Model selection per task type
-MODEL_CHAT = "mistral-large-latest"       # Complex reasoning, multi-turn conversation
-MODEL_ANALYSIS = "mistral-large-latest"    # Asset analysis, decision synthesis
-MODEL_SENTIMENT = "mistral-small-latest"   # Sentiment classification (faster/cheaper)
+MODEL_CHAT = "llama-3.3-70b"       # Complex reasoning, multi-turn conversation
+MODEL_ANALYSIS = "llama-3.3-70b"   # Asset analysis, decision synthesis
+MODEL_SENTIMENT = "llama3.1-8b"    # Sentiment classification (faster/cheaper)
+
+CEREBRAS_BASE_URL = "https://api.cerebras.ai/v1"
 
 
 class AIService:
-    """Handles all interactions with the Mistral AI API."""
+    """Handles all interactions with the Cerebras AI API."""
 
     def __init__(self):
-        self._client: Mistral | None = None
+        self._client: AsyncOpenAI | None = None
 
-    def _get_client(self) -> Mistral:
-        if not settings.mistral_api_key:
-            raise ValueError("MISTRAL_API_KEY not configured in .env")
+    def _get_client(self) -> AsyncOpenAI:
+        if not settings.cerebras_api_key:
+            raise ValueError("CEREBRAS_API_KEY not configured in .env")
         if self._client is None:
-            self._client = Mistral(api_key=settings.mistral_api_key)
+            self._client = AsyncOpenAI(
+                api_key=settings.cerebras_api_key,
+                base_url=CEREBRAS_BASE_URL,
+            )
         return self._client
 
     @property
     def is_configured(self) -> bool:
-        return bool(settings.mistral_api_key)
+        return bool(settings.cerebras_api_key)
 
     async def chat(
         self,
@@ -63,7 +68,7 @@ class AIService:
         system_override: str | None = None,
         user_id: str = "",
     ) -> str:
-        """Send a conversation to Mistral and get a response.
+        """Send a conversation to Cerebras and get a response.
 
         Args:
             messages: List of {"role": "user"|"assistant", "content": str}
@@ -93,8 +98,11 @@ class AIService:
         # Build messages with system prompt as first message
         full_messages = [{"role": "system", "content": system}] + messages
 
-        response = await client.chat.complete_async(
-            model=model or MODEL_CHAT,
+        # Use the requested model, defaulting to MODEL_CHAT
+        selected_model = model or MODEL_CHAT
+
+        response = await client.chat.completions.create(
+            model=selected_model,
             max_tokens=max_tokens,
             messages=full_messages,
         )
@@ -108,10 +116,7 @@ class AIService:
         quote_data: dict | None = None,
         portfolio_context: str = "",
     ) -> dict:
-        """Generate AI analysis for an asset using available data.
-
-        Uses mistral-large-latest for complex multi-factor reasoning.
-        """
+        """Generate AI analysis for an asset using available data."""
         context_parts = [f"Asset: {symbol}"]
 
         if quote_data:

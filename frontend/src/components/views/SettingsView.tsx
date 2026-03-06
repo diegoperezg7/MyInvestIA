@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Settings, Save, User, Shield, Target, Bell, Globe, Lock, LogOut } from "lucide-react";
+import { Settings, Save, User, Shield, Target, Bell, Globe } from "lucide-react";
 import { fetchAPI } from "@/lib/api";
 import { getToken } from "@/lib/auth";
 import { useAuth } from "@/contexts/AuthContext";
@@ -32,7 +32,7 @@ const GOAL_PRESETS = [
 ];
 
 export default function SettingsView() {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const [profile, setProfile] = useState<UserProfile>({
     display_name: "",
     risk_tolerance: "moderate",
@@ -46,10 +46,6 @@ export default function SettingsView() {
   });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [pwLoading, setPwLoading] = useState(false);
-  const [pwMessage, setPwMessage] = useState<{type: string; text: string} | null>(null);
 
   useEffect(() => {
     fetchAPI<UserProfile>("/api/v1/user/profile")
@@ -88,37 +84,6 @@ export default function SettingsView() {
         ? p.goals.filter((g) => g !== goal)
         : [...p.goals, goal],
     }));
-  };
-
-  const handleChangePassword = async () => {
-    if (newPassword !== confirmPassword) {
-      setPwMessage({ type: "error", text: "Las contraseñas no coinciden" });
-      return;
-    }
-    if (newPassword.length < 6) {
-      setPwMessage({ type: "error", text: "La contraseña debe tener al menos 6 caracteres" });
-      return;
-    }
-    setPwLoading(true);
-    setPwMessage(null);
-    try {
-      const token = getToken();
-      await fetch("/api/v1/auth/change-password", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({ new_password: newPassword }),
-      });
-      setPwMessage({ type: "ok", text: "Contraseña cambiada correctamente" });
-      setNewPassword("");
-      setConfirmPassword("");
-    } catch {
-      setPwMessage({ type: "error", text: "Error al cambiar la contraseña" });
-    } finally {
-      setPwLoading(false);
-    }
   };
 
   return (
@@ -368,53 +333,6 @@ export default function SettingsView() {
           <option value="CHF">CHF</option>
           <option value="JPY">JPY (¥)</option>
         </select>
-      </section>
-
-      {/* Change password */}
-      <section className="bg-oracle-panel border border-oracle-border rounded-lg p-3 sm:p-4">
-        <div className="flex items-center gap-2 mb-3">
-          <Lock className="w-4 h-4 text-oracle-accent" />
-          <h3 className="font-medium text-oracle-text text-sm">Cambiar contraseña</h3>
-        </div>
-        <div className="space-y-3">
-          <input
-            type="password"
-            value={newPassword}
-            onChange={(e) => setNewPassword(e.target.value)}
-            placeholder="Nueva contraseña"
-            className="w-full bg-oracle-bg border border-oracle-border rounded px-3 py-2 text-sm text-oracle-text placeholder:text-oracle-muted"
-          />
-          <input
-            type="password"
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            placeholder="Confirmar contraseña"
-            className="w-full bg-oracle-bg border border-oracle-border rounded px-3 py-2 text-sm text-oracle-text placeholder:text-oracle-muted"
-          />
-          {pwMessage && (
-            <p className={`text-xs ${pwMessage.type === "ok" ? "text-green-400" : "text-red-400"}`}>
-              {pwMessage.text}
-            </p>
-          )}
-          <button
-            onClick={handleChangePassword}
-            disabled={pwLoading || !newPassword}
-            className="w-full sm:w-auto px-3 py-2 bg-oracle-accent text-white rounded text-sm hover:bg-oracle-accent/80 disabled:opacity-50 transition-colors"
-          >
-            {pwLoading ? "Cambiando..." : "Cambiar contraseña"}
-          </button>
-        </div>
-      </section>
-
-      {/* Logout */}
-      <section className="bg-oracle-panel border border-oracle-border rounded-lg p-3 sm:p-4">
-        <button
-          onClick={logout}
-          className="flex items-center justify-center gap-2 px-4 py-2 w-full sm:w-auto text-red-400 hover:bg-red-400/10 rounded transition-colors text-sm"
-        >
-          <LogOut className="w-4 h-4" />
-          Cerrar sesión
-        </button>
       </section>
     </div>
   );

@@ -93,11 +93,10 @@ async def get_portfolio_risk(user: AuthUser = Depends(get_current_user)):
     """Get portfolio risk analytics (VaR, Sharpe, correlation, stress tests)."""
     from app.services.portfolio_risk import calculate_portfolio_risk
 
-    raw_holdings = store.get_holdings(user.id)
+    raw_holdings = store.get_holdings(user.id, user.tenant_id)
     if not raw_holdings:
         return PortfolioRiskResponse()
 
-    # Build holdings with live prices
     built = list(await asyncio.gather(*[_build_holding(h) for h in raw_holdings]))
     holdings_for_risk = [
         {
@@ -114,12 +113,14 @@ async def get_portfolio_risk(user: AuthUser = Depends(get_current_user)):
 
 
 @router.get("/", response_model=Portfolio)
-async def get_portfolio(source: str | None = None, user: AuthUser = Depends(get_current_user)):
+async def get_portfolio(
+    source: str | None = None, user: AuthUser = Depends(get_current_user)
+):
     """Get the full portfolio with all holdings and live prices.
 
     Optional source filter: manual, exchange, wallet, broker, prediction
     """
-    raw_holdings = store.get_holdings(user.id)
+    raw_holdings = store.get_holdings(user.id, user.tenant_id)
     if source:
         raw_holdings = [h for h in raw_holdings if h.get("source", "manual") == source]
     holdings = list(await asyncio.gather(*[_build_holding(h) for h in raw_holdings]))
@@ -142,14 +143,18 @@ async def get_portfolio(source: str | None = None, user: AuthUser = Depends(get_
 @router.get("/{symbol}", response_model=PortfolioHolding)
 async def get_holding(symbol: str, user: AuthUser = Depends(get_current_user)):
     """Get a single holding by symbol."""
-    raw = store.get_holding(user.id, symbol)
+    raw = store.get_holding(user.id, symbol, user.tenant_id)
     if not raw:
-        raise HTTPException(status_code=404, detail=f"Holding '{symbol.upper()}' not found")
+        raise HTTPException(
+            status_code=404, detail=f"Holding '{symbol.upper()}' not found"
+        )
     return await _build_holding(raw)
 
 
 @router.post("/", response_model=PortfolioHolding, status_code=201)
-async def add_holding(req: AddHoldingRequest, user: AuthUser = Depends(get_current_user)):
+async def add_holding(
+    req: AddHoldingRequest, user: AuthUser = Depends(get_current_user)
+):
     """Add a new holding or average into an existing one."""
     raw = store.add_holding(
         user_id=user.id,
@@ -158,45 +163,66 @@ async def add_holding(req: AddHoldingRequest, user: AuthUser = Depends(get_curre
         asset_type=req.type.value,
         quantity=req.quantity,
         avg_buy_price=req.avg_buy_price,
+        tenant_id=user.tenant_id,
     )
     return await _build_holding(raw)
 
 
 @router.patch("/{symbol}", response_model=PortfolioHolding)
-async def update_holding(symbol: str, req: UpdateHoldingRequest, user: AuthUser = Depends(get_current_user)):
+async def update_holding(
+    symbol: str, req: UpdateHoldingRequest, user: AuthUser = Depends(get_current_user)
+):
     """Update quantity or average buy price for a holding."""
     if req.quantity is None and req.avg_buy_price is None:
-        raise HTTPException(status_code=400, detail="At least one field must be provided")
-    raw = store.update_holding(user.id, symbol, quantity=req.quantity, avg_buy_price=req.avg_buy_price)
+        raise HTTPException(
+            status_code=400, detail="At least one field must be provided"
+        )
+    raw = store.update_holding(
+        user.id,
+        symbol,
+        quantity=req.quantity,
+        avg_buy_price=req.avg_buy_price,
+        tenant_id=user.tenant_id,
+    )
     if not raw:
-        raise HTTPException(status_code=404, detail=f"Holding '{symbol.upper()}' not found")
+        raise HTTPException(
+            status_code=404, detail=f"Holding '{symbol.upper()}' not found"
+        )
     return await _build_holding(raw)
 
 
 @router.delete("/{symbol}", status_code=204)
 async def delete_holding(symbol: str, user: AuthUser = Depends(get_current_user)):
     """Remove a manual holding from the portfolio. Synced holdings cannot be deleted here."""
-    raw = store.get_holding(user.id, symbol)
+    raw = store.get_holding(user.id, symbol, user.tenant_id)
     if not raw:
-        raise HTTPException(status_code=404, detail=f"Holding '{symbol.upper()}' not found")
+        raise HTTPException(
+            status_code=404, detail=f"Holding '{symbol.upper()}' not found"
+        )
     if raw.get("source", "manual") != "manual":
         raise HTTPException(
             status_code=400,
             detail=f"Holding '{symbol.upper()}' is synced from an external connection. "
-                   "Delete the connection to remove its holdings.",
+            "Delete the connection to remove its holdings.",
         )
-    if not store.delete_holding(user.id, symbol):
-        raise HTTPException(status_code=404, detail=f"Holding '{symbol.upper()}' not found")
+    if not store.delete_holding(user.id, symbol, user.tenant_id):
+        raise HTTPException(
+            status_code=404, detail=f"Holding '{symbol.upper()}' not found"
+        )
 
 
 @router.get("/export", response_class=Response)
 async def export_csv(user: AuthUser = Depends(get_current_user)):
     """Export portfolio holdings as CSV."""
-    raw_holdings = store.get_holdings(user.id)
+    raw_holdings = store.get_holdings(user.id, user.tenant_id)
     built = list(await asyncio.gather(*[_build_holding(h) for h in raw_holdings]))
     holdings_data = [
         {
-            "asset": {"symbol": holding.asset.symbol, "name": holding.asset.name, "type": holding.asset.type.value},
+            "asset": {
+                "symbol": holding.asset.symbol,
+                "name": holding.asset.name,
+                "type": holding.asset.type.value,
+            },
             "quantity": holding.quantity,
             "avg_buy_price": holding.avg_buy_price,
             "current_value": holding.current_value,
@@ -214,7 +240,9 @@ async def export_csv(user: AuthUser = Depends(get_current_user)):
 
 
 @router.post("/import")
-async def import_csv(file: UploadFile = File(...), user: AuthUser = Depends(get_current_user)):
+async def import_csv(
+    file: UploadFile = File(...), user: AuthUser = Depends(get_current_user)
+):
     """Import portfolio holdings from CSV."""
     content = (await file.read()).decode("utf-8")
     holdings = parse_portfolio_csv(content)
@@ -229,6 +257,7 @@ async def import_csv(file: UploadFile = File(...), user: AuthUser = Depends(get_
                 asset_type=h.get("type", "stock"),
                 quantity=h["quantity"],
                 avg_buy_price=h["avg_buy_price"],
+                tenant_id=user.tenant_id,
             )
             imported.append(raw["symbol"])
         except Exception:
@@ -240,7 +269,7 @@ async def import_csv(file: UploadFile = File(...), user: AuthUser = Depends(get_
 @router.get("/dividends")
 async def get_dividends(user: AuthUser = Depends(get_current_user)):
     """Get dividend data for all portfolio holdings."""
-    raw_holdings = store.get_holdings(user.id)
+    raw_holdings = store.get_holdings(user.id, user.tenant_id)
     symbols = [h["symbol"] for h in raw_holdings]
     if not symbols:
         return {"dividends": {}, "total_annual": 0, "symbols_with_dividends": 0}

@@ -3,10 +3,14 @@
 Multi-user: all operations require a user_id parameter to scope data.
 The backend uses the service_role key (bypasses RLS) so we must filter
 by user_id explicitly in every query.
+
+Multi-tenancy: optionally use tenant_id parameter. Requires adding tenant_id
+column to Supabase tables for full implementation.
 """
 
 import logging
 import uuid
+from typing import Optional
 
 from app.config import settings
 
@@ -14,7 +18,10 @@ logger = logging.getLogger(__name__)
 
 
 class SupabaseStore:
-    """Supabase-backed store — all methods require user_id."""
+    """Supabase-backed store — all methods require user_id.
+
+    Supports optional tenant_id for multi-tenancy (requires table modifications).
+    """
 
     def __init__(self):
         self._client = None
@@ -34,17 +41,24 @@ class SupabaseStore:
             and (settings.supabase_service_key or settings.supabase_key)
         )
 
+    def _build_tenant_filter(self, query, tenant_id: Optional[str]):
+        """Add tenant filter to query if tenant_id provided and column exists."""
+        if tenant_id and settings.enable_multitenant:
+            try:
+                query = query.eq("tenant_id", tenant_id)
+            except Exception:
+                pass
+        return query
+
     # --- Portfolio ---
 
-    def get_holdings(self, user_id: str) -> list[dict]:
+    def get_holdings(self, user_id: str, tenant_id: Optional[str] = None) -> list[dict]:
         try:
-            result = (
-                self._get_client()
-                .table("holdings")
-                .select("*")
-                .eq("user_id", user_id)
-                .execute()
+            query = (
+                self._get_client().table("holdings").select("*").eq("user_id", user_id)
             )
+            query = self._build_tenant_filter(query, tenant_id)
+            result = query.execute()
             holdings = result.data or []
             for h in holdings:
                 h.setdefault("source", "manual")
@@ -54,16 +68,19 @@ class SupabaseStore:
             logger.warning("Supabase get_holdings failed: %s", e)
             return []
 
-    def get_holding(self, user_id: str, symbol: str) -> dict | None:
+    def get_holding(
+        self, user_id: str, symbol: str, tenant_id: Optional[str] = None
+    ) -> dict | None:
         try:
-            result = (
+            query = (
                 self._get_client()
                 .table("holdings")
                 .select("*")
                 .eq("user_id", user_id)
                 .eq("symbol", symbol.upper())
-                .execute()
             )
+            query = self._build_tenant_filter(query, tenant_id)
+            result = query.execute()
             return result.data[0] if result.data else None
         except Exception as e:
             logger.warning("Supabase get_holding failed for %s: %s", symbol, e)
@@ -77,10 +94,22 @@ class SupabaseStore:
         asset_type: str,
         quantity: float,
         avg_buy_price: float,
+        tenant_id: Optional[str] = None,
     ) -> dict:
         symbol = symbol.upper()
-        existing = self.get_holding(user_id, symbol)
+        existing = self.get_holding(user_id, symbol, tenant_id)
         client = self._get_client()
+
+        holding_data = {
+            "symbol": symbol,
+            "name": name,
+            "type": asset_type,
+            "quantity": quantity,
+            "avg_buy_price": avg_buy_price,
+            "user_id": user_id,
+        }
+        if tenant_id and settings.enable_multitenant:
+            holding_data["tenant_id"] = tenant_id
 
         if existing:
             old_qty = existing["quantity"]
@@ -106,16 +135,8 @@ class SupabaseStore:
                 }
             )
 
-        holding = {
-            "symbol": symbol,
-            "name": name,
-            "type": asset_type,
-            "quantity": quantity,
-            "avg_buy_price": avg_buy_price,
-            "user_id": user_id,
-        }
-        result = client.table("holdings").insert(holding).execute()
-        return result.data[0] if result.data else holding
+        result = client.table("holdings").insert(holding_data).execute()
+        return result.data[0] if result.data else holding_data
 
     def update_holding(
         self,
@@ -123,9 +144,10 @@ class SupabaseStore:
         symbol: str,
         quantity: float | None = None,
         avg_buy_price: float | None = None,
+        tenant_id: Optional[str] = None,
     ) -> dict | None:
         symbol = symbol.upper()
-        existing = self.get_holding(user_id, symbol)
+        existing = self.get_holding(user_id, symbol, tenant_id)
         if not existing:
             return None
 
@@ -147,17 +169,20 @@ class SupabaseStore:
             return result.data[0] if result.data else {**existing, **updates}
         return existing
 
-    def delete_holding(self, user_id: str, symbol: str) -> bool:
+    def delete_holding(
+        self, user_id: str, symbol: str, tenant_id: Optional[str] = None
+    ) -> bool:
         symbol = symbol.upper()
         try:
-            result = (
+            query = (
                 self._get_client()
                 .table("holdings")
                 .delete()
                 .eq("user_id", user_id)
                 .eq("symbol", symbol)
-                .execute()
             )
+            query = self._build_tenant_filter(query, tenant_id)
+            result = query.execute()
             return len(result.data) > 0 if result.data else False
         except Exception as e:
             logger.warning("Supabase delete_holding failed for %s: %s", symbol, e)
@@ -165,7 +190,9 @@ class SupabaseStore:
 
     # --- Watchlists ---
 
-    def get_watchlists(self, user_id: str) -> list[dict]:
+    def get_watchlists(
+        self, user_id: str, tenant_id: Optional[str] = None
+    ) -> list[dict]:
         try:
             client = self._get_client()
             result = (
