@@ -13,10 +13,12 @@ from app.schemas.asset import (
     PortfolioRiskResponse,
     UpdateHoldingRequest,
 )
+from app.schemas.portfolio_intelligence import PortfolioIntelligenceResponse
 from app.services.csv_service import export_portfolio_csv, parse_portfolio_csv
 from app.services.currency_service import convert_currency
 from app.services.dividend_service import get_portfolio_dividends
 from app.services.market_data import market_data_service
+from app.services.portfolio_intelligence import build_portfolio_intelligence
 from app.services.store import store
 
 logger = logging.getLogger(__name__)
@@ -110,6 +112,40 @@ async def get_portfolio_risk(user: AuthUser = Depends(get_current_user)):
 
     result = await calculate_portfolio_risk(holdings_for_risk)
     return PortfolioRiskResponse(**result)
+
+
+@router.get("/intelligence", response_model=PortfolioIntelligenceResponse)
+async def get_portfolio_intelligence(
+    candidate_symbol: str | None = None,
+    candidate_type: str | None = None,
+    candidate_weight: float = 0.10,
+    user: AuthUser = Depends(get_current_user),
+):
+    """Get structured portfolio intelligence and optional candidate impact analysis."""
+    raw_holdings = store.get_holdings(user.id, user.tenant_id)
+    if not raw_holdings:
+        return PortfolioIntelligenceResponse()
+
+    built = list(await asyncio.gather(*[_build_holding(h) for h in raw_holdings]))
+    positions = [
+        {
+            "symbol": holding.asset.symbol,
+            "name": holding.asset.name,
+            "type": holding.asset.type.value,
+            "quantity": holding.quantity,
+            "avg_buy_price": holding.avg_buy_price,
+            "current_value": holding.current_value,
+        }
+        for holding in built
+        if holding.current_value > 0
+    ]
+    result = await build_portfolio_intelligence(
+        positions,
+        candidate_symbol=candidate_symbol.upper() if candidate_symbol else None,
+        candidate_asset_type=candidate_type,
+        candidate_weight=candidate_weight,
+    )
+    return PortfolioIntelligenceResponse(**result)
 
 
 @router.get("/", response_model=Portfolio)

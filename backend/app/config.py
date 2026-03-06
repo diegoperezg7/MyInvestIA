@@ -78,6 +78,14 @@ class Settings(BaseSettings):
     # Display currency
     display_currency: str = "USD"
 
+    # Explainable scoring engine
+    score_weight_fundamentals: float = 0.25
+    score_weight_technical: float = 0.25
+    score_weight_sentiment: float = 0.15
+    score_weight_macro: float = 0.15
+    score_weight_portfolio_fit: float = 0.20
+    portfolio_candidate_weight: float = 0.10
+
     # Redis
     redis_url: str = "redis://localhost:6379"
 

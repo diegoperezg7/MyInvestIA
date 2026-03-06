@@ -2,7 +2,7 @@ import time
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from app.dependencies import get_current_user
+from app.dependencies import AuthUser, get_current_user
 
 from app.schemas.asset import (
     Asset,
@@ -27,6 +27,8 @@ from app.schemas.asset import (
     SentimentAnalysisResponse,
     TechnicalAnalysis,
 )
+from app.schemas.scoring import AssetScoreResponse
+from app.services.scoring_engine import build_asset_score
 from app.schemas.signals import SignalSummary
 from app.services.macro_intelligence import get_all_macro_indicators, get_macro_summary
 from app.services.market_data import COMMODITY_FUTURES_MAP, market_data_service
@@ -622,6 +624,22 @@ async def get_technical_analysis(
         overall_signal=indicators["overall_signal"],
         signal_counts=indicators["signal_counts"],
     )
+
+
+@router.get("/score/{symbol}", response_model=AssetScoreResponse)
+async def get_asset_score(
+    symbol: str,
+    asset_type: AssetType | None = Query(default=None, description="Asset type hint"),
+    user: AuthUser = Depends(get_current_user),
+):
+    """Get explainable structured scoring for an asset."""
+    result = await build_asset_score(
+        symbol,
+        asset_type=asset_type.value if asset_type else None,
+        user_id=user.id,
+        tenant_id=user.tenant_id,
+    )
+    return AssetScoreResponse(**result)
 
 
 @router.get("/signal-summary/{symbol}", response_model=SignalSummary)
