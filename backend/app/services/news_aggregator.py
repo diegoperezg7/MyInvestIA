@@ -186,7 +186,7 @@ async def _analyze_batch(articles: list[dict]) -> list[dict]:
     try:
         response = await ai_service.chat(
             messages=[{"role": "user", "content": prompt}],
-            model="mistral-small-latest",
+            model="llama3.1-8b",
             max_tokens=1500,
             system_override=(
                 "You are a financial news analyst. Analyze articles for market impact. "

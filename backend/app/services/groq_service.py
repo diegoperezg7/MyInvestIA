@@ -6,17 +6,19 @@ import os
 from typing import Optional, List, Dict, Any
 from groq import AsyncGroq
 
+from app.config import settings
+
 # Groq free models (very fast inference)
 MODELS = {
     "fast": "llama-3.1-8b-instant",  # Fast, free
-    "powerful": "llama-3.1-70b-versatile",  # More powerful, still free
+    "powerful": "llama-3.3-70b-versatile",  # More powerful, still free
     "reasoning": "deepseek-r1-distill-llama-70b",  # Best for reasoning
 }
 
 
 class GroqService:
     def __init__(self):
-        api_key = os.getenv(
+        api_key = settings.groq_api_key or os.getenv(
             "GROQ_API_KEY", "gsk_GGjAhjuK2NqW6kNAD68WGdyb3FY6vgPWSP6beLdntk3B6Xdxqec"
         )
         self._client = AsyncGroq(api_key=api_key)

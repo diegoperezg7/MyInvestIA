@@ -13,6 +13,11 @@ from app.services.providers.alphavantage_provider import AlphaVantageProvider
 from app.services.providers.finnhub_provider import FinnhubProvider
 from app.services.providers.twelvedata_provider import TwelveDataProvider
 
+try:
+    from app.services.providers.bloomberg_provider import BloombergProvider
+except ImportError:
+    BloombergProvider = None
+
 logger = logging.getLogger(__name__)
 
 
@@ -22,10 +27,12 @@ class ProviderChain:
     def __init__(self):
         self._providers: list[MarketDataProvider] = [
             YFinanceProvider(),
+            BloombergProvider() if BloombergProvider else None,
             AlphaVantageProvider(),
             FinnhubProvider(),
             TwelveDataProvider(),
         ]
+        self._providers = [p for p in self._providers if p is not None]
 
     @property
     def providers(self) -> list[dict]:
@@ -55,7 +62,9 @@ class ProviderChain:
             except Exception as e:
                 logger.warning(
                     "Provider %s failed for quote %s: %s",
-                    provider.name, symbol, e,
+                    provider.name,
+                    symbol,
+                    e,
                 )
                 continue
         return None
@@ -101,7 +110,9 @@ class ProviderChain:
             except Exception as e:
                 logger.warning(
                     "Provider %s failed for history %s: %s",
-                    provider.name, symbol, e,
+                    provider.name,
+                    symbol,
+                    e,
                 )
                 continue
         return []

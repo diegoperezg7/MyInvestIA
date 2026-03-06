@@ -26,6 +26,10 @@
 	}
 }
 
+http://localhost {
+	import myinvestia_routes
+}
+
 http://myinvestia.darc3.com {
 	import myinvestia_routes
 }

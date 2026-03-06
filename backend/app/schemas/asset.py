@@ -255,7 +255,7 @@ class ChatRequest(BaseModel):
 
 class ChatResponse(BaseModel):
     response: str
-    model: str = "mistral-large-latest"
+    model: str = "groq-llama-3.3-70b"
 
 
 class AIAnalysisResponse(BaseModel):

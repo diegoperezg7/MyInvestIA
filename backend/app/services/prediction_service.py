@@ -10,6 +10,7 @@ import logging
 from datetime import datetime, timezone
 
 from app.services.ai_service import ai_service
+from app.services.groq_service import groq_service
 from app.services.cache import get_or_fetch
 from app.services.quant_scoring import compute_quant_scores
 
@@ -78,7 +79,10 @@ async def generate_prediction(user_id: str, symbol: str) -> dict:
     async def _fetch():
         # Import here to avoid circular imports
         from app.services.enhanced_sentiment_service import get_enhanced_sentiment
-        from app.services.macro_intelligence import get_all_macro_indicators, get_macro_summary
+        from app.services.macro_intelligence import (
+            get_all_macro_indicators,
+            get_macro_summary,
+        )
         from app.services.market_data import market_data_service
         from app.services.news_service import news_service
         from app.services.newsapi_service import newsapi_service
@@ -97,7 +101,9 @@ async def generate_prediction(user_id: str, symbol: str) -> dict:
             tasks["enhanced_sentiment"] = tg.create_task(get_enhanced_sentiment(symbol))
             tasks["social"] = tg.create_task(news_service.get_social_sentiment(symbol))
             tasks["macro"] = tg.create_task(get_all_macro_indicators())
-            tasks["newsapi"] = tg.create_task(newsapi_service.get_symbol_news(symbol, limit=10))
+            tasks["newsapi"] = tg.create_task(
+                newsapi_service.get_symbol_news(symbol, limit=10)
+            )
             tasks["rss"] = tg.create_task(get_rss_news(limit=30))
             tasks["market_news"] = tg.create_task(news_service.get_market_news(limit=5))
 
@@ -118,7 +124,9 @@ async def generate_prediction(user_id: str, symbol: str) -> dict:
             closes = [r["close"] for r in history]
             technical_data = compute_all_indicators(closes)
             try:
-                signal_summary = build_signal_summary(symbol, technical_data, closes[-1])
+                signal_summary = build_signal_summary(
+                    symbol, technical_data, closes[-1]
+                )
             except Exception:
                 pass
 
@@ -129,8 +137,10 @@ async def generate_prediction(user_id: str, symbol: str) -> dict:
 
         # Filter RSS for symbol
         rss_mentions = [
-            a for a in rss_articles
-            if symbol.lower() in (a.get("headline", "") + " " + a.get("summary", "")).lower()
+            a
+            for a in rss_articles
+            if symbol.lower()
+            in (a.get("headline", "") + " " + a.get("summary", "")).lower()
         ]
 
         # Collect news headlines
@@ -149,9 +159,7 @@ async def generate_prediction(user_id: str, symbol: str) -> dict:
         portfolio_context = ""
         for h in holdings:
             if h["symbol"] == symbol:
-                portfolio_context = (
-                    f"User holds {h['quantity']} shares at ${h['avg_buy_price']:.2f} avg cost"
-                )
+                portfolio_context = f"User holds {h['quantity']} shares at ${h['avg_buy_price']:.2f} avg cost"
                 break
 
         # Build comprehensive context
@@ -171,8 +179,10 @@ async def generate_prediction(user_id: str, symbol: str) -> dict:
         )
 
         # Generate prediction with AI
-        if not ai_service.is_configured:
-            return _fallback_prediction(symbol, technical_data, enhanced_sentiment, macro_summary, quant_scores)
+        if not groq_service.is_available():
+            return _fallback_prediction(
+                symbol, technical_data, enhanced_sentiment, macro_summary, quant_scores
+            )
 
         now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
         user_prompt = (
@@ -181,11 +191,10 @@ async def generate_prediction(user_id: str, symbol: str) -> dict:
         )
 
         try:
-            response = await ai_service.chat(
-                messages=[{"role": "user", "content": user_prompt}],
-                max_tokens=3000,
-                model="mistral-large-latest",
-                system_override=PREDICTION_SYSTEM_PROMPT,
+            response = await groq_service.chat(
+                prompt=user_prompt,
+                model="powerful",
+                system_prompt=PREDICTION_SYSTEM_PROMPT,
             )
             result = _parse_prediction_response(response, symbol, quant_scores)
             if result:
@@ -194,7 +203,9 @@ async def generate_prediction(user_id: str, symbol: str) -> dict:
         except Exception as e:
             logger.warning("AI prediction for %s failed: %s", symbol, e)
 
-        return _fallback_prediction(symbol, technical_data, enhanced_sentiment, macro_summary, quant_scores)
+        return _fallback_prediction(
+            symbol, technical_data, enhanced_sentiment, macro_summary, quant_scores
+        )
 
     return await get_or_fetch(f"prediction:{symbol}", _fetch, PREDICTION_TTL) or {
         "symbol": symbol,
@@ -251,12 +262,16 @@ def _build_prediction_context(
         lines.append("Risk Metrics:")
         lines.append(f"  - Sharpe Ratio (63d): {risk.get('sharpe_ratio', 0):.2f}")
         lines.append(f"  - Max Drawdown (63d): {risk.get('max_drawdown', 0):.2f}%")
-        lines.append(f"  - Historical Volatility (20d): {risk.get('historical_volatility', 0):.2f}%")
+        lines.append(
+            f"  - Historical Volatility (20d): {risk.get('historical_volatility', 0):.2f}%"
+        )
         if sr:
             lines.append("")
-            lines.append(f"Support/Resistance: Pivot={sr.get('pivot', 'N/A')}, "
-                         f"S1={sr.get('s1', 'N/A')}, S2={sr.get('s2', 'N/A')}, "
-                         f"R1={sr.get('r1', 'N/A')}, R2={sr.get('r2', 'N/A')}")
+            lines.append(
+                f"Support/Resistance: Pivot={sr.get('pivot', 'N/A')}, "
+                f"S1={sr.get('s1', 'N/A')}, S2={sr.get('s2', 'N/A')}, "
+                f"R1={sr.get('r1', 'N/A')}, R2={sr.get('r2', 'N/A')}"
+            )
         patterns = qs.get("candlestick_patterns", [])
         if patterns:
             lines.append(f"Candlestick Patterns: {', '.join(patterns)}")
@@ -344,7 +359,9 @@ def _build_prediction_context(
         yield_10y = None
         yield_13w = None
         for ind in macro_indicators:
-            lines.append(f"- {ind['name']}: {ind['value']:.2f} ({ind['change_percent']:+.2f}%)")
+            lines.append(
+                f"- {ind['name']}: {ind['value']:.2f} ({ind['change_percent']:+.2f}%)"
+            )
             if "VIX" in ind["name"]:
                 vix_val = ind["value"]
             elif "10-Year" in ind["name"]:
@@ -365,9 +382,13 @@ def _build_prediction_context(
         if yield_10y is not None and yield_13w is not None:
             spread = yield_10y - yield_13w
             status = "INVERTED" if spread < 0 else "FLAT" if spread < 0.5 else "NORMAL"
-            lines.append(f"Yield Curve: {status} (10Y={yield_10y:.2f}%, 13W={yield_13w:.2f}%, spread={spread:+.2f}%)")
+            lines.append(
+                f"Yield Curve: {status} (10Y={yield_10y:.2f}%, 13W={yield_13w:.2f}%, spread={spread:+.2f}%)"
+            )
 
-        lines.append(f"Environment: {macro_summary.get('environment', 'unknown')}, Risk: {macro_summary.get('risk_level', 'unknown')}")
+        lines.append(
+            f"Environment: {macro_summary.get('environment', 'unknown')}, Risk: {macro_summary.get('risk_level', 'unknown')}"
+        )
         parts.append("\n".join(lines))
 
     # News headlines
@@ -406,7 +427,9 @@ def _apply_verdict_adjustment(base_verdict: str, adjustment: str) -> str:
     return VERDICT_ORDER[idx]
 
 
-def _parse_prediction_response(text: str, symbol: str, quant_scores: dict | None = None) -> dict | None:
+def _parse_prediction_response(
+    text: str, symbol: str, quant_scores: dict | None = None
+) -> dict | None:
     """Parse AI JSON response into prediction dict. Verdict/confidence come from quant engine."""
     try:
         cleaned = text.strip()
@@ -493,12 +516,23 @@ def _fallback_prediction(
         "verdict": verdict,
         "confidence": confidence,
         "technical_summary": {"signal": tech_signal, "key_indicators": []},
-        "sentiment_summary": {"unified_score": enhanced_sentiment.get("unified_score", 0) if enhanced_sentiment else 0, "label": sent_label},
-        "macro_summary": {"environment": macro_summary.get("environment", "unknown"), "risk_level": macro_summary.get("risk_level", "unknown")},
+        "sentiment_summary": {
+            "unified_score": enhanced_sentiment.get("unified_score", 0)
+            if enhanced_sentiment
+            else 0,
+            "label": sent_label,
+        },
+        "macro_summary": {
+            "environment": macro_summary.get("environment", "unknown"),
+            "risk_level": macro_summary.get("risk_level", "unknown"),
+        },
         "news_summary": {"headline_count": 0, "overall_tone": "neutral"},
         "social_summary": {"buzz_level": "none", "total_mentions": 0},
-        "price_outlook": {"short_term": "Análisis no disponible sin IA.", "medium_term": "Análisis no disponible sin IA."},
-        "ai_analysis": "Predicción basada en motor cuantitativo. Configure MISTRAL_API_KEY para análisis narrativo completo.",
+        "price_outlook": {
+            "short_term": "Análisis no disponible sin IA.",
+            "medium_term": "Análisis no disponible sin IA.",
+        },
+        "ai_analysis": "Predicción basada en motor cuantitativo. Configure GROQ_API_KEY para análisis narrativo completo.",
         "quant_scores": quant_scores or {},
         "generated_at": datetime.now(timezone.utc).isoformat(),
     }

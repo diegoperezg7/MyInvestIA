@@ -17,7 +17,7 @@ import {
   type AuthUser,
 } from "@/lib/auth";
 
-const AIDENTITY_API = "https://aidentity.darc3.com/api/v1";
+const AIDENTITY_API = process.env.NEXT_PUBLIC_API_URL ?? "";
 
 interface AuthContextValue {
   user: AuthUser | null;
@@ -40,7 +40,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refreshAccessToken = useCallback(async (): Promise<string | null> => {
     try {
-      const res = await fetch(`${AIDENTITY_API}/auth/refresh`, {
+      const res = await fetch(`${AIDENTITY_API}/api/v1/auth/refresh`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -101,7 +101,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [refreshAccessToken]);
 
   const login = useCallback(async (email: string, password: string) => {
-    const res = await fetch(`${AIDENTITY_API}/auth/login`, {
+    const res = await fetch(`${AIDENTITY_API}/api/v1/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ login: email, password }),
@@ -120,7 +120,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(() => {
     const token = getToken();
-    fetch(`${AIDENTITY_API}/auth/logout`, {
+    fetch(`${AIDENTITY_API}/api/v1/auth/logout`, {
       method: "POST",
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     }).catch(() => {});

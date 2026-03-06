@@ -24,7 +24,9 @@ DEFAULT_SCAN_SYMBOLS = [
 
 @router.get("/", response_model=AlertList)
 async def get_alerts(
-    scan: bool = Query(default=False, description="Run a live scan on portfolio + watchlist assets"),
+    scan: bool = Query(
+        default=False, description="Run a live scan on portfolio + watchlist assets"
+    ),
     user: AuthUser = Depends(get_current_user),
 ):
     """Get active alerts.
@@ -40,14 +42,14 @@ async def get_alerts(
     seen: set[str] = set()
 
     # Portfolio holdings
-    for holding in store.get_holdings(user.id):
+    for holding in store.get_holdings(user.id, user.tenant_id):
         sym = holding["symbol"]
         if sym not in seen:
             symbols_to_scan.append({"symbol": sym, "type": holding["type"]})
             seen.add(sym)
 
     # Watchlist assets
-    for wl in store.get_watchlists(user.id):
+    for wl in store.get_watchlists(user.id, user.tenant_id):
         for asset in wl.get("assets", []):
             sym = asset["symbol"]
             if sym not in seen:
@@ -70,18 +72,18 @@ async def scan_single_asset(symbol: str, user: AuthUser = Depends(get_current_us
     return AlertList(alerts=alerts, total=len(alerts))
 
 
-def _gather_user_symbols(user_id: str) -> list[dict]:
+def _gather_user_symbols(user_id: str, tenant_id: str | None = None) -> list[dict]:
     """Gather symbols from portfolio holdings and watchlists."""
     symbols: list[dict] = []
     seen: set[str] = set()
 
-    for holding in store.get_holdings(user_id):
+    for holding in store.get_holdings(user_id, tenant_id):
         sym = holding["symbol"]
         if sym not in seen:
             symbols.append({"symbol": sym, "type": holding["type"]})
             seen.add(sym)
 
-    for wl in store.get_watchlists(user_id):
+    for wl in store.get_watchlists(user_id, tenant_id):
         for asset in wl.get("assets", []):
             sym = asset["symbol"]
             if sym not in seen:
@@ -104,15 +106,19 @@ async def scan_and_notify_endpoint(
     Combines the alert scanner with Telegram delivery. Only alerts meeting
     the min_severity threshold are sent as notifications.
     """
-    symbols = _gather_user_symbols(user.id)
+    symbols = _gather_user_symbols(user.id, user.tenant_id)
     result = await scan_and_notify(symbols, min_severity=min_severity)
 
     return ScanAndNotifyResponse(
         alerts=result["alerts"],
         notified=[
-            {"alert_id": n["alert_id"], "symbol": n["symbol"],
-             "title": n["title"], "severity": n["severity"],
-             "delivered": n["delivered"]}
+            {
+                "alert_id": n["alert_id"],
+                "symbol": n["symbol"],
+                "title": n["title"],
+                "severity": n["severity"],
+                "delivered": n["delivered"],
+            }
             for n in result["notified"]
         ],
         total_alerts=result["total_alerts"],

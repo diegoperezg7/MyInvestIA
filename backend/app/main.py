@@ -50,15 +50,10 @@ async def lifespan(app: FastAPI):
     # Startup: warm caches in background (don't block server start)
     asyncio.create_task(_warmup_movers_cache())
 
-    # Start agent scheduler (runs every 30 min)
-    from app.services.agent_orchestrator import orchestrator
-
-    orchestrator.start_scheduler(interval_minutes=30)
+    # Agent scheduler is user-triggered via /api/v1/agents/run
+    # Auto-start disabled: scheduler needs a user_id to do anything useful
 
     yield
-
-    # Shutdown: stop agent scheduler
-    orchestrator.stop_scheduler()
 
 
 app = FastAPI(

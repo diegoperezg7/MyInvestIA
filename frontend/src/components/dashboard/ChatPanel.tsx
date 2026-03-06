@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { fetchAPI, postAPI } from "@/lib/api";
+import { fetchAPI, postAPI, postStream } from "@/lib/api";
 import { useBriefing } from "@/hooks/useBriefing";
 import type { AIStatus, ChatMessage, ChatResponse } from "@/types";
 
@@ -31,11 +31,13 @@ export default function ChatPanel({ expanded = false }: { expanded?: boolean }) 
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [streamingContent, setStreamingContent] = useState("");
   const [aiStatus, setAiStatus] = useState<AIStatus | null>(null);
   const [personas, setPersonas] = useState<Persona[]>([]);
   const [activePersona, setActivePersona] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const briefingInjected = useRef(false);
+  const streamAccumulator = useRef("");
 
   const briefing = useBriefing();
 
@@ -76,8 +78,8 @@ export default function ChatPanel({ expanded = false }: { expanded?: boolean }) 
     setInput("");
     setLoading(true);
 
-    try {
-      if (activePersona) {
+    if (activePersona) {
+      try {
         const data = await postAPI<{ analysis: string }>("/api/v1/chat/persona-analyze", {
           symbol: extractSymbol(text),
           persona_id: activePersona,
@@ -86,36 +88,58 @@ export default function ChatPanel({ expanded = false }: { expanded?: boolean }) 
         const assistantMsg: ChatMessage = { role: "assistant", content: data.analysis };
         setMessages([...updatedMessages, assistantMsg]);
         setSuggestions(extractSuggestions(data.analysis));
-      } else {
-        const data = await postAPI<ChatResponse>("/api/v1/chat/", {
-          messages: updatedMessages.map((m) => ({
-            role: m.role,
-            content: m.content,
-          })),
-        });
-        const assistantMsg: ChatMessage = { role: "assistant", content: data.response };
-        setMessages([...updatedMessages, assistantMsg]);
-        setSuggestions(extractSuggestions(data.response));
+      } catch (e) {
+        setMessages([...updatedMessages, { role: "assistant", content: "Sorry, something went wrong. Please try again." }]);
+        setSuggestions([]);
+      } finally {
+        setLoading(false);
       }
-    } catch (e) {
-      setMessages([
-        ...updatedMessages,
-        {
-          role: "assistant",
-          content:
-            e instanceof Error && e.message.includes("503")
-              ? "AI service not configured. Please set MISTRAL_API_KEY in the backend .env file."
-              : "Sorry, something went wrong. Please try again.",
-        },
-      ]);
-      setSuggestions([]);
-    } finally {
-      setLoading(false);
+      return;
     }
+
+    // Streaming chat
+    streamAccumulator.current = "";
+    setStreamingContent("");
+
+    await postStream(
+      "/api/v1/chat/",
+      { messages: updatedMessages.map((m) => ({ role: m.role, content: m.content })) },
+      (token) => {
+        streamAccumulator.current += token;
+        setStreamingContent(streamAccumulator.current);
+      },
+      () => {
+        const finalContent = streamAccumulator.current;
+        streamAccumulator.current = "";
+        setStreamingContent("");
+        setMessages([...updatedMessages, { role: "assistant", content: finalContent }]);
+        setSuggestions(extractSuggestions(finalContent));
+        setLoading(false);
+      },
+      () => {
+        setStreamingContent("");
+        setMessages([...updatedMessages, { role: "assistant", content: "Sorry, something went wrong. Please try again." }]);
+        setSuggestions([]);
+        setLoading(false);
+      },
+    );
   };
 
   const handleSend = () => sendMessage(input);
   const handleChipClick = (chip: string) => sendMessage(chip);
+
+  const startNewConversation = () => {
+    setMessages([]);
+    setSuggestions([]);
+    setActivePersona(null);
+    briefingInjected.current = false;
+    if (briefing.data) {
+      setMessages([{ role: "assistant", content: briefing.data.briefing }]);
+      setSuggestions(briefing.data.suggestions);
+    }
+  };
+
+  const hasConversation = messages.length > 0;
 
   const isConfigured = aiStatus?.configured ?? false;
   const currentPersona = personas.find((p) => p.id === activePersona);
@@ -128,6 +152,15 @@ export default function ChatPanel({ expanded = false }: { expanded?: boolean }) 
           AI Chat
         </h3>
         <div className="flex items-center gap-2">
+          {hasConversation && (
+            <button
+              onClick={startNewConversation}
+              className="text-xs px-2 py-0.5 rounded border border-oracle-border text-oracle-muted hover:text-oracle-text hover:border-oracle-accent/50 transition-colors"
+              title="Start new conversation"
+            >
+              New Chat
+            </button>
+          )}
           {personas.length > 0 && (
             <select
               value={activePersona || ""}
@@ -214,10 +247,23 @@ export default function ChatPanel({ expanded = false }: { expanded?: boolean }) 
           </div>
         ))}
 
-        {loading && (
+        {loading && streamingContent && (
           <div className="flex justify-start">
-            <div className="bg-oracle-bg text-oracle-muted border border-oracle-border rounded-lg px-3 py-2 text-sm">
-              {currentPersona ? `${currentPersona.name} is thinking...` : "Thinking..."}
+            <div className={`${expanded ? "max-w-[90%]" : "max-w-[85%]"} bg-oracle-bg text-oracle-text border border-oracle-border rounded-lg px-4 py-2.5 text-sm`}>
+              <div className="prose prose-invert prose-sm max-w-none prose-p:my-1 prose-headings:my-2 prose-ul:my-1 prose-ol:my-1 prose-li:my-0.5 prose-pre:bg-black/30 prose-pre:border prose-pre:border-oracle-border prose-pre:rounded prose-code:text-oracle-accent prose-code:before:content-none prose-code:after:content-none prose-strong:text-oracle-text prose-a:text-oracle-accent prose-table:border-collapse prose-th:border prose-th:border-oracle-border prose-th:bg-oracle-panel prose-th:px-3 prose-th:py-1.5 prose-th:text-left prose-th:text-oracle-text prose-th:font-semibold prose-td:border prose-td:border-oracle-border prose-td:px-3 prose-td:py-1.5 prose-hr:border-oracle-border">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{streamingContent}</ReactMarkdown>
+              </div>
+              <span className="inline-block w-[2px] h-[1em] bg-oracle-accent align-middle ml-0.5 animate-pulse" />
+            </div>
+          </div>
+        )}
+
+        {loading && !streamingContent && (
+          <div className="flex justify-start">
+            <div className="bg-oracle-bg text-oracle-muted border border-oracle-border rounded-lg px-3 py-2 text-sm flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-oracle-accent/60 animate-bounce [animation-delay:0ms]" />
+              <span className="w-1.5 h-1.5 rounded-full bg-oracle-accent/60 animate-bounce [animation-delay:150ms]" />
+              <span className="w-1.5 h-1.5 rounded-full bg-oracle-accent/60 animate-bounce [animation-delay:300ms]" />
             </div>
           </div>
         )}
@@ -249,7 +295,7 @@ export default function ChatPanel({ expanded = false }: { expanded?: boolean }) 
               ? currentPersona
                 ? `Ask ${currentPersona.name} about markets...`
                 : "Ask about markets, assets, or analysis..."
-              : "AI not configured - set MISTRAL_API_KEY"
+              : "AI not configured - set GROQ_API_KEY"
           }
           disabled={!isConfigured && messages.length === 0}
           className="flex-1 bg-oracle-bg border border-oracle-border rounded px-3 py-2 text-sm text-oracle-text placeholder:text-oracle-muted focus:outline-none focus:border-oracle-accent disabled:opacity-50"

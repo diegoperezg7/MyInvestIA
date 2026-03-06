@@ -9,6 +9,7 @@ import logging
 
 from app.config import settings
 from app.services.ai_service import ai_service, MODEL_SENTIMENT
+from app.services.groq_service import groq_service
 
 logger = logging.getLogger(__name__)
 
@@ -72,7 +73,7 @@ async def analyze_sentiment(
     Returns:
         Dict with: score, label, strength, sources_count, narrative, key_factors, divergences
     """
-    if not ai_service.is_configured:
+    if not groq_service.is_available():
         return _default_sentiment(symbol)
 
     # Build context from available data
@@ -116,7 +117,11 @@ async def analyze_sentiment(
             "Recent News Headlines:\n" + "\n".join(f"  - {h}" for h in trimmed)
         )
 
-    context = "\n".join(context_parts) if context_parts else "No additional market data available."
+    context = (
+        "\n".join(context_parts)
+        if context_parts
+        else "No additional market data available."
+    )
 
     prompt = SENTIMENT_PROMPT.format(
         symbol=symbol.upper(),
@@ -125,10 +130,10 @@ async def analyze_sentiment(
     )
 
     try:
-        response_text = await ai_service.chat(
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=500,
-            model=MODEL_SENTIMENT,
+        response_text = await groq_service.chat(
+            prompt=prompt,
+            model="fast",
+            temperature=0.3,
         )
 
         return _parse_sentiment_response(response_text, symbol)
@@ -167,7 +172,9 @@ def _parse_sentiment_response(text: str, symbol: str) -> dict:
         # Validate label
         label = data.get("label", "neutral").lower()
         if label not in ("bullish", "bearish", "neutral"):
-            label = "bullish" if score > 0.2 else "bearish" if score < -0.2 else "neutral"
+            label = (
+                "bullish" if score > 0.2 else "bearish" if score < -0.2 else "neutral"
+            )
 
         strength = int(data.get("strength", 3))
         strength = max(1, min(5, strength))
@@ -198,6 +205,6 @@ def _default_sentiment(symbol: str) -> dict:
         "score": 0.0,
         "label": "neutral",
         "sources_count": 0,
-        "narrative": "Sentiment analysis unavailable. Configure MISTRAL_API_KEY for AI-powered analysis.",
+        "narrative": "Sentiment analysis unavailable. Configure GROQ_API_KEY for AI-powered analysis.",
         "key_factors": [],
     }

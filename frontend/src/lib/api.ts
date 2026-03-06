@@ -111,6 +111,76 @@ export async function deleteAPI(endpoint: string): Promise<void> {
 }
 
 /**
+ * POST to a streaming SSE endpoint and call onToken for each chunk.
+ */
+export async function postStream(
+  endpoint: string,
+  body: unknown,
+  onToken: (token: string) => void,
+  onDone: () => void,
+  onError: (err: Error) => void,
+): Promise<void> {
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE}${endpoint}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      credentials: "include",
+      body: JSON.stringify(body),
+    });
+  } catch (err) {
+    onError(err instanceof Error ? err : new Error(String(err)));
+    return;
+  }
+
+  if (response.status === 401) {
+    handle401();
+    onError(new Error("Unauthorized"));
+    return;
+  }
+  if (!response.ok) {
+    onError(new Error(`API error: ${response.status}`));
+    return;
+  }
+
+  const reader = response.body!.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() ?? "";
+
+      for (const line of lines) {
+        if (!line.startsWith("data: ")) continue;
+        const raw = line.slice(6).trim();
+        if (raw === "[DONE]") {
+          onDone();
+          return;
+        }
+        try {
+          const parsed = JSON.parse(raw);
+          if (parsed.token) onToken(parsed.token);
+          if (parsed.error) onError(new Error(parsed.error));
+        } catch {
+          // ignore malformed chunks
+        }
+      }
+    }
+  } catch (err) {
+    onError(err instanceof Error ? err : new Error(String(err)));
+    return;
+  }
+
+  onDone();
+}
+
+/**
  * Fetch Server-Sent Events and call onMessage for each event.
  * Returns an EventSource that can be closed to cancel.
  */

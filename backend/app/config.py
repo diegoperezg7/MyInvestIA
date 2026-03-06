@@ -17,11 +17,11 @@ class Settings(BaseSettings):
     telegram_bot_token: str = ""
     telegram_chat_id: str = ""
 
-    # Mistral AI
-    mistral_api_key: str = ""
+    # Cerebras AI
+    cerebras_api_key: str = ""
 
     # Groq AI (free, fast inference)
-    groq_api_key: str = "gsk_GGjAhjuK2NqW6kNAD68WGdyb3FY6vgPWSP6beLdntk3B6Xdxqec"
+    groq_api_key: str = "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"
 
     # CoinGecko (optional - free tier works without key)
     coingecko_api_key: str = ""
@@ -33,6 +33,12 @@ class Settings(BaseSettings):
     alphavantage_api_key: str = ""
     finnhub_api_key: str = ""
     twelvedata_api_key: str = ""
+    bloomberg_host: str = ""
+    bloomberg_port: int = 8194
+
+    # Multi-tenancy
+    enable_multitenant: bool = False
+    default_tenant_id: str = "default"
 
     # OpenClaw (self-hosted AI agent for alerts & Telegram)
     openclaw_url: str = "http://localhost:18789"

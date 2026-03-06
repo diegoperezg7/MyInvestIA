@@ -1,14 +1,16 @@
 """Authentication dependencies for FastAPI endpoints.
 
 Validates JWT tokens issued by AIdentity (primary) or Supabase Auth/GoTrue (fallback).
+Supports multi-tenancy via X-Tenant-ID header.
 """
 
 import logging
 from dataclasses import dataclass
+from typing import Optional
 
 import jwt
 import httpx
-from fastapi import Depends, HTTPException, Request
+from fastapi import Depends, HTTPException, Request, Header
 
 from app.config import settings
 
@@ -20,6 +22,7 @@ class AuthUser:
     id: str  # UUID from iam_users or auth.users
     email: str
     role: str  # "admin" or "user"
+    tenant_id: Optional[str] = None  # Multi-tenant: tenant identifier
 
 
 def _resolve_supabase_user_by_email(email: str) -> str | None:
@@ -81,8 +84,13 @@ def _create_supabase_user_if_not_exists(email: str) -> str | None:
     return None
 
 
-def get_current_user(request: Request) -> AuthUser:
-    """Extract and validate user from Authorization header or darc3_token cookie."""
+def get_current_user(
+    request: Request, x_tenant_id: Optional[str] = Header(None, alias="X-Tenant-ID")
+) -> AuthUser:
+    """Extract and validate user from Authorization header or darc3_token cookie.
+
+    Supports multi-tenancy via X-Tenant-ID header.
+    """
     token = ""
     auth_header = request.headers.get("Authorization", "")
     if auth_header.startswith("Bearer "):
@@ -93,6 +101,12 @@ def get_current_user(request: Request) -> AuthUser:
 
     if not token:
         raise HTTPException(status_code=401, detail="Missing or invalid authorization")
+
+    tenant_id = (
+        x_tenant_id or settings.default_tenant_id
+        if settings.enable_multitenant
+        else settings.default_tenant_id
+    )
 
     # Try AIdentity JWT first (no audience required)
     if settings.aidentity_secret:
@@ -118,10 +132,17 @@ def get_current_user(request: Request) -> AuthUser:
                         )
                         supabase_user_id = _create_supabase_user_if_not_exists(email)
                     if supabase_user_id:
-                        return AuthUser(id=supabase_user_id, email=email, role=role)
+                        return AuthUser(
+                            id=supabase_user_id,
+                            email=email,
+                            role=role,
+                            tenant_id=tenant_id,
+                        )
                     # If no Supabase user found, use AIdentity user_id
                     # (for apps using InMemoryStore)
-                    return AuthUser(id=user_id, email=email, role=role)
+                    return AuthUser(
+                        id=user_id, email=email, role=role, tenant_id=tenant_id
+                    )
         except jwt.ExpiredSignatureError:
             raise HTTPException(status_code=401, detail="Token expired")
         except jwt.InvalidTokenError:
@@ -142,7 +163,7 @@ def get_current_user(request: Request) -> AuthUser:
             user_metadata = payload.get("user_metadata", {})
             role = app_metadata.get("role") or user_metadata.get("role", "user")
             if user_id:
-                return AuthUser(id=user_id, email=email, role=role)
+                return AuthUser(id=user_id, email=email, role=role, tenant_id=tenant_id)
         except jwt.ExpiredSignatureError:
             raise HTTPException(status_code=401, detail="Token expired")
         except jwt.InvalidTokenError as e:
