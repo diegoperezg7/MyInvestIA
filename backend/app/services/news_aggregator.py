@@ -1,11 +1,7 @@
-"""News aggregator: combines Finnhub + NewsAPI + RSS + Reddit + StockTwits + Twitter with AI analysis.
+"""News aggregation and AI analysis backed by the provider layer."""
 
-Merges articles from all sources, deduplicates by headline similarity,
-and batch-analyzes with Mistral for impact scoring.
-"""
+from __future__ import annotations
 
-import asyncio
-import hashlib
 import json
 import logging
 import uuid
@@ -13,95 +9,43 @@ from datetime import datetime, timezone
 
 from app.services.ai_service import ai_service
 from app.services.cache import get_or_fetch
-from app.services.news_service import news_service
-from app.services.newsapi_service import newsapi_service
-from app.services.rss_service import get_rss_news
-from app.services.reddit_service import get_reddit_posts
-from app.services.stocktwits_service import get_trending as get_stocktwits_trending
-from app.services.twitter_service import get_twitter_posts
+from app.services.data_providers import news_provider_aggregator
+from app.services.news_intelligence import (
+    build_source_health,
+    cluster_narratives,
+    deduplicate_articles,
+    score_article,
+)
 
 logger = logging.getLogger(__name__)
 
-FEED_TTL = 300  # 5 minutes
-
-# Store analyzed articles in memory for individual lookup
+FEED_TTL = 300
 _article_store: dict[str, dict] = {}
 
 
-def _headline_key(headline: str) -> str:
-    """Generate a dedup key from a headline (lowercase, stripped)."""
-    normalized = headline.lower().strip()
-    # Remove common prefixes/suffixes
-    for prefix in ("breaking:", "update:", "exclusive:"):
-        if normalized.startswith(prefix):
-            normalized = normalized[len(prefix):].strip()
-    return hashlib.md5(normalized.encode()).hexdigest()[:12]
-
-
-# Default source_category by provider
-_PROVIDER_CATEGORY: dict[str, str] = {
-    "finnhub": "news",
-    "newsapi": "news",
-    "rss": "news",       # overridden per-article from RSS feed config
-    "reddit": "social",
-    "stocktwits": "social",
-    "twitter": "social",
-}
-
-
 async def get_aggregated_news(limit: int = 40) -> list[dict]:
-    """Fetch from all sources in parallel, merge, deduplicate, sort by time."""
-
     async def _fetch():
-        tasks: dict[str, asyncio.Task] = {}
-        async with asyncio.TaskGroup() as tg:
-            tasks["finnhub"] = tg.create_task(news_service.get_market_news(limit=15))
-            tasks["newsapi"] = tg.create_task(newsapi_service.get_business_news(limit=15))
-            tasks["rss"] = tg.create_task(get_rss_news(limit=20))
-            tasks["reddit"] = tg.create_task(get_reddit_posts(limit=15))
-            tasks["stocktwits"] = tg.create_task(get_stocktwits_trending(limit=15))
-            tasks["twitter"] = tg.create_task(get_twitter_posts(limit=10))
-
-        # Tag each article with source_provider and source_category
-        all_articles: list[dict] = []
-        seen_keys: set[str] = set()
-
-        for provider, task in tasks.items():
-            try:
-                articles = task.result()
-                for article in articles:
-                    key = _headline_key(article.get("headline", ""))
-                    if key not in seen_keys:
-                        seen_keys.add(key)
-                        article["source_provider"] = provider
-                        article["id"] = str(uuid.uuid4())
-                        # Use article-level category if set (RSS propagates it),
-                        # otherwise fall back to provider default
-                        if "source_category" not in article:
-                            article["source_category"] = _PROVIDER_CATEGORY.get(provider, "news")
-                        all_articles.append(article)
-            except Exception as e:
-                logger.warning("News source %s failed: %s", provider, e)
-
-        # Sort by datetime descending
-        all_articles.sort(key=lambda a: a.get("datetime", 0), reverse=True)
-        return all_articles[:limit]
+        articles = await news_provider_aggregator.fetch(limit=max(limit * 2, 40))
+        normalized: list[dict] = []
+        for article in articles:
+            item = dict(article)
+            item.setdefault("id", str(uuid.uuid4()))
+            normalized.append(item)
+        normalized.sort(key=lambda article: article.get("datetime", 0), reverse=True)
+        return normalized
 
     return await get_or_fetch("news:aggregated", _fetch, FEED_TTL) or []
 
 
 def _count_categories(articles: list[dict]) -> dict[str, int]:
-    """Count articles by source_category."""
     counts: dict[str, int] = {"news": 0, "social": 0, "blog": 0}
-    for a in articles:
-        cat = a.get("source_category", "news")
-        counts[cat] = counts.get(cat, 0) + 1
+    for article in articles:
+        category = article.get("source_category", "news")
+        counts[category] = counts.get(category, 0) + 1
     return counts
 
 
 async def get_ai_analyzed_feed(limit: int = 30) -> dict:
-    """Get news feed with AI analysis for each article."""
-
     async def _fetch():
         articles = await get_aggregated_news(limit=limit)
         if not articles:
@@ -109,54 +53,56 @@ async def get_ai_analyzed_feed(limit: int = 30) -> dict:
                 "articles": [],
                 "sources_active": _get_sources_status(),
                 "category_counts": {"news": 0, "social": 0, "blog": 0},
+                "top_narratives": [],
+                "source_health": {},
             }
 
-        # Batch AI analysis
         analyzed = await _batch_analyze(articles)
+        enriched = [score_article(article) for article in analyzed]
+        deduped = deduplicate_articles(enriched)[:limit]
+        top_narratives = cluster_narratives(deduped, limit=5)
+        source_health = build_source_health(deduped, _get_sources_status())
 
-        # Store articles for individual lookup
-        for article in analyzed:
+        for article in deduped:
             _article_store[article["id"]] = article
 
         return {
-            "articles": analyzed,
+            "articles": deduped,
             "sources_active": _get_sources_status(),
-            "category_counts": _count_categories(analyzed),
+            "category_counts": _count_categories(deduped),
+            "top_narratives": top_narratives,
+            "source_health": source_health,
         }
 
     return await get_or_fetch("news:ai_feed", _fetch, FEED_TTL) or {
         "articles": [],
         "sources_active": _get_sources_status(),
         "category_counts": {"news": 0, "social": 0, "blog": 0},
+        "top_narratives": [],
+        "source_health": {},
     }
 
 
 async def get_article_analysis(article_id: str) -> dict | None:
-    """Get detailed analysis for a specific article."""
     return _article_store.get(article_id)
 
 
 async def _batch_analyze(articles: list[dict]) -> list[dict]:
-    """Batch analyze articles using AI in groups of 5-10."""
     if not ai_service.is_configured or not articles:
-        # Return articles without AI analysis
-        return [
-            {**a, "ai_analysis": None}
-            for a in articles
-        ]
+        return [{**article, "ai_analysis": None} for article in articles]
 
     analyzed: list[dict] = []
     batch_size = 8
 
-    for i in range(0, len(articles), batch_size):
-        batch = articles[i:i + batch_size]
+    for index in range(0, len(articles), batch_size):
+        batch = articles[index : index + batch_size]
         try:
             results = await _analyze_batch(batch)
             for article, analysis in zip(batch, results):
                 article["ai_analysis"] = analysis
                 analyzed.append(article)
-        except Exception as e:
-            logger.warning("Batch analysis failed: %s", e)
+        except Exception as exc:
+            logger.warning("Batch analysis failed: %s", exc)
             for article in batch:
                 article["ai_analysis"] = None
                 analyzed.append(article)
@@ -165,12 +111,11 @@ async def _batch_analyze(articles: list[dict]) -> list[dict]:
 
 
 async def _analyze_batch(articles: list[dict]) -> list[dict]:
-    """Analyze a batch of articles with a single AI call."""
     headlines = []
-    for i, a in enumerate(articles):
-        headlines.append(f"{i+1}. [{a.get('source', '')}] {a['headline']}")
-        if a.get("summary"):
-            headlines.append(f"   Summary: {a['summary'][:200]}")
+    for index, article in enumerate(articles):
+        headlines.append(f"{index + 1}. [{article.get('source', '')}] {article['headline']}")
+        if article.get("summary"):
+            headlines.append(f"   Summary: {article['summary'][:200]}")
 
     prompt = (
         "Analyze these financial news articles and social media posts. For EACH item, provide a JSON analysis.\n"
@@ -194,9 +139,7 @@ async def _analyze_batch(articles: list[dict]) -> list[dict]:
             ),
         )
 
-        # Parse JSON response
         text = response.strip()
-        # Remove markdown code blocks if present
         if text.startswith("```"):
             text = text.split("\n", 1)[1] if "\n" in text else text[3:]
         if text.endswith("```"):
@@ -205,29 +148,28 @@ async def _analyze_batch(articles: list[dict]) -> list[dict]:
 
         analyses = json.loads(text)
         if isinstance(analyses, list):
-            # Pad or trim to match articles count
             while len(analyses) < len(articles):
                 analyses.append(None)
             return [
-                _validate_analysis(a) if a else None
-                for a in analyses[:len(articles)]
+                _validate_analysis(analysis) if analysis else None
+                for analysis in analyses[: len(articles)]
             ]
-    except (json.JSONDecodeError, Exception) as e:
-        logger.warning("AI batch analysis parse failed: %s", e)
+    except (json.JSONDecodeError, Exception) as exc:
+        logger.warning("AI batch analysis parse failed: %s", exc)
 
     return [None] * len(articles)
 
 
 def _validate_analysis(raw: dict) -> dict | None:
-    """Validate and normalize an AI analysis result."""
     if not isinstance(raw, dict):
         return None
     try:
         return {
             "impact_score": max(1, min(10, int(raw.get("impact_score", 5)))),
             "affected_tickers": [
-                str(t).upper() for t in raw.get("affected_tickers", [])
-                if isinstance(t, str)
+                str(ticker).upper()
+                for ticker in raw.get("affected_tickers", [])
+                if isinstance(ticker, str)
             ][:10],
             "sentiment": raw.get("sentiment", "neutral")
             if raw.get("sentiment") in ("positive", "negative", "neutral")
@@ -242,12 +184,4 @@ def _validate_analysis(raw: dict) -> dict | None:
 
 
 def _get_sources_status() -> dict[str, bool]:
-    """Return which news sources are active."""
-    return {
-        "finnhub": news_service.is_configured,
-        "newsapi": newsapi_service.is_configured,
-        "rss": True,       # RSS is always available
-        "reddit": True,    # Public JSON API, no key needed
-        "stocktwits": True, # Public API, no key needed
-        "twitter": True,   # Best-effort via Nitter
-    }
+    return news_provider_aggregator.source_status()
