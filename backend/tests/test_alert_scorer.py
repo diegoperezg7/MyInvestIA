@@ -1,5 +1,7 @@
 """Tests for the alert_scorer module."""
 
+from datetime import datetime, timedelta, timezone
+
 from app.schemas.asset import AlertSeverity, AlertType, SuggestedAction
 from app.services.alert_scorer import (
     _price_move_alert,
@@ -209,11 +211,13 @@ def test_contextual_alerts_missing_context_returns_empty():
 
 
 def test_filing_alerts_recent_8k():
+    now = datetime.now(timezone.utc)
+    recent_date = (now - timedelta(hours=24)).strftime("%Y-%m-%dT%H:%M:%SZ")
     filings = {
         "filings": [
             {
                 "form": "8-K",
-                "filed_at": "2025-01-01T00:00:00Z",
+                "filed_at": recent_date,
                 "description": "Material event",
                 "items": "Item 8.01",
             }
@@ -225,11 +229,13 @@ def test_filing_alerts_recent_8k():
 
 
 def test_filing_alerts_recent_10q():
+    now = datetime.now(timezone.utc)
+    recent_date = (now - timedelta(hours=48)).strftime("%Y-%m-%dT%H:%M:%SZ")
     filings = {
         "filings": [
             {
                 "form": "10-Q",
-                "filed_at": "2025-01-01T00:00:00Z",
+                "filed_at": recent_date,
                 "description": "Quarterly report",
                 "items": "",
             }

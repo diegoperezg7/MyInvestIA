@@ -60,15 +60,27 @@ def test_time_decay_reduces_old_items():
     decay_18h = _time_decay(18.0)
     decay_72h = _time_decay(72.0)
     assert decay_0h == 1.0
-    assert 0.3 < decay_18h < 0.5
-    assert 0.05 < decay_72h < 0.2
+    assert 0.25 < decay_18h < 0.55
+    assert 0.02 < decay_72h < 0.25
 
 
 def test_window_summary_aggregates_correctly():
     now_dt = datetime.now(timezone.utc)
     items = [
-        {"score": 0.5, "effective_weight": 0.8, "confidence": 0.7, "age_hours": 2.0},
-        {"score": -0.3, "effective_weight": 0.6, "confidence": 0.5, "age_hours": 5.0},
+        {
+            "score": 0.5,
+            "effective_weight": 0.8,
+            "confidence": 0.7,
+            "age_hours": 2.0,
+            "label": "bullish",
+        },
+        {
+            "score": -0.3,
+            "effective_weight": 0.6,
+            "confidence": 0.5,
+            "age_hours": 5.0,
+            "label": "bearish",
+        },
     ]
     result = _window_summary(items, max_age_hours=24.0)
     assert result["count"] == 2

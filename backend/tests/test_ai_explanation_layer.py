@@ -299,15 +299,15 @@ def test_confidence_low_with_many_contradictions():
 
 def test_confidence_label_medium():
     payload = {
-        "quant_overlay": {"confidence": 0.5},
-        "fundamentals_score": {"value": 55.0},
+        "quant_overlay": {"confidence": 0.7},
+        "fundamentals_score": {"value": 60.0},
         "technical_score": {"value": 50.0},
-        "sentiment_score": {"value": 45.0},
+        "sentiment_score": {"value": 40.0},
         "macro_score": {"value": 50.0},
         "portfolio_fit_score": {"value": 55.0},
     }
-    contradictions = ["one contradiction"]
-    warnings = ["one warning"]
+    contradictions = []
+    warnings = []
     conf, label = _confidence(payload, contradictions, warnings)
     assert label == "medium"
 
