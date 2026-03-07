@@ -34,6 +34,13 @@ class InMemoryStore:
                 "holdings": {},  # user_id -> symbol -> holding
                 "watchlists": {},  # user_id -> wl_id -> watchlist
                 "ai_memories": {},  # user_id -> [memories]
+                "inbox_items": {},  # user_id -> [items]
+                "theses": {},  # user_id -> thesis_id -> thesis
+                "thesis_events": {},  # user_id -> thesis_id -> [events]
+                "journal_entries": {},  # user_id -> entry_id -> entry
+                "alert_rules": {},  # user_id -> rule_id -> rule
+                "research_screens": {},  # user_id -> screen_id -> screen
+                "research_snapshots": {},  # user_id -> [snapshots]
                 "connections": {},  # user_id -> conn_id -> connection
                 "sync_history": {},  # user_id -> [history]
                 "synced_holdings": {},  # user_id -> key -> holding
@@ -66,6 +73,12 @@ class InMemoryStore:
             "holdings": {},
             "watchlists": {},
             "ai_memories": {},
+            "inbox_items": {},
+            "theses": {},
+            "thesis_events": {},
+            "alert_rules": {},
+            "research_screens": {},
+            "research_snapshots": {},
             "connections": {},
             "sync_history": {},
             "synced_holdings": {},
@@ -297,6 +310,244 @@ class InMemoryStore:
                 return True
         return False
 
+    # --- Inbox ---
+
+    def get_inbox_items(self, user_id: str, tenant_id: str | None = None) -> list[dict]:
+        tenant_id, user_id = self._normalize_tenant_user(tenant_id, user_id)
+        tenant = self._get_tenant_data(tenant_id)
+        items = tenant["inbox_items"].get(user_id, [])
+        return sorted(
+            items,
+            key=lambda item: (
+                -float(item.get("priority_score", 0.0)),
+                item.get("updated_at", ""),
+            ),
+        )
+
+    def replace_inbox_items(
+        self, user_id: str, items: list[dict], tenant_id: str | None = None
+    ) -> list[dict]:
+        tenant_id, user_id = self._normalize_tenant_user(tenant_id, user_id)
+        tenant = self._get_tenant_data(tenant_id)
+        tenant["users"].add(user_id)
+        tenant["inbox_items"][user_id] = list(items)
+        return tenant["inbox_items"][user_id]
+
+    def get_inbox_item(
+        self, user_id: str, item_id: str, tenant_id: str | None = None
+    ) -> dict | None:
+        for item in self.get_inbox_items(user_id, tenant_id):
+            if item.get("id") == item_id:
+                return item
+        return None
+
+    def update_inbox_item(
+        self,
+        user_id: str,
+        item_id: str,
+        data: dict,
+        tenant_id: str | None = None,
+    ) -> dict | None:
+        tenant_id, user_id = self._normalize_tenant_user(tenant_id, user_id)
+        tenant = self._get_tenant_data(tenant_id)
+        items = tenant["inbox_items"].get(user_id, [])
+        for item in items:
+            if item.get("id") == item_id:
+                item.update(data)
+                return item
+        return None
+
+    # --- Thesis ---
+
+    def get_theses(self, user_id: str, tenant_id: str | None = None) -> list[dict]:
+        tenant_id, user_id = self._normalize_tenant_user(tenant_id, user_id)
+        tenant = self._get_tenant_data(tenant_id)
+        return list(tenant["theses"].get(user_id, {}).values())
+
+    def get_thesis(
+        self, user_id: str, thesis_id: str, tenant_id: str | None = None
+    ) -> dict | None:
+        tenant_id, user_id = self._normalize_tenant_user(tenant_id, user_id)
+        tenant = self._get_tenant_data(tenant_id)
+        return tenant["theses"].get(user_id, {}).get(thesis_id)
+
+    def create_thesis(
+        self, user_id: str, data: dict, tenant_id: str | None = None
+    ) -> dict:
+        tenant_id, user_id = self._normalize_tenant_user(tenant_id, user_id)
+        tenant = self._get_tenant_data(tenant_id)
+        tenant["users"].add(user_id)
+        thesis = {**data, "id": data.get("id", str(uuid.uuid4()))}
+        tenant["theses"].setdefault(user_id, {})[thesis["id"]] = thesis
+        return thesis
+
+    def update_thesis(
+        self,
+        user_id: str,
+        thesis_id: str,
+        data: dict,
+        tenant_id: str | None = None,
+    ) -> dict | None:
+        tenant_id, user_id = self._normalize_tenant_user(tenant_id, user_id)
+        tenant = self._get_tenant_data(tenant_id)
+        thesis = tenant["theses"].get(user_id, {}).get(thesis_id)
+        if not thesis:
+            return None
+        thesis.update(data)
+        return thesis
+
+    def add_thesis_event(
+        self, user_id: str, thesis_id: str, data: dict, tenant_id: str | None = None
+    ) -> dict:
+        tenant_id, user_id = self._normalize_tenant_user(tenant_id, user_id)
+        tenant = self._get_tenant_data(tenant_id)
+        tenant["users"].add(user_id)
+        event = {
+            **data,
+            "id": data.get("id", str(uuid.uuid4())),
+            "thesis_id": thesis_id,
+        }
+        tenant["thesis_events"].setdefault(user_id, {}).setdefault(
+            thesis_id, []
+        ).insert(0, event)
+        return event
+
+    def get_thesis_events(
+        self, user_id: str, thesis_id: str, tenant_id: str | None = None
+    ) -> list[dict]:
+        tenant_id, user_id = self._normalize_tenant_user(tenant_id, user_id)
+        tenant = self._get_tenant_data(tenant_id)
+        return tenant["thesis_events"].get(user_id, {}).get(thesis_id, [])
+
+    # --- Journal / Decision Log ---
+
+    def get_journal_entries(
+        self, user_id: str, tenant_id: str | None = None, limit: int = 50
+    ) -> list[dict]:
+        tenant_id, user_id = self._normalize_tenant_user(tenant_id, user_id)
+        tenant = self._get_tenant_data(tenant_id)
+        entries = list(tenant["journal_entries"].get(user_id, {}).values())
+        return sorted(entries, key=lambda e: e.get("created_at", ""), reverse=True)[
+            :limit
+        ]
+
+    def get_journal_entry(
+        self, user_id: str, entry_id: str, tenant_id: str | None = None
+    ) -> dict | None:
+        tenant_id, user_id = self._normalize_tenant_user(tenant_id, user_id)
+        tenant = self._get_tenant_data(tenant_id)
+        return tenant["journal_entries"].get(user_id, {}).get(entry_id)
+
+    def create_journal_entry(
+        self, user_id: str, data: dict, tenant_id: str | None = None
+    ) -> dict:
+        tenant_id, user_id = self._normalize_tenant_user(tenant_id, user_id)
+        tenant = self._get_tenant_data(tenant_id)
+        tenant["users"].add(user_id)
+        entry = {**data, "id": data.get("id", str(uuid.uuid4()))}
+        tenant["journal_entries"].setdefault(user_id, {})[entry["id"]] = entry
+        return entry
+
+    def update_journal_entry(
+        self,
+        user_id: str,
+        entry_id: str,
+        data: dict,
+        tenant_id: str | None = None,
+    ) -> dict | None:
+        tenant_id, user_id = self._normalize_tenant_user(tenant_id, user_id)
+        tenant = self._get_tenant_data(tenant_id)
+        entry = tenant["journal_entries"].get(user_id, {}).get(entry_id)
+        if not entry:
+            return None
+        entry.update(data)
+        return entry
+
+    def delete_journal_entry(
+        self, user_id: str, entry_id: str, tenant_id: str | None = None
+    ) -> bool:
+        tenant_id, user_id = self._normalize_tenant_user(tenant_id, user_id)
+        tenant = self._get_tenant_data(tenant_id)
+        if entry_id in tenant["journal_entries"].get(user_id, {}):
+            del tenant["journal_entries"][user_id][entry_id]
+            return True
+        return False
+
+    # --- Compound Alert Rules ---
+
+    def get_alert_rules(self, user_id: str, tenant_id: str | None = None) -> list[dict]:
+        tenant_id, user_id = self._normalize_tenant_user(tenant_id, user_id)
+        tenant = self._get_tenant_data(tenant_id)
+        return list(tenant["alert_rules"].get(user_id, {}).values())
+
+    def get_alert_rule(
+        self, user_id: str, rule_id: str, tenant_id: str | None = None
+    ) -> dict | None:
+        tenant_id, user_id = self._normalize_tenant_user(tenant_id, user_id)
+        tenant = self._get_tenant_data(tenant_id)
+        return tenant["alert_rules"].get(user_id, {}).get(rule_id)
+
+    def create_alert_rule(
+        self, user_id: str, data: dict, tenant_id: str | None = None
+    ) -> dict:
+        tenant_id, user_id = self._normalize_tenant_user(tenant_id, user_id)
+        tenant = self._get_tenant_data(tenant_id)
+        tenant["users"].add(user_id)
+        rule = {**data, "id": data.get("id", str(uuid.uuid4()))}
+        tenant["alert_rules"].setdefault(user_id, {})[rule["id"]] = rule
+        return rule
+
+    def update_alert_rule(
+        self,
+        user_id: str,
+        rule_id: str,
+        data: dict,
+        tenant_id: str | None = None,
+    ) -> dict | None:
+        tenant_id, user_id = self._normalize_tenant_user(tenant_id, user_id)
+        tenant = self._get_tenant_data(tenant_id)
+        rule = tenant["alert_rules"].get(user_id, {}).get(rule_id)
+        if not rule:
+            return None
+        rule.update(data)
+        return rule
+
+    # --- Research ---
+
+    def get_research_screens(
+        self, user_id: str, tenant_id: str | None = None
+    ) -> list[dict]:
+        tenant_id, user_id = self._normalize_tenant_user(tenant_id, user_id)
+        tenant = self._get_tenant_data(tenant_id)
+        return list(tenant["research_screens"].get(user_id, {}).values())
+
+    def save_research_screen(
+        self, user_id: str, data: dict, tenant_id: str | None = None
+    ) -> dict:
+        tenant_id, user_id = self._normalize_tenant_user(tenant_id, user_id)
+        tenant = self._get_tenant_data(tenant_id)
+        tenant["users"].add(user_id)
+        screen = {**data, "id": data.get("id", str(uuid.uuid4()))}
+        tenant["research_screens"].setdefault(user_id, {})[screen["id"]] = screen
+        return screen
+
+    def get_research_snapshots(
+        self, user_id: str, tenant_id: str | None = None
+    ) -> list[dict]:
+        tenant_id, user_id = self._normalize_tenant_user(tenant_id, user_id)
+        tenant = self._get_tenant_data(tenant_id)
+        return tenant["research_snapshots"].get(user_id, [])
+
+    def save_research_snapshot(
+        self, user_id: str, data: dict, tenant_id: str | None = None
+    ) -> dict:
+        tenant_id, user_id = self._normalize_tenant_user(tenant_id, user_id)
+        tenant = self._get_tenant_data(tenant_id)
+        tenant["users"].add(user_id)
+        snapshot = {**data, "id": data.get("id", str(uuid.uuid4()))}
+        tenant["research_snapshots"].setdefault(user_id, []).insert(0, snapshot)
+        return snapshot
+
     # --- Synced Holdings ---
 
     def upsert_synced_holding(
@@ -371,6 +622,18 @@ class InMemoryStore:
         tenant_id, user_id = self._normalize_tenant_user(tenant_id, user_id)
         tenant = self._get_tenant_data(tenant_id)
         return list(tenant["connections"].get(user_id, {}).values())
+
+    def get_connections_by_provider(
+        self, provider: str, tenant_id: str | None = None
+    ) -> list[dict]:
+        tenant_id = tenant_id or self._default_tenant
+        tenant = self._get_tenant_data(tenant_id)
+        connections: list[dict] = []
+        for user_id, user_connections in tenant["connections"].items():
+            for connection in user_connections.values():
+                if connection.get("provider") == provider:
+                    connections.append({**connection, "user_id": user_id})
+        return connections
 
     def get_connection(
         self, user_id: str, connection_id: str, tenant_id: str | None = None
