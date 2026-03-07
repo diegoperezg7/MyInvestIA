@@ -27,8 +27,10 @@ from app.routers import (
     news,
     connections,
 )
-from app.routers import agents, user_profile, auth
+from app.routers import agents, user_profile, auth, theses, research, inbox, journal
 from app.routers import rl_trading
+from app.services.personal_bot_service import personal_bot_service
+from app.services.telegram_service import telegram_service
 
 logging.basicConfig(level=logging.DEBUG if settings.debug else logging.INFO)
 logger = logging.getLogger(__name__)
@@ -52,8 +54,12 @@ async def lifespan(app: FastAPI):
 
     # Agent scheduler is user-triggered via /api/v1/agents/run
     # Auto-start disabled: scheduler needs a user_id to do anything useful
+    personal_bot_service.start_scheduler()
 
     yield
+
+    await personal_bot_service.stop_scheduler()
+    await telegram_service.close()
 
 
 app = FastAPI(
@@ -67,7 +73,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "OPTIONS"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type"],
 )
 
@@ -100,3 +106,7 @@ app.include_router(connections.router, prefix="/api/v1")
 app.include_router(agents.router, prefix="/api/v1")
 app.include_router(user_profile.router, prefix="/api/v1")
 app.include_router(rl_trading.router, prefix="/api/v1")
+app.include_router(inbox.router, prefix="/api/v1")
+app.include_router(theses.router, prefix="/api/v1")
+app.include_router(research.router, prefix="/api/v1")
+app.include_router(journal.router, prefix="/api/v1")
