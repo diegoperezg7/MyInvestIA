@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from "react";
 import { fetchAPI, postAPI } from "@/lib/api";
-import TradingViewChart, { type ChartType } from "@/components/charts/TradingViewChart";
+import TradingViewChart from "@/components/charts/TradingViewChart";
 
 interface Signal {
   action: string;
@@ -57,8 +57,10 @@ interface Performance {
   equity_curve?: number[];
 }
 
-interface Props {
-  initialMode?: string;
+type TradesPayload = Trade[] | { trades?: Trade[] };
+
+function getErrorMessage(error: unknown, fallback: string): string {
+  return error instanceof Error ? error.message : fallback;
 }
 
 export default function RLTradingView() {
@@ -101,7 +103,7 @@ export default function RLTradingView() {
 
   const fetchTrades = useCallback(async () => {
     try {
-      const data = await api<any>("/api/v1/rl-agent/trades?limit=50");
+      const data = await api<TradesPayload>("/api/v1/rl-agent/trades?limit=50");
       const tradesData = Array.isArray(data) ? data : (data?.trades || []);
       setTrades(tradesData);
     } catch (e) {
@@ -150,9 +152,9 @@ export default function RLTradingView() {
           await fetchTrades();
         }
       }
-    } catch (e: any) {
-      console.error("Error fetching signal:", e);
-      setError(e.message);
+    } catch (error: unknown) {
+      console.error("Error fetching signal:", error);
+      setError(getErrorMessage(error, "Error fetching signal"));
     } finally {
       setLoading(false);
     }
@@ -174,8 +176,8 @@ export default function RLTradingView() {
       await fetchStatus();
       await fetchPerformance();
       await fetchTrades();
-    } catch (e: any) {
-      setError(e.message);
+    } catch (error: unknown) {
+      setError(getErrorMessage(error, "Failed to initialize agent"));
     } finally {
       setLoading(false);
     }
@@ -201,9 +203,9 @@ export default function RLTradingView() {
       } else if (result.signal?.reason) {
         setTradeMessage({ type: 'error', text: result.signal.reason });
       }
-    } catch (e: any) {
-      console.error("Trade error:", e);
-      setError(e.message);
+    } catch (error: unknown) {
+      console.error("Trade error:", error);
+      setError(getErrorMessage(error, "Trade execution failed"));
     } finally {
       setLoading(false);
     }
@@ -229,11 +231,6 @@ export default function RLTradingView() {
     if (pnl > 0) return "text-oracle-green";
     if (pnl < 0) return "text-oracle-red";
     return "text-oracle-muted";
-  };
-
-  const fmtMoney = (n: number | undefined | null) => {
-    if (n === undefined || n === null) return "-";
-    return `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
   // NOT INITIALIZED STATE
@@ -306,9 +303,6 @@ export default function RLTradingView() {
       </div>
     );
   }
-
-  const equityCurve = performance?.equity_curve || [];
-  const isPositiveEquity = (performance?.total_pnl || 0) >= 0;
 
   return (
     <div className="space-y-4">
@@ -522,7 +516,7 @@ export default function RLTradingView() {
         <div className="bg-oracle-panel border border-oracle-border rounded-xl p-4">
           <h3 className="text-oracle-text font-semibold mb-3">Operaciones Recientes</h3>
           <div className="space-y-2 max-h-48 overflow-y-auto">
-            {trades.slice(-10).reverse().map((trade: any, i: number) => (
+            {trades.slice(-10).reverse().map((trade: Trade, i: number) => (
               <div key={i} className="flex items-center justify-between bg-oracle-bg rounded-lg px-3 py-2">
                 <div className="flex items-center gap-3">
                   <span className={`font-bold ${trade.action === 'buy' ? 'text-oracle-green' : 'text-oracle-red'}`}>

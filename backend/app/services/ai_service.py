@@ -10,12 +10,18 @@ Model strategy:
 
 import logging
 
-from openai import AsyncOpenAI
-
 from app.config import settings
 from app.services.store import store
 
 logger = logging.getLogger(__name__)
+
+try:
+    from openai import AsyncOpenAI
+
+    OPENAI_SDK_AVAILABLE = True
+except ImportError:
+    AsyncOpenAI = None
+    OPENAI_SDK_AVAILABLE = False
 
 SYSTEM_PROMPT = """You are InvestIA, an AI investment intelligence assistant. Your role is to help investors make informed decisions by analyzing market data, technical indicators, and portfolio positions.
 
@@ -37,6 +43,10 @@ MODEL_ANALYSIS = "llama-3.3-70b"   # Asset analysis, decision synthesis
 MODEL_SENTIMENT = "llama3.1-8b"    # Sentiment classification (faster/cheaper)
 
 CEREBRAS_BASE_URL = "https://api.cerebras.ai/v1"
+MODEL_ALIASES = {
+    "mistral-large-latest": MODEL_CHAT,
+    "mistral-small-latest": MODEL_SENTIMENT,
+}
 
 
 class AIService:
@@ -46,6 +56,8 @@ class AIService:
         self._client: AsyncOpenAI | None = None
 
     def _get_client(self) -> AsyncOpenAI:
+        if not OPENAI_SDK_AVAILABLE:
+            raise ValueError("openai package not installed")
         if not settings.cerebras_api_key:
             raise ValueError("CEREBRAS_API_KEY not configured in .env")
         if self._client is None:
@@ -57,7 +69,7 @@ class AIService:
 
     @property
     def is_configured(self) -> bool:
-        return bool(settings.cerebras_api_key)
+        return bool(settings.cerebras_api_key) and OPENAI_SDK_AVAILABLE
 
     async def chat(
         self,
@@ -99,7 +111,8 @@ class AIService:
         full_messages = [{"role": "system", "content": system}] + messages
 
         # Use the requested model, defaulting to MODEL_CHAT
-        selected_model = model or MODEL_CHAT
+        requested_model = model or MODEL_CHAT
+        selected_model = MODEL_ALIASES.get(requested_model, requested_model)
 
         response = await client.chat.completions.create(
             model=selected_model,
@@ -107,7 +120,7 @@ class AIService:
             messages=full_messages,
         )
 
-        return response.choices[0].message.content
+        return response.choices[0].message.content or ""
 
     async def analyze_asset(
         self,

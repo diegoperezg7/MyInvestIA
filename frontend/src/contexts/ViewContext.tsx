@@ -1,64 +1,38 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useReducer,
+  type ReactNode,
+} from "react";
 
-export type View =
-  | "overview"
-  | "analysis"
-  | "screener"
-  | "movers"
-  | "volatility"
-  | "commodities"
-  | "paper-trade"
-  | "rl-trading"
-  | "connections"
-  | "alerts"
-  | "chat"
-  | "macro"
-  | "recommendations"
-  | "prediction"
-  | "calendar"
-  | "heatmap"
-  | "settings";
+import type { LegacyViewAlias, SectionId, SectionTabId } from "@/types";
+import {
+  DEFAULT_TAB_BY_SECTION,
+  LEGACY_VIEW_TO_SHELL,
+  getDefaultTab,
+  getStoredShellState,
+  isTabForSection,
+} from "@/lib/shell";
 
-const STORAGE_KEY = "myinvestia-view";
+export type View = LegacyViewAlias;
 
-function getStoredView(): View | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (
-      saved === "overview" ||
-      saved === "analysis" ||
-      saved === "screener" ||
-      saved === "movers" ||
-      saved === "volatility" ||
-      saved === "commodities" ||
-      saved === "paper-trade" ||
-      saved === "rl-trading" ||
-      saved === "connections" ||
-      saved === "alerts" ||
-      saved === "chat" ||
-      saved === "macro" ||
-      saved === "recommendations" ||
-      saved === "prediction" ||
-      saved === "calendar" ||
-      saved === "heatmap" ||
-      saved === "settings"
-    ) {
-      return saved;
-    }
-    return null;
-  } catch {
-    return null;
-  }
-}
+type FocusView = "asset-detail" | null;
 
 interface ViewContextType {
   activeView: View;
+  activeSection: SectionId;
+  activeTab: SectionTabId;
+  focusView: FocusView;
   setActiveView: (view: View) => void;
+  setActiveSection: (section: SectionId, tab?: SectionTabId) => void;
+  setActiveTab: (tab: SectionTabId) => void;
   selectedSymbol: string;
   setSelectedSymbol: (symbol: string) => void;
+  openAssetDetail: (symbol?: string) => void;
+  closeAssetDetail: () => void;
   commandBarOpen: boolean;
   setCommandBarOpen: (open: boolean) => void;
   sidebarCollapsed: boolean;
@@ -69,33 +43,181 @@ interface ViewContextType {
 
 const ViewContext = createContext<ViewContextType | null>(null);
 
-export function ViewProvider({ children }: { children: ReactNode }) {
-  const [activeView, setActiveView] = useState<View>(() => {
-    return getStoredView() || "overview";
+interface ViewState {
+  activeSection: SectionId;
+  activeTab: SectionTabId;
+  activeView: View;
+  focusView: FocusView;
+  selectedSymbol: string;
+  commandBarOpen: boolean;
+  sidebarCollapsed: boolean;
+  sidebarMobileOpen: boolean;
+}
+
+type ViewAction =
+  | { type: "setLegacyView"; view: View }
+  | { type: "setActiveSection"; section: SectionId; tab?: SectionTabId }
+  | { type: "setActiveTab"; tab: SectionTabId }
+  | { type: "setSelectedSymbol"; symbol: string }
+  | { type: "openAssetDetail"; symbol?: string }
+  | { type: "closeAssetDetail" }
+  | { type: "setCommandBarOpen"; open: boolean }
+  | { type: "setSidebarCollapsed"; collapsed: boolean }
+  | { type: "setSidebarMobileOpen"; open: boolean };
+
+function buildLegacyView(
+  section: SectionId,
+  tab: SectionTabId,
+  focusView: FocusView,
+): View {
+  if (focusView === "asset-detail") {
+    return "terminal";
+  }
+
+  const match = Object.entries(LEGACY_VIEW_TO_SHELL).find(([, value]) => {
+    return value.section === section && value.tab === tab && !value.focus;
   });
-  const [selectedSymbol, setSelectedSymbol] = useState("");
-  const [commandBarOpen, setCommandBarOpen] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [sidebarMobileOpen, setSidebarMobileOpen] = useState(false);
+
+  return (match?.[0] as View | undefined) ?? "overview";
+}
+
+function sanitizeTab(section: SectionId, tab?: SectionTabId): SectionTabId {
+  if (tab && isTabForSection(section, tab)) {
+    return tab;
+  }
+  return getDefaultTab(section);
+}
+
+function viewReducer(state: ViewState, action: ViewAction): ViewState {
+  switch (action.type) {
+    case "setLegacyView": {
+      const target = LEGACY_VIEW_TO_SHELL[action.view];
+      const section = target.section;
+      const tab = sanitizeTab(section, target.tab);
+      const focusView = target.focus ?? null;
+      return {
+        ...state,
+        activeSection: section,
+        activeTab: tab,
+        activeView: action.view,
+        focusView,
+        sidebarMobileOpen: false,
+      };
+    }
+    case "setActiveSection": {
+      const tab = sanitizeTab(action.section, action.tab);
+      return {
+        ...state,
+        activeSection: action.section,
+        activeTab: tab,
+        activeView: buildLegacyView(action.section, tab, null),
+        focusView: null,
+        sidebarMobileOpen: false,
+      };
+    }
+    case "setActiveTab": {
+      const tab = sanitizeTab(state.activeSection, action.tab);
+      return {
+        ...state,
+        activeTab: tab,
+        activeView: buildLegacyView(state.activeSection, tab, null),
+        focusView: null,
+      };
+    }
+    case "setSelectedSymbol":
+      return { ...state, selectedSymbol: action.symbol };
+    case "openAssetDetail":
+      return {
+        ...state,
+        selectedSymbol: action.symbol ?? state.selectedSymbol,
+        activeView: "terminal",
+        focusView: "asset-detail",
+        sidebarMobileOpen: false,
+      };
+    case "closeAssetDetail":
+      return {
+        ...state,
+        activeView: buildLegacyView(state.activeSection, state.activeTab, null),
+        focusView: null,
+      };
+    case "setCommandBarOpen":
+      return { ...state, commandBarOpen: action.open };
+    case "setSidebarCollapsed":
+      return { ...state, sidebarCollapsed: action.collapsed };
+    case "setSidebarMobileOpen":
+      return { ...state, sidebarMobileOpen: action.open };
+    default:
+      return state;
+  }
+}
+
+function getInitialState(): ViewState {
+  const stored = getStoredShellState();
+  const activeSection = stored?.section ?? "home";
+  const activeTab = sanitizeTab(activeSection, stored?.tab ?? DEFAULT_TAB_BY_SECTION[activeSection]);
+
+  return {
+    activeSection,
+    activeTab,
+    activeView: buildLegacyView(activeSection, activeTab, null),
+    focusView: null,
+    selectedSymbol: "",
+    commandBarOpen: false,
+    sidebarCollapsed: false,
+    sidebarMobileOpen: false,
+  };
+}
+
+export function ViewProvider({ children }: { children: ReactNode }) {
+  const [state, dispatch] = useReducer(viewReducer, undefined, getInitialState);
+
+  const setActiveView = (view: View) => dispatch({ type: "setLegacyView", view });
+  const setActiveSection = (section: SectionId, tab?: SectionTabId) =>
+    dispatch({ type: "setActiveSection", section, tab });
+  const setActiveTab = (tab: SectionTabId) => dispatch({ type: "setActiveTab", tab });
+  const setSelectedSymbol = (symbol: string) =>
+    dispatch({ type: "setSelectedSymbol", symbol });
+  const openAssetDetail = (symbol?: string) =>
+    dispatch({ type: "openAssetDetail", symbol });
+  const closeAssetDetail = () => dispatch({ type: "closeAssetDetail" });
+  const setCommandBarOpen = (open: boolean) =>
+    dispatch({ type: "setCommandBarOpen", open });
+  const setSidebarCollapsed = (collapsed: boolean) =>
+    dispatch({ type: "setSidebarCollapsed", collapsed });
+  const setSidebarMobileOpen = (open: boolean) =>
+    dispatch({ type: "setSidebarMobileOpen", open });
 
   useEffect(() => {
     try {
-      localStorage.setItem(STORAGE_KEY, activeView);
+      localStorage.setItem(
+        "myinvestia-shell",
+        JSON.stringify({
+          section: state.activeSection,
+          tab: state.activeTab,
+        }),
+      );
     } catch {}
-  }, [activeView]);
+  }, [state.activeSection, state.activeTab]);
 
   return (
     <ViewContext.Provider
       value={{
-        activeView,
+        activeView: state.activeView,
+        activeSection: state.activeSection,
+        activeTab: state.activeTab,
+        focusView: state.focusView,
         setActiveView,
-        selectedSymbol,
+        setActiveSection,
+        setActiveTab,
+        selectedSymbol: state.selectedSymbol,
         setSelectedSymbol,
-        commandBarOpen,
+        openAssetDetail,
+        closeAssetDetail,
+        commandBarOpen: state.commandBarOpen,
         setCommandBarOpen,
-        sidebarCollapsed,
+        sidebarCollapsed: state.sidebarCollapsed,
         setSidebarCollapsed,
-        sidebarMobileOpen,
+        sidebarMobileOpen: state.sidebarMobileOpen,
         setSidebarMobileOpen,
       }}
     >
@@ -106,6 +228,8 @@ export function ViewProvider({ children }: { children: ReactNode }) {
 
 export function useView() {
   const ctx = useContext(ViewContext);
-  if (!ctx) throw new Error("useView must be used within ViewProvider");
+  if (!ctx) {
+    throw new Error("useView must be used within ViewProvider");
+  }
   return ctx;
 }

@@ -26,6 +26,7 @@ export function useAnalysisPipeline() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
+  const completedRef = useRef(false);
 
   const run = useCallback((symbol: string) => {
     // Cleanup previous
@@ -36,6 +37,7 @@ export function useAnalysisPipeline() {
     setLoading(true);
     setError(null);
     setStatus(null);
+    completedRef.current = false;
 
     const es = new EventSource(`/api/v1/chat/analyze-pipeline/${symbol}`);
     eventSourceRef.current = es;
@@ -46,10 +48,11 @@ export function useAnalysisPipeline() {
         setStatus(data);
 
         if (data.completed) {
+          completedRef.current = true;
           es.close();
           setLoading(false);
         }
-      } catch (e) {
+      } catch {
         // Ignore parse errors
       }
     };
@@ -57,7 +60,7 @@ export function useAnalysisPipeline() {
     es.onerror = () => {
       es.close();
       setLoading(false);
-      if (!status?.completed) {
+      if (!completedRef.current) {
         setError("Pipeline connection lost");
       }
     };

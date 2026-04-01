@@ -118,6 +118,14 @@ function ArticleItem({ article, t }: { article: AnalyzedArticle; t: (key: string
     <div
       className="border-b border-oracle-border last:border-b-0 py-2.5 cursor-pointer hover:bg-oracle-bg/50 px-2 -mx-2 rounded transition-colors"
       onClick={() => setExpanded(!expanded)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          setExpanded((prev) => !prev);
+        }
+      }}
+      role="button"
+      tabIndex={0}
     >
       {/* Main row */}
       <div className="flex items-start gap-2">
@@ -155,7 +163,9 @@ function ArticleItem({ article, t }: { article: AnalyzedArticle; t: (key: string
               </span>
             )}
             {/* Tickers */}
-            {analysis?.affected_tickers?.slice(0, 3).map((tk) => (
+            {(analysis?.affected_tickers?.length ? analysis.affected_tickers : article.ticker_mentions)
+              .slice(0, 3)
+              .map((tk) => (
               <span
                 key={tk}
                 className="text-xs font-mono px-1 py-0.5 bg-oracle-accent/10 text-oracle-accent rounded"
@@ -163,6 +173,9 @@ function ArticleItem({ article, t }: { article: AnalyzedArticle; t: (key: string
                 {tk}
               </span>
             ))}
+            <span className="text-[10px] text-oracle-muted">
+              rel {(article.source_reliability * 100).toFixed(0)}%
+            </span>
             {/* Timestamp */}
             <span className="text-xs text-oracle-muted ml-auto shrink-0">
               {timeAgo(article.datetime, t("news.now"))}
@@ -209,6 +222,15 @@ function ArticleItem({ article, t }: { article: AnalyzedArticle; t: (key: string
               )}
             </>
           )}
+          <div className="flex flex-wrap items-center gap-2 text-[11px] text-oracle-muted">
+            <span>conf {(article.confidence * 100).toFixed(0)}%</span>
+            <span>eng {(article.engagement * 100).toFixed(0)}%</span>
+            <span>{article.retrieval_mode.replace("_", " ")}</span>
+            <span className={SENTIMENT_COLOR[analysis?.sentiment || "neutral"]}>
+              {article.sentiment_score > 0 ? "+" : ""}
+              {article.sentiment_score.toFixed(2)}
+            </span>
+          </div>
           {article.url && (
             <a
               href={article.url}
@@ -244,8 +266,9 @@ export default function BreakingNewsFeed({ defaultCollapsed = true, className = 
     setActiveTab,
     categoryCounts,
   } = useNewsFeed();
-  const [collapsed, setCollapsed] = useState(defaultCollapsed);
+  const [collapsed, setCollapsed] = useState<boolean | undefined>(undefined);
   const t = useLanguageStore((s) => s.t);
+  const isCollapsed = collapsed ?? defaultCollapsed;
 
   const displayed = articles;
 
@@ -259,7 +282,7 @@ export default function BreakingNewsFeed({ defaultCollapsed = true, className = 
       {/* Collapsible header */}
       <div className="flex items-center justify-between">
         <button
-          onClick={() => setCollapsed(!collapsed)}
+          onClick={() => setCollapsed((prev) => !(prev ?? defaultCollapsed))}
           className="flex items-center gap-2 flex-1"
         >
           <h3 className="text-oracle-muted text-sm font-medium uppercase tracking-wide">
@@ -274,7 +297,7 @@ export default function BreakingNewsFeed({ defaultCollapsed = true, className = 
               {t("news.articles_count", { count: String(allArticles.length) })}
             </span>
           )}
-          {collapsed
+          {isCollapsed
             ? <ChevronDown className="w-3.5 h-3.5 text-oracle-muted" />
             : <ChevronUp className="w-3.5 h-3.5 text-oracle-muted" />
           }
@@ -292,7 +315,7 @@ export default function BreakingNewsFeed({ defaultCollapsed = true, className = 
       {error && <p className="text-oracle-red text-xs mt-2">{error}</p>}
 
       {/* Collapsible content */}
-      {!collapsed && (
+      {!isCollapsed && (
         <div className="mt-3">
           {/* Tab bar */}
           <div className="flex gap-1 mb-3 overflow-x-auto scrollbar-none">

@@ -162,9 +162,37 @@ export interface MacroSummary {
   key_signals: string[];
 }
 
+export interface DataSourceStatus {
+  name: string;
+  active: boolean;
+  retrieval_mode: string;
+  confidence: number;
+  note: string;
+}
+
+export interface OfficialSeriesPoint {
+  id: string;
+  name: string;
+  value: number | null;
+  date: string;
+  change_percent: number;
+  unit: string;
+  source: string;
+}
+
+export interface FearGreedIndex {
+  value: number;
+  classification: string;
+  timestamp: string;
+  source: string;
+}
+
 export interface MacroIntelligenceResponse {
   indicators: MacroIndicatorDetail[];
   summary: MacroSummary;
+  sources: DataSourceStatus[];
+  official_series: OfficialSeriesPoint[];
+  fear_greed: FearGreedIndex | null;
 }
 
 export interface PriceUpdate {
@@ -184,6 +212,81 @@ export interface NotificationStatus {
 export interface NotificationResponse {
   success: boolean;
   message: string;
+}
+
+export interface PersonalBotHistoryEntry {
+  id: string;
+  connection_id: string;
+  started_at: string | null;
+  completed_at: string | null;
+  status: string;
+  reason: string | null;
+  summary: string | null;
+  message_count: number;
+  alert_count: number;
+  fingerprint: string | null;
+}
+
+export interface PersonalBotStatus {
+  available: boolean;
+  enabled: boolean;
+  connected: boolean;
+  status: string;
+  bot_name: string | null;
+  bot_username: string | null;
+  chat_id: string | null;
+  chat_name: string | null;
+  telegram_username: string | null;
+  cadence_minutes: number;
+  min_severity: "all" | "medium" | "high" | "critical";
+  include_briefing: boolean;
+  include_inbox: boolean;
+  include_portfolio: boolean;
+  include_watchlist: boolean;
+  include_macro: boolean;
+  include_news: boolean;
+  include_theses: boolean;
+  include_buy_sell: boolean;
+  send_only_on_changes: boolean;
+  provisioned_defaults: boolean;
+  pending_code: string | null;
+  pending_expires_at: string | null;
+  connect_url: string | null;
+  verified_at: string | null;
+  last_run_at: string | null;
+  last_delivery_at: string | null;
+  last_test_at: string | null;
+  last_error: string | null;
+  last_reason: string | null;
+  last_message_count: number;
+  last_alert_count: number;
+  history: PersonalBotHistoryEntry[];
+}
+
+export interface PersonalBotActionResponse {
+  success: boolean;
+  message: string;
+  status: PersonalBotStatus;
+}
+
+export interface PersonalBotRunResponse {
+  success: boolean;
+  message: string;
+  sent_messages: number;
+  sent_alerts: number;
+  alerts_generated: number;
+  top_items: number;
+  events: number;
+  thesis_watch: number;
+  skipped: boolean;
+  status: PersonalBotStatus;
+}
+
+export interface PersonalBotProvisionResponse {
+  success: boolean;
+  created_rules: number;
+  message: string;
+  status: PersonalBotStatus;
 }
 
 export interface SentimentAnalysis {
@@ -331,6 +434,10 @@ export interface BriefingData {
   briefing: string;
   suggestions: string[];
   generated_at: string;
+  preset?: string;
+  top_inbox_items?: InboxItem[];
+  next_events?: EventItem[];
+  thesis_watch?: Thesis[];
 }
 
 export interface NewsArticle {
@@ -366,6 +473,9 @@ export interface Recommendation {
   tickers: string[];
   action: string;
   urgency: "low" | "medium" | "high";
+  inbox_item_id?: string | null;
+  why_now?: string;
+  horizon?: "immediate" | "short" | "medium" | "long";
 }
 
 export interface RecommendationsResponse {
@@ -402,6 +512,14 @@ export interface AnalyzedArticle {
   score?: number;
   num_comments?: number;
   sentiment_label?: string; // StockTwits: "Bullish" | "Bearish"
+  sentiment_score: number;
+  confidence: number;
+  relevance_score: number;
+  ticker_mentions: string[];
+  source_reliability: number;
+  duplicate_group: string;
+  engagement: number;
+  retrieval_mode: string;
 }
 
 export interface NewsFeedResponse {
@@ -410,6 +528,22 @@ export interface NewsFeedResponse {
   sources_active: Record<string, boolean>;
   category_counts: Record<SourceCategory, number>;
   generated_at: string;
+  top_narratives: Array<{
+    label: string;
+    mentions: number;
+    avg_sentiment: number;
+    symbols: string[];
+  }>;
+  source_health: Record<
+    string,
+    {
+      active: boolean;
+      articles: number;
+      avg_confidence: number;
+      retrieval_mode: string;
+      status: string;
+    }
+  >;
 }
 
 // --- Enhanced Sentiment ---
@@ -426,7 +560,71 @@ export interface EnhancedSentimentResponse {
   unified_score: number;
   unified_label: "bullish" | "bearish" | "neutral";
   sources: EnhancedSentimentSource[];
+  coverage_confidence: number;
+  news_momentum: number;
+  social_momentum: number;
+  top_narratives: Array<{
+    label: string;
+    mentions: number;
+    avg_sentiment: number;
+    symbols: string[];
+  }>;
+  source_breakdown: Array<{
+    provider: string;
+    count: number;
+    avg_sentiment: number;
+    avg_confidence: number;
+    retrieval_mode: string;
+  }>;
+  cross_source_divergence: number;
+  source_health: Record<
+    string,
+    {
+      active: boolean;
+      articles: number;
+      avg_confidence: number;
+      retrieval_mode: string;
+      status: string;
+    }
+  >;
   total_data_points: number;
+  generated_at: string;
+}
+
+export interface FilingItem {
+  form: string;
+  filed_at: string;
+  description: string;
+  items: string;
+  url: string;
+  accession_number: string;
+}
+
+export interface FilingsResponse {
+  symbol: string;
+  company_name: string;
+  cik: string;
+  source: string;
+  filings: FilingItem[];
+  generated_at: string;
+}
+
+export interface InsiderTransaction {
+  insider_name: string;
+  relation: string;
+  transaction_type: string;
+  shares: number;
+  share_price: number;
+  value: number;
+  filing_date: string;
+  source: string;
+  url?: string;
+}
+
+export interface InsiderActivityResponse {
+  symbol: string;
+  source: string;
+  transactions: InsiderTransaction[];
   generated_at: string;
 }
 
@@ -701,6 +899,7 @@ export interface EconomicCalendarResponse {
   events: EconomicEvent[];
   earnings: EarningsEvent[];
   date_range: { start: string; end: string };
+  sources: DataSourceStatus[];
 }
 
 // --- Portfolio Risk Analytics ---
@@ -738,11 +937,35 @@ export interface StressTestScenario {
   estimated_portfolio_loss_pct: number;
 }
 
+export interface ExposureItem {
+  key: string;
+  weight: number;
+  value: number;
+}
+
+export interface FactorProxy {
+  name: string;
+  exposure: number;
+  confidence: number;
+  note: string;
+}
+
+export interface CorrelatedCluster {
+  symbols: string[];
+  average_correlation: number;
+}
+
 export interface PortfolioRiskResponse {
   metrics: PortfolioRiskMetrics;
   concentration: ConcentrationRisk;
   correlation: CorrelationData;
   stress_tests: StressTestScenario[];
+  sector_exposure: ExposureItem[];
+  country_exposure: ExposureItem[];
+  currency_exposure: ExposureItem[];
+  factor_proxies: FactorProxy[] | null;
+  correlated_clusters: CorrelatedCluster[];
+  scenario_results: StressTestScenario[];
   portfolio_value: number;
 }
 
@@ -799,6 +1022,219 @@ export interface UserProfile {
   notification_channels: string[];
   language: string;
   theme: string;
+  assistant_mode: "prudent" | "balanced" | "proactive";
+  default_horizon: "short" | "medium" | "long";
+  inbox_scope_preference: "portfolio" | "watchlist" | "macro" | "research";
+}
+
+export type InboxScope = "portfolio" | "watchlist" | "macro" | "research";
+export type InboxStatus = "open" | "saved" | "dismissed" | "snoozed" | "done";
+export type InsightState = "confirmed" | "exploratory";
+export type ImpactLevel = "low" | "medium" | "high";
+export type ThesisStance = "bull" | "base" | "bear";
+export type ThesisLifecycleStatus = "active" | "paused" | "closed";
+export type ThesisReviewState = "validating" | "at_risk" | "broken";
+
+export interface EvidenceItem {
+  category: string;
+  source: string;
+  summary: string;
+  url?: string | null;
+  confidence: number;
+  score: number;
+}
+
+export interface SourceBreakdownItem {
+  source: string;
+  count: number;
+  weight: number;
+  confidence: number;
+  retrieval_mode: string;
+}
+
+export interface InboxItem {
+  id: string;
+  scope: InboxScope;
+  kind: string;
+  title: string;
+  summary: string;
+  why_now: string;
+  symbols: string[];
+  primary_symbol?: string | null;
+  priority_score: number;
+  confidence: number;
+  impact: ImpactLevel;
+  horizon: "immediate" | "short" | "medium" | "long";
+  status: InboxStatus;
+  state: InsightState;
+  assistant_mode: "prudent" | "balanced" | "proactive";
+  evidence: EvidenceItem[];
+  source_breakdown: SourceBreakdownItem[];
+  created_at: string;
+  updated_at: string;
+  expires_at: string;
+  linked_thesis_id?: string | null;
+}
+
+export interface InboxResponse {
+  items: InboxItem[];
+  total: number;
+  generated_at: string;
+  cached_until: string;
+}
+
+export interface EventItem {
+  id: string;
+  event_type: string;
+  title: string;
+  description: string;
+  symbol?: string | null;
+  event_at: string;
+  importance: ImpactLevel;
+  source: string;
+  url?: string | null;
+  metadata: Record<string, unknown>;
+}
+
+export interface Thesis {
+  id: string;
+  symbol: string;
+  stance: ThesisStance;
+  conviction: number;
+  horizon: "immediate" | "short" | "medium" | "long";
+  entry_zone: string;
+  invalidation: string;
+  catalysts: string[];
+  risks: string[];
+  notes: string;
+  status: ThesisLifecycleStatus;
+  review_state: ThesisReviewState;
+  linked_inbox_ids: string[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ThesisEvent {
+  id: string;
+  thesis_id: string;
+  event_type: string;
+  summary: string;
+  review_state?: ThesisReviewState | null;
+  metadata: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface ThesisListResponse {
+  theses: Thesis[];
+  total: number;
+}
+
+export interface ThesisReviewResponse {
+  thesis: Thesis;
+  event: ThesisEvent;
+  supporting_items: InboxItem[];
+}
+
+export interface AlertCondition {
+  field: string;
+  operator: "gt" | "gte" | "lt" | "lte" | "eq" | "contains";
+  value: string;
+  source: string;
+}
+
+export interface CompoundAlertRule {
+  id: string;
+  name: string;
+  symbols: string[];
+  conditions: AlertCondition[];
+  cooldown_minutes: number;
+  delivery_channels: string[];
+  linked_thesis_id?: string | null;
+  active: boolean;
+  last_triggered_at?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AlertRuleListResponse {
+  rules: CompoundAlertRule[];
+  total: number;
+}
+
+export interface ResearchFactorSet {
+  momentum: number;
+  quality: number;
+  value: number;
+  revisions: number;
+  sentiment: number;
+  insider_accumulation: number;
+  risk: number;
+}
+
+export interface ResearchRankingEntry {
+  symbol: string;
+  name: string;
+  composite_score: number;
+  confidence: number;
+  verdict: string;
+  factors: ResearchFactorSet;
+  thesis_id?: string | null;
+  inbox_item_id?: string | null;
+}
+
+export interface ResearchScreen {
+  id: string;
+  name: string;
+  symbols: string[];
+  notes: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface BacktestLiteResult {
+  horizon: string;
+  average_return: number;
+  median_return: number;
+  hit_rate: number;
+  samples: number;
+}
+
+export interface ResearchSnapshot {
+  id: string;
+  name: string;
+  universe: string[];
+  rankings: ResearchRankingEntry[];
+  validation: BacktestLiteResult[];
+  captured_at: string;
+}
+
+export interface ResearchRankingsResponse {
+  rankings: ResearchRankingEntry[];
+  universe: string[];
+  generated_at: string;
+  snapshot_id?: string | null;
+  screens: ResearchScreen[];
+}
+
+export interface ResearchFactorResponse {
+  symbol: string;
+  generated_at: string;
+  composite_score: number;
+  confidence: number;
+  verdict: string;
+  regime: string;
+  adx: number;
+  weights: Record<string, number>;
+  factors: ResearchFactorSet;
+  support_resistance: Record<string, unknown>;
+  candlestick_patterns: string[];
+  risk_metrics: Record<string, unknown>;
+  factor_agreement: number;
+}
+
+export interface ResearchSnapshotListResponse {
+  snapshots: ResearchSnapshot[];
+  total: number;
 }
 
 // --- Sector Heatmap & Market Breadth ---
@@ -828,4 +1264,96 @@ export interface MarketBreadthIndicators {
   pct_above_sma200: number;
   sentiment: "bullish" | "neutral" | "bearish";
   last_updated: string;
+}
+
+// --- App shell / presentation ---
+
+export type SectionId =
+  | "home"
+  | "priorities"
+  | "portfolio"
+  | "research"
+  | "markets"
+  | "assistant"
+  | "settings";
+
+export type SectionTabId =
+  | "home-summary"
+  | "priorities-inbox"
+  | "portfolio-overview"
+  | "portfolio-watchlists"
+  | "portfolio-theses"
+  | "portfolio-alerts"
+  | "research-ideas"
+  | "research-screener"
+  | "research-factors"
+  | "research-signal"
+  | "markets-today"
+  | "markets-macro"
+  | "markets-calendar"
+  | "markets-moves"
+  | "markets-maps"
+  | "assistant-chat"
+  | "assistant-bot"
+  | "assistant-alerts"
+  | "assistant-connections"
+  | "assistant-lab"
+  | "settings-general";
+
+export type LegacyViewAlias =
+  | "overview"
+  | "inbox"
+  | "terminal"
+  | "analysis"
+  | "screener"
+  | "movers"
+  | "volatility"
+  | "commodities"
+  | "paper-trade"
+  | "rl-trading"
+  | "connections"
+  | "alerts"
+  | "chat"
+  | "macro"
+  | "recommendations"
+  | "prediction"
+  | "calendar"
+  | "heatmap"
+  | "theses"
+  | "research"
+  | "settings";
+
+export interface ExplainedMetric {
+  id: string;
+  label: string;
+  short_label?: string;
+  legacy_label?: string;
+  description: string;
+  value?: string | number;
+  tone?: "positive" | "neutral" | "caution" | "negative";
+}
+
+export interface DisplayBadge {
+  label: string;
+  tone?: "default" | "success" | "warning" | "danger" | "accent";
+}
+
+export interface ActionHint {
+  title: string;
+  description: string;
+  action_label?: string;
+}
+
+export interface EmptyStateModel {
+  title: string;
+  description: string;
+  cta_label?: string;
+}
+
+export interface SectionSummaryCard {
+  id: string;
+  title: string;
+  summary: string;
+  badges?: DisplayBadge[];
+  action?: ActionHint;
 }

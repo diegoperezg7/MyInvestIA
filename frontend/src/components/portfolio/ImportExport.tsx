@@ -1,7 +1,6 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { postAPI } from "@/lib/api";
 
 export default function ImportExport() {
   const fileRef = useRef<HTMLInputElement>(null);

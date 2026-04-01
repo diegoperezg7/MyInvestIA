@@ -121,7 +121,9 @@ class TestTelegramService:
 class TestNotificationsRouter:
     @pytest.mark.asyncio
     async def test_status_not_configured(self, client):
-        with patch("app.routers.notifications.telegram_service") as mock_svc:
+        with patch("app.routers.notifications.openclaw_service") as mock_openclaw, \
+             patch("app.routers.notifications.telegram_service") as mock_svc:
+            mock_openclaw.configured = False
             mock_svc.configured = False
             response = await client.get("/api/v1/notifications/status")
 
@@ -131,7 +133,9 @@ class TestNotificationsRouter:
 
     @pytest.mark.asyncio
     async def test_status_configured(self, client):
-        with patch("app.routers.notifications.telegram_service") as mock_svc:
+        with patch("app.routers.notifications.openclaw_service") as mock_openclaw, \
+             patch("app.routers.notifications.telegram_service") as mock_svc:
+            mock_openclaw.configured = False
             mock_svc.configured = True
             mock_svc.get_bot_info = AsyncMock(return_value={
                 "first_name": "InvestIA Bot",
@@ -147,7 +151,9 @@ class TestNotificationsRouter:
 
     @pytest.mark.asyncio
     async def test_send_not_configured(self, client):
-        with patch("app.routers.notifications.telegram_service") as mock_svc:
+        with patch("app.routers.notifications.openclaw_service") as mock_openclaw, \
+             patch("app.routers.notifications.telegram_service") as mock_svc:
+            mock_openclaw.configured = False
             mock_svc.configured = False
             response = await client.post(
                 "/api/v1/notifications/send",
@@ -158,7 +164,9 @@ class TestNotificationsRouter:
 
     @pytest.mark.asyncio
     async def test_send_success(self, client):
-        with patch("app.routers.notifications.telegram_service") as mock_svc:
+        with patch("app.routers.notifications.openclaw_service") as mock_openclaw, \
+             patch("app.routers.notifications.telegram_service") as mock_svc:
+            mock_openclaw.configured = False
             mock_svc.configured = True
             mock_svc.send_message = AsyncMock(return_value={"ok": True})
             response = await client.post(
@@ -172,7 +180,9 @@ class TestNotificationsRouter:
 
     @pytest.mark.asyncio
     async def test_send_failure(self, client):
-        with patch("app.routers.notifications.telegram_service") as mock_svc:
+        with patch("app.routers.notifications.openclaw_service") as mock_openclaw, \
+             patch("app.routers.notifications.telegram_service") as mock_svc:
+            mock_openclaw.configured = False
             mock_svc.configured = True
             mock_svc.send_message = AsyncMock(return_value=None)
             response = await client.post(
@@ -186,7 +196,9 @@ class TestNotificationsRouter:
 
     @pytest.mark.asyncio
     async def test_send_alert_success(self, client):
-        with patch("app.routers.notifications.telegram_service") as mock_svc:
+        with patch("app.routers.notifications.openclaw_service") as mock_openclaw, \
+             patch("app.routers.notifications.telegram_service") as mock_svc:
+            mock_openclaw.configured = False
             mock_svc.configured = True
             mock_svc.send_alert = AsyncMock(return_value={"ok": True})
             response = await client.post(
@@ -207,7 +219,9 @@ class TestNotificationsRouter:
 
     @pytest.mark.asyncio
     async def test_send_alert_not_configured(self, client):
-        with patch("app.routers.notifications.telegram_service") as mock_svc:
+        with patch("app.routers.notifications.openclaw_service") as mock_openclaw, \
+             patch("app.routers.notifications.telegram_service") as mock_svc:
+            mock_openclaw.configured = False
             mock_svc.configured = False
             response = await client.post(
                 "/api/v1/notifications/send-alert",
@@ -218,7 +232,9 @@ class TestNotificationsRouter:
 
     @pytest.mark.asyncio
     async def test_test_notification_success(self, client):
-        with patch("app.routers.notifications.telegram_service") as mock_svc:
+        with patch("app.routers.notifications.openclaw_service") as mock_openclaw, \
+             patch("app.routers.notifications.telegram_service") as mock_svc:
+            mock_openclaw.configured = False
             mock_svc.configured = True
             mock_svc.send_test_message = AsyncMock(return_value={"ok": True})
             response = await client.post("/api/v1/notifications/test", json={})
@@ -229,7 +245,9 @@ class TestNotificationsRouter:
 
     @pytest.mark.asyncio
     async def test_test_notification_not_configured(self, client):
-        with patch("app.routers.notifications.telegram_service") as mock_svc:
+        with patch("app.routers.notifications.openclaw_service") as mock_openclaw, \
+             patch("app.routers.notifications.telegram_service") as mock_svc:
+            mock_openclaw.configured = False
             mock_svc.configured = False
             response = await client.post("/api/v1/notifications/test", json={})
 

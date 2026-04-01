@@ -35,6 +35,15 @@ async def fetch_economic_calendar(start_date: str = "", end_date: str = "") -> d
         "events": events,
         "earnings": earnings,
         "date_range": {"start": start_date, "end": end_date},
+        "sources": [
+            {
+                "name": "finnhub",
+                "active": bool(settings.finnhub_api_key),
+                "retrieval_mode": "official_api" if settings.finnhub_api_key else "sample_fallback",
+                "confidence": 0.9 if settings.finnhub_api_key else 0.2,
+                "note": "Economic and earnings calendar",
+            }
+        ],
     }
 
     cache.set(cache_key, result, CALENDAR_TTL)

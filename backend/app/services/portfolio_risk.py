@@ -84,12 +84,29 @@ async def calculate_portfolio_risk(holdings: list[dict]) -> dict:
         concentration = _calculate_concentration(symbols, values, portfolio_value)
         correlation = _calculate_correlation(symbols, returns_matrix)
         stress_tests = _run_stress_tests(portfolio_value, metrics.get("beta", 1.0))
+        metadata = _fetch_symbol_metadata(symbols)
+        sector_exposure = _aggregate_exposure(symbols, values, portfolio_value, metadata, "sector")
+        country_exposure = _aggregate_exposure(symbols, values, portfolio_value, metadata, "country")
+        currency_exposure = _aggregate_exposure(symbols, values, portfolio_value, metadata, "currency")
+        factor_proxies = _build_factor_proxies(metadata, portfolio_value, values)
+        correlated_clusters = _build_correlated_clusters(correlation)
+        scenario_results = _run_macro_scenarios(
+            portfolio_value,
+            metrics.get("beta", 1.0),
+            sector_exposure,
+        )
 
         result = {
             "metrics": metrics,
             "concentration": concentration,
             "correlation": correlation,
             "stress_tests": stress_tests,
+            "sector_exposure": sector_exposure,
+            "country_exposure": country_exposure,
+            "currency_exposure": currency_exposure,
+            "factor_proxies": factor_proxies,
+            "correlated_clusters": correlated_clusters,
+            "scenario_results": scenario_results,
             "portfolio_value": round(portfolio_value, 2),
         }
 
@@ -240,6 +257,171 @@ def _run_stress_tests(portfolio_value: float, beta: float) -> list[dict]:
     return results
 
 
+def _fetch_symbol_metadata(symbols: list[str]) -> dict[str, dict]:
+    metadata: dict[str, dict] = {}
+    for symbol in symbols:
+        try:
+            info = yf.Ticker(symbol).info or {}
+        except Exception:
+            info = {}
+        metadata[symbol] = {
+            "sector": info.get("sector") or _infer_sector(symbol, info),
+            "country": info.get("country") or "Unknown",
+            "currency": info.get("currency") or "USD",
+            "beta": float(info.get("beta", 1.0) or 1.0),
+        }
+    return metadata
+
+
+def _infer_sector(symbol: str, info: dict) -> str:
+    name = str(info.get("shortName") or symbol).upper()
+    etf_map = {
+        "XLK": "Technology",
+        "XLF": "Financial Services",
+        "XLV": "Healthcare",
+        "XLY": "Consumer Cyclical",
+        "XLP": "Consumer Defensive",
+        "XLE": "Energy",
+        "XLI": "Industrials",
+        "XLU": "Utilities",
+        "QQQ": "Technology",
+        "SPY": "Broad Market",
+    }
+    if symbol in etf_map:
+        return etf_map[symbol]
+    if "BITCOIN" in name or symbol.endswith("-USD"):
+        return "Crypto"
+    return "Unknown"
+
+
+def _aggregate_exposure(
+    symbols: list[str],
+    values: list[float],
+    total: float,
+    metadata: dict[str, dict],
+    field: str,
+) -> list[dict]:
+    buckets: dict[str, float] = {}
+    for symbol, value in zip(symbols, values):
+        key = metadata.get(symbol, {}).get(field) or "Unknown"
+        buckets[key] = buckets.get(key, 0.0) + value
+    exposures = [
+        {"key": key, "weight": round(value / total, 4), "value": round(value, 2)}
+        for key, value in buckets.items()
+        if total > 0
+    ]
+    exposures.sort(key=lambda item: item["weight"], reverse=True)
+    return exposures
+
+
+def _build_factor_proxies(
+    metadata: dict[str, dict],
+    portfolio_value: float,
+    values: list[float],
+) -> list[dict] | None:
+    if portfolio_value <= 0 or len(values) < 1:
+        return None
+
+    exposures = {
+        "growth": 0.0,
+        "defensive": 0.0,
+        "cyclical": 0.0,
+        "rate_sensitive": 0.0,
+        "crypto": 0.0,
+    }
+    sectors = {
+        "Technology": ("growth", 1.0),
+        "Communication Services": ("growth", 0.8),
+        "Consumer Cyclical": ("cyclical", 1.0),
+        "Financial Services": ("rate_sensitive", 0.9),
+        "Real Estate": ("rate_sensitive", 1.0),
+        "Utilities": ("defensive", 1.0),
+        "Consumer Defensive": ("defensive", 1.0),
+        "Healthcare": ("defensive", 0.7),
+        "Crypto": ("crypto", 1.0),
+    }
+
+    for (symbol, info), value in zip(metadata.items(), values):
+        sector = info.get("sector") or "Unknown"
+        proxy = sectors.get(sector)
+        if not proxy:
+            continue
+        name, multiplier = proxy
+        exposures[name] += (value / portfolio_value) * multiplier
+
+    return [
+        {
+            "name": name,
+            "exposure": round(min(exposure, 1.0), 4),
+            "confidence": 0.75 if exposure > 0 else 0.25,
+            "note": "Proxy derived from sector composition and ETF heuristics.",
+        }
+        for name, exposure in exposures.items()
+    ]
+
+
+def _build_correlated_clusters(correlation: dict) -> list[dict]:
+    clusters = []
+    for pair in correlation.get("high_correlations", []):
+        symbols = pair.get("pair", "").split("/")
+        if len(symbols) != 2:
+            continue
+        clusters.append(
+            {
+                "symbols": symbols,
+                "average_correlation": pair.get("value", 0.0),
+            }
+        )
+    return clusters
+
+
+def _run_macro_scenarios(
+    portfolio_value: float,
+    beta: float,
+    sector_exposure: list[dict],
+) -> list[dict]:
+    tech_weight = next(
+        (item["weight"] for item in sector_exposure if item["key"] == "Technology"),
+        0.0,
+    )
+    rate_sensitive_weight = sum(
+        item["weight"]
+        for item in sector_exposure
+        if item["key"] in {"Financial Services", "Real Estate", "Utilities"}
+    )
+
+    scenarios = [
+        {
+            "name": "Rates +100bps",
+            "description": "Higher rates pressure long-duration assets and rate-sensitive sectors.",
+            "market_drop": round(-0.06 - tech_weight * 0.04 - rate_sensitive_weight * 0.03, 4),
+        },
+        {
+            "name": "US recession shock",
+            "description": "Broad cyclical slowdown with lower earnings expectations.",
+            "market_drop": round(-0.12 * beta, 4),
+        },
+        {
+            "name": "USD spike",
+            "description": "Stronger dollar tightens financial conditions globally.",
+            "market_drop": round(-0.04 - tech_weight * 0.02, 4),
+        },
+    ]
+    results = []
+    for scenario in scenarios:
+        estimated_loss = abs(portfolio_value * scenario["market_drop"])
+        results.append(
+            {
+                "name": scenario["name"],
+                "description": scenario["description"],
+                "market_drop": scenario["market_drop"],
+                "estimated_portfolio_loss": round(estimated_loss, 2),
+                "estimated_portfolio_loss_pct": round(abs(scenario["market_drop"]), 4),
+            }
+        )
+    return results
+
+
 def _empty_response() -> dict:
     return {
         "metrics": {
@@ -252,5 +434,11 @@ def _empty_response() -> dict:
         },
         "correlation": {"symbols": [], "matrix": [], "high_correlations": []},
         "stress_tests": [],
+        "sector_exposure": [],
+        "country_exposure": [],
+        "currency_exposure": [],
+        "factor_proxies": None,
+        "correlated_clusters": [],
+        "scenario_results": [],
         "portfolio_value": 0,
     }

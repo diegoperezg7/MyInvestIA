@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { fetchAPI } from "@/lib/api";
 import SparklineChart from "@/components/charts/SparklineChart";
 import useCurrencyStore from "@/stores/useCurrencyStore";
@@ -55,7 +55,7 @@ export default function MoversView() {
   const [region, setRegion] = useState("us");
   const [threshold, setThreshold] = useState(1);
 
-  const fetchMovers = async () => {
+  const fetchMovers = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -68,11 +68,11 @@ export default function MoversView() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [region, threshold]);
 
   useEffect(() => {
-    fetchMovers();
-  }, [region, threshold]);
+    void fetchMovers();
+  }, [fetchMovers]);
 
   const { formatPrice } = useCurrencyStore();
 

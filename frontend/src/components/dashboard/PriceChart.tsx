@@ -30,6 +30,7 @@ const PERIODS = [
 
 /* Escalation ladder: when user scrolls to the edge we fetch a bigger period */
 const FETCH_LADDER = ["1mo", "3mo", "6mo", "1y", "2y", "5y", "max"] as const;
+type FetchPeriod = (typeof FETCH_LADDER)[number];
 
 const CHART_TYPES: { value: ChartType; label: string }[] = [
   { value: "candlestick", label: "Candle" },
@@ -73,7 +74,7 @@ export default function PriceChart() {
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Track current fetch level for dynamic loading
-  const currentFetchRef = useRef<string>("");
+  const currentFetchRef = useRef<FetchPeriod | "">("");
   const loadingMoreRef = useRef(false);
 
   const activePeriod = PERIODS[periodIdx];
@@ -81,7 +82,7 @@ export default function PriceChart() {
   const fetchHistory = async (
     sym: string,
     interval: string,
-    fetchPeriod: string,
+    fetchPeriod: FetchPeriod,
     isLoadMore = false,
   ) => {
     const target = sym.trim().toUpperCase();
@@ -121,7 +122,7 @@ export default function PriceChart() {
   const handleLoadMore = useCallback(() => {
     if (loadingMoreRef.current || !activeSymbol) return;
     const cur = currentFetchRef.current;
-    const ladderIdx = FETCH_LADDER.indexOf(cur as any);
+    const ladderIdx = cur ? FETCH_LADDER.indexOf(cur) : -1;
     if (ladderIdx < 0 || ladderIdx >= FETCH_LADDER.length - 1) return; // already at max
     const next = FETCH_LADDER[ladderIdx + 1];
     loadingMoreRef.current = true;

@@ -2,7 +2,7 @@ services:
   backend:
     build: ./backend
     env_file: ./backend/.env
-    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1", "--proxy-headers", "--forwarded-allow-ips=*"]
     ports:
       - "127.0.0.1:8089:8000"
     depends_on:

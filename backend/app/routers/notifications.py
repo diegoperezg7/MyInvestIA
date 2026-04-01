@@ -1,14 +1,12 @@
-"""Notification endpoints for alerts and messaging.
+"""Notification endpoints for alerts, messaging, and personal Telegram bot flows."""
 
-Routes through OpenClaw when enabled, falls back to direct Telegram.
-"""
-
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from app.config import settings
-from app.dependencies import get_current_user
+from app.dependencies import AuthUser, get_current_user
 from app.services.openclaw_service import openclaw_service
+from app.services.personal_bot_service import personal_bot_service
 from app.services.telegram_service import telegram_service
 
 router = APIRouter(prefix="/notifications", tags=["notifications"], dependencies=[Depends(get_current_user)])
@@ -39,6 +37,99 @@ class NotificationResponse(BaseModel):
     success: bool
     message: str
     channel: str = "unknown"
+
+
+class PersonalBotHistoryEntry(BaseModel):
+    id: str
+    connection_id: str
+    started_at: str | None = None
+    completed_at: str | None = None
+    status: str
+    reason: str | None = None
+    summary: str | None = None
+    message_count: int = 0
+    alert_count: int = 0
+    fingerprint: str | None = None
+
+
+class PersonalBotStatus(BaseModel):
+    available: bool
+    enabled: bool
+    connected: bool
+    status: str
+    bot_name: str | None = None
+    bot_username: str | None = None
+    chat_id: str | None = None
+    chat_name: str | None = None
+    telegram_username: str | None = None
+    cadence_minutes: int = 30
+    min_severity: str = "high"
+    include_briefing: bool = True
+    include_inbox: bool = True
+    include_portfolio: bool = True
+    include_watchlist: bool = True
+    include_macro: bool = True
+    include_news: bool = True
+    include_theses: bool = True
+    include_buy_sell: bool = True
+    send_only_on_changes: bool = True
+    provisioned_defaults: bool = False
+    pending_code: str | None = None
+    pending_expires_at: str | None = None
+    connect_url: str | None = None
+    verified_at: str | None = None
+    last_run_at: str | None = None
+    last_delivery_at: str | None = None
+    last_test_at: str | None = None
+    last_error: str | None = None
+    last_reason: str | None = None
+    last_message_count: int = 0
+    last_alert_count: int = 0
+    history: list[PersonalBotHistoryEntry] = []
+
+
+class PersonalBotConfigPatch(BaseModel):
+    enabled: bool | None = None
+    cadence_minutes: int | None = Field(default=None, ge=5, le=1440)
+    min_severity: str | None = Field(
+        default=None,
+        pattern=r"^(all|medium|high|critical)$",
+    )
+    include_briefing: bool | None = None
+    include_inbox: bool | None = None
+    include_portfolio: bool | None = None
+    include_watchlist: bool | None = None
+    include_macro: bool | None = None
+    include_news: bool | None = None
+    include_theses: bool | None = None
+    include_buy_sell: bool | None = None
+    send_only_on_changes: bool | None = None
+
+
+class PersonalBotActionResponse(BaseModel):
+    success: bool
+    message: str
+    status: PersonalBotStatus
+
+
+class PersonalBotRunResponse(BaseModel):
+    success: bool
+    message: str
+    sent_messages: int = 0
+    sent_alerts: int = 0
+    alerts_generated: int = 0
+    top_items: int = 0
+    events: int = 0
+    thesis_watch: int = 0
+    skipped: bool = False
+    status: PersonalBotStatus
+
+
+class PersonalBotProvisionResponse(BaseModel):
+    success: bool
+    created_rules: int
+    message: str
+    status: PersonalBotStatus
 
 
 def _get_channel() -> str:
@@ -138,3 +229,92 @@ async def send_test_notification():
         return NotificationResponse(success=False, message="Telegram test failed", channel="telegram")
 
     raise HTTPException(status_code=503, detail="No notification channel configured")
+
+
+@router.get("/bot/status", response_model=PersonalBotStatus)
+async def get_personal_bot_status(user: AuthUser = Depends(get_current_user)):
+    status = await personal_bot_service.get_status(user.id, user.tenant_id)
+    return PersonalBotStatus(**status)
+
+
+@router.post("/bot/connect", response_model=PersonalBotStatus)
+async def start_personal_bot_connect(user: AuthUser = Depends(get_current_user)):
+    try:
+        status = await personal_bot_service.start_connect(user.id, user.tenant_id)
+    except ValueError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    return PersonalBotStatus(**status)
+
+
+@router.post("/bot/verify", response_model=PersonalBotActionResponse)
+async def verify_personal_bot(user: AuthUser = Depends(get_current_user)):
+    try:
+        status = await personal_bot_service.verify_connect(user.id, user.tenant_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return PersonalBotActionResponse(
+        success=True,
+        message="Bot conectado correctamente",
+        status=PersonalBotStatus(**status),
+    )
+
+
+@router.patch("/bot/config", response_model=PersonalBotStatus)
+async def patch_personal_bot_config(
+    request: PersonalBotConfigPatch,
+    user: AuthUser = Depends(get_current_user),
+):
+    status = await personal_bot_service.update_config(
+        user.id,
+        {k: v for k, v in request.model_dump().items() if v is not None},
+        user.tenant_id,
+    )
+    return PersonalBotStatus(**status)
+
+
+@router.post("/bot/disconnect", response_model=PersonalBotActionResponse)
+async def disconnect_personal_bot(user: AuthUser = Depends(get_current_user)):
+    status = await personal_bot_service.disconnect(user.id, user.tenant_id)
+    return PersonalBotActionResponse(
+        success=True,
+        message="Bot desconectado",
+        status=PersonalBotStatus(**status),
+    )
+
+
+@router.post("/bot/test", response_model=PersonalBotActionResponse)
+async def test_personal_bot(user: AuthUser = Depends(get_current_user)):
+    try:
+        result = await personal_bot_service.send_test(user.id, user.tenant_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return PersonalBotActionResponse(
+        success=result["success"],
+        message=result["message"],
+        status=PersonalBotStatus(**result["status"]),
+    )
+
+
+@router.post("/bot/run", response_model=PersonalBotRunResponse)
+async def run_personal_bot(user: AuthUser = Depends(get_current_user)):
+    try:
+        result = await personal_bot_service.run_now(user.id, user.tenant_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    status = await personal_bot_service.get_status(user.id, user.tenant_id)
+    return PersonalBotRunResponse(**result, status=PersonalBotStatus(**status))
+
+
+@router.post("/bot/provision-defaults", response_model=PersonalBotProvisionResponse)
+async def provision_personal_bot_defaults(user: AuthUser = Depends(get_current_user)):
+    result = await personal_bot_service.provision_default_rules(user.id, user.tenant_id)
+    return PersonalBotProvisionResponse(**result)
+
+
+@router.get("/bot/history", response_model=list[PersonalBotHistoryEntry])
+async def get_personal_bot_history(
+    limit: int = Query(default=20, ge=1, le=100),
+    user: AuthUser = Depends(get_current_user),
+):
+    history = personal_bot_service.get_history(user.id, user.tenant_id, limit=limit)
+    return [PersonalBotHistoryEntry(**entry) for entry in history]

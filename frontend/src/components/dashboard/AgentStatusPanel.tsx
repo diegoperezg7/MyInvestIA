@@ -47,7 +47,7 @@ export default function AgentStatusPanel() {
       await postAPI("/api/v1/agents/run", {});
       await loadStatus();
       await loadHistory();
-    } catch (e) {
+    } catch {
       setError("Failed to run agents");
     } finally {
       setRunning(false);

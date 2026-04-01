@@ -1,6 +1,5 @@
 import { getToken, clearTokens } from "@/lib/auth";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
+import { API_BASE } from "@/lib/api-base";
 
 const CACHE_TTL = 30_000; // 30 seconds — reduced polling means we can cache longer
 

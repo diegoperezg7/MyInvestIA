@@ -1,15 +1,11 @@
-"""Reddit service — fetch top posts from finance subreddits via public JSON API.
-
-Fetches from r/wallstreetbets, r/stocks, r/investing.
-No API key needed; uses descriptive User-Agent to avoid 429.
-Filters out stickied posts and posts with score < 10.
-"""
+"""Reddit service with OAuth when configured and public JSON fallback otherwise."""
 
 import logging
 import time
 
 import httpx
 
+from app.config import settings
 from app.services.cache import get_or_fetch
 
 logger = logging.getLogger(__name__)
@@ -19,18 +15,68 @@ REDDIT_TTL = 300  # 5 minutes
 SUBREDDITS = ["wallstreetbets", "stocks", "investing"]
 
 USER_AGENT = "InvestIA-Dashboard/1.0 (financial news aggregator)"
+_oauth_cache: dict[str, float | str] = {"token": "", "expires_at": 0.0}
+
+
+def _oauth_available() -> bool:
+    return bool(settings.reddit_client_id and settings.reddit_client_secret)
+
+
+async def _get_oauth_token() -> str | None:
+    if not _oauth_available():
+        return None
+    now = time.time()
+    token = str(_oauth_cache.get("token") or "")
+    expires_at = float(_oauth_cache.get("expires_at") or 0.0)
+    if token and now < expires_at - 60:
+        return token
+
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.post(
+                "https://www.reddit.com/api/v1/access_token",
+                data={"grant_type": "client_credentials"},
+                auth=(settings.reddit_client_id, settings.reddit_client_secret),
+                headers={"User-Agent": settings.reddit_user_agent or USER_AGENT},
+            )
+            response.raise_for_status()
+            payload = response.json()
+    except Exception as exc:
+        logger.debug("Reddit OAuth token unavailable: %s", exc)
+        return None
+
+    access_token = str(payload.get("access_token") or "")
+    expires_in = float(payload.get("expires_in") or 3600)
+    if not access_token:
+        return None
+    _oauth_cache["token"] = access_token
+    _oauth_cache["expires_at"] = now + expires_in
+    return access_token
 
 
 async def _fetch_subreddit(subreddit: str, limit: int = 15) -> list[dict]:
-    """Fetch hot posts from a subreddit via public JSON API."""
-    url = f"https://www.reddit.com/r/{subreddit}/hot.json?limit={limit}&raw_json=1"
+    """Fetch hot posts from a subreddit via OAuth when available, otherwise public JSON."""
     try:
+        token = await _get_oauth_token()
         async with httpx.AsyncClient(timeout=10.0) as client:
-            resp = await client.get(
-                url,
-                headers={"User-Agent": USER_AGENT},
-                follow_redirects=True,
-            )
+            if token:
+                url = f"https://oauth.reddit.com/r/{subreddit}/hot"
+                resp = await client.get(
+                    url,
+                    params={"limit": limit, "raw_json": 1},
+                    headers={
+                        "Authorization": f"Bearer {token}",
+                        "User-Agent": settings.reddit_user_agent or USER_AGENT,
+                    },
+                    follow_redirects=True,
+                )
+            else:
+                url = f"https://www.reddit.com/r/{subreddit}/hot.json?limit={limit}&raw_json=1"
+                resp = await client.get(
+                    url,
+                    headers={"User-Agent": settings.reddit_user_agent or USER_AGENT},
+                    follow_redirects=True,
+                )
             resp.raise_for_status()
             data = resp.json()
 

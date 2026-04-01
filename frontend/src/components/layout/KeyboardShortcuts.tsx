@@ -1,66 +1,92 @@
 "use client";
 
-import { useEffect } from "react";
-import { useView, type View } from "@/contexts/ViewContext";
+import { useEffect, useRef } from "react";
 
-const VIEW_KEYS: Record<string, View> = {
-  "1": "overview",
-  "2": "analysis",
-  "3": "screener",
-  "4": "movers",
-  "5": "volatility",
-  "6": "commodities",
-  "7": "prediction",
-  "8": "recommendations",
-  "9": "chat",
-  "0": "alerts",
+import { useView } from "@/contexts/ViewContext";
+import type { SectionId } from "@/types";
+
+const SECTION_KEYS: Record<string, SectionId> = {
+  "1": "home",
+  "2": "priorities",
+  "3": "portfolio",
+  "4": "research",
+  "5": "markets",
+  "6": "assistant",
 };
 
 export default function KeyboardShortcuts() {
-  const { setActiveView, setCommandBarOpen, commandBarOpen, sidebarCollapsed, setSidebarCollapsed } = useView();
+  const {
+    commandBarOpen,
+    openAssetDetail,
+    selectedSymbol,
+    setActiveSection,
+    setCommandBarOpen,
+    sidebarCollapsed,
+    setSidebarCollapsed,
+  } = useView();
+  const commandBarOpenRef = useRef(commandBarOpen);
+  const sidebarCollapsedRef = useRef(sidebarCollapsed);
 
   useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
-      const target = e.target as HTMLElement;
+    commandBarOpenRef.current = commandBarOpen;
+    sidebarCollapsedRef.current = sidebarCollapsed;
+  }, [commandBarOpen, sidebarCollapsed]);
+
+  useEffect(() => {
+    const listener = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement;
       const isInput =
         target.tagName === "INPUT" ||
         target.tagName === "TEXTAREA" ||
         target.isContentEditable;
 
-      // Cmd+K / Ctrl+K for command bar
-      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
-        e.preventDefault();
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
         setCommandBarOpen(true);
         return;
       }
 
-      // Escape closes command bar
-      if (e.key === "Escape" && commandBarOpen) {
+      if (event.key === "Escape" && commandBarOpenRef.current) {
         setCommandBarOpen(false);
         return;
       }
 
-      // Don't handle view shortcuts when typing in inputs
       if (isInput) return;
 
-      // [ toggles sidebar
-      if (e.key === "[") {
-        e.preventDefault();
-        setSidebarCollapsed(!sidebarCollapsed);
+      if (event.shiftKey && event.key.toLowerCase() === "t") {
+        event.preventDefault();
+        openAssetDetail(selectedSymbol || undefined);
         return;
       }
 
-      // Number keys for view switching
-      const view = VIEW_KEYS[e.key];
-      if (view) {
-        e.preventDefault();
-        setActiveView(view);
+      if (event.shiftKey && event.key.toLowerCase() === "p") {
+        event.preventDefault();
+        setActiveSection("priorities");
+        return;
       }
-    }
 
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [setActiveView, setCommandBarOpen, commandBarOpen, sidebarCollapsed, setSidebarCollapsed]);
+      if (event.shiftKey && event.key.toLowerCase() === "m") {
+        event.preventDefault();
+        setActiveSection("markets");
+        return;
+      }
+
+      if (event.key === "[") {
+        event.preventDefault();
+        setSidebarCollapsed(!sidebarCollapsedRef.current);
+        return;
+      }
+
+      const section = SECTION_KEYS[event.key];
+      if (section) {
+        event.preventDefault();
+        setActiveSection(section);
+      }
+    };
+
+    window.addEventListener("keydown", listener);
+    return () => window.removeEventListener("keydown", listener);
+  }, [openAssetDetail, selectedSymbol, setActiveSection, setCommandBarOpen, setSidebarCollapsed]);
 
   return null;
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { postAPI } from "@/lib/api";
+import { API_BASE } from "@/lib/api-base";
 import useCurrencyStore from "@/stores/useCurrencyStore";
 
 interface PaperAccount {
@@ -35,8 +35,6 @@ interface PaperTrade {
   total: number;
   created_at: string;
 }
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
 
 async function apiFetch<T>(endpoint: string): Promise<T> {
   const resp = await fetch(`${API_BASE}${endpoint}`);

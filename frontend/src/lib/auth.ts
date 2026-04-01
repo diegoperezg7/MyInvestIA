@@ -12,14 +12,18 @@ function getCookie(name: string): string | null {
   return match ? match[1] : null;
 }
 
+const COOKIE_DOMAIN = process.env.NEXT_PUBLIC_COOKIE_DOMAIN || "";
+
 function setCookie(name: string, value: string, maxAge: number = 86400) {
   if (typeof document === "undefined") return;
-  document.cookie = `${name}=${value}; domain=.darc3.com; path=/; max-age=${maxAge}; secure; samesite=lax`;
+  const domainPart = COOKIE_DOMAIN ? `; domain=${COOKIE_DOMAIN}` : "";
+  document.cookie = `${name}=${value}${domainPart}; path=/; max-age=${maxAge}; secure; samesite=lax`;
 }
 
 function deleteCookie(name: string) {
   if (typeof document === "undefined") return;
-  document.cookie = `${name}=; domain=.darc3.com; path=/; max-age=0`;
+  const domainPart = COOKIE_DOMAIN ? `; domain=${COOKIE_DOMAIN}` : "";
+  document.cookie = `${name}=${domainPart}; path=/; max-age=0`;
 }
 
 /** Read access token from cookie (JS-readable, short-lived). */
@@ -29,7 +33,8 @@ export function getToken(): string | null {
 }
 
 /** Store tokens in cookies for cross-app SSO. */
-export function setTokens(access: string, _refresh: string) {
+export function setTokens(access: string, refresh: string) {
+  void refresh;
   setCookie(COOKIE_TOKEN, access, 86400);
 }
 
@@ -64,9 +69,10 @@ export function getUserFromToken(token: string): AuthUser | null {
   if (!payload || !payload.sub) return null;
   const appMeta = (payload.app_metadata as Record<string, unknown>) || {};
   const userMeta = (payload.user_metadata as Record<string, unknown>) || {};
+  const topLevelRole = payload.role;
   return {
     id: payload.sub as string,
     email: (payload.email as string) || "",
-    role: ((appMeta.role || userMeta.role) as "admin" | "user") || "user",
+    role: ((topLevelRole || appMeta.role || userMeta.role) as "admin" | "user") || "user",
   };
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { fetchAPI, postAPI } from "@/lib/api";
 import Sparkline from "@/components/ui/Sparkline";
 import useSparklines from "@/hooks/useSparklines";
@@ -52,6 +52,10 @@ export default function ScreenerView() {
       setPresets(data.presets);
     } catch { /* presets optional */ }
   };
+
+  useEffect(() => {
+    void loadPresets();
+  }, []);
 
   const runScan = async (presetId?: string) => {
     setLoading(true);

@@ -9,6 +9,7 @@ from app.services import encryption_service, exchange_service, wallet_service, e
 from app.services.store import store
 
 logger = logging.getLogger(__name__)
+HIDDEN_CONNECTION_PROVIDERS = {"telegram_personal_bot"}
 
 # Supported providers with metadata
 SUPPORTED_PROVIDERS = [
@@ -285,6 +286,8 @@ def list_connections(user_id: str) -> list[dict]:
     connections = store.get_connections(user_id)
     result = []
     for conn in connections:
+        if conn.get("provider") in HIDDEN_CONNECTION_PROVIDERS:
+            continue
         holdings = store.get_holdings_by_connection(user_id, conn["id"])
         total_value = sum(h.get("quantity", 0) * h.get("avg_buy_price", 0) for h in holdings)
         result.append({
@@ -299,6 +302,8 @@ def get_connection(user_id: str, connection_id: str) -> dict | None:
     """Get connection detail with holdings."""
     conn = store.get_connection(user_id, connection_id)
     if not conn:
+        return None
+    if conn.get("provider") in HIDDEN_CONNECTION_PROVIDERS:
         return None
     holdings = store.get_holdings_by_connection(user_id, connection_id)
     total_value = sum(h.get("quantity", 0) * h.get("avg_buy_price", 0) for h in holdings)
@@ -586,6 +591,8 @@ async def sync_all(user_id: str) -> list[dict]:
     connections = store.get_connections(user_id)
     results = []
     for conn in connections:
+        if conn.get("provider") in HIDDEN_CONNECTION_PROVIDERS:
+            continue
         if conn["status"] in ("active", "error"):
             result = await sync_connection(user_id, conn["id"])
             results.append(result)

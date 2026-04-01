@@ -30,6 +30,9 @@ class Recommendation(BaseModel):
     tickers: list[str]
     action: str
     urgency: RecommendationUrgency
+    inbox_item_id: str | None = None
+    why_now: str = ""
+    horizon: str = "medium"
 
 
 class RecommendationsResponse(BaseModel):

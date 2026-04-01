@@ -25,6 +25,16 @@ class SupabaseStore:
 
     def __init__(self):
         self._client = None
+        self._workflow_fallback = {
+            "inbox_items": {},
+            "theses": {},
+            "thesis_events": {},
+            "alert_rules": {},
+            "research_screens": {},
+            "research_snapshots": {},
+            "connections": {},
+            "sync_history": {},
+        }
 
     def _get_client(self):
         if self._client is None:
@@ -370,7 +380,12 @@ class SupabaseStore:
     # --- AI Memory ---
 
     def save_memory(
-        self, user_id: str, category: str, content: str, metadata: dict | None = None
+        self,
+        user_id: str,
+        category: str,
+        content: str,
+        metadata: dict | None = None,
+        tenant_id: Optional[str] = None,
     ) -> dict:
         entry = {
             "id": str(uuid.uuid4()),
@@ -379,15 +394,22 @@ class SupabaseStore:
             "metadata": metadata or {},
             "user_id": user_id,
         }
+        if tenant_id and settings.enable_multitenant:
+            entry["tenant_id"] = tenant_id
         try:
-            result = self._get_client().table("ai_memory").insert(entry).execute()
+            query = self._get_client().table("ai_memory").insert(entry)
+            result = query.execute()
             return result.data[0] if result.data else entry
         except Exception as e:
             logger.warning("Supabase save_memory failed: %s", e)
             return entry
 
     def get_memories(
-        self, user_id: str, category: str | None = None, limit: int = 50
+        self,
+        user_id: str,
+        category: str | None = None,
+        limit: int = 50,
+        tenant_id: Optional[str] = None,
     ) -> list[dict]:
         try:
             query = (
@@ -395,22 +417,26 @@ class SupabaseStore:
             )
             if category:
                 query = query.eq("category", category)
+            query = self._build_tenant_filter(query, tenant_id)
             result = query.order("created_at", desc=True).limit(limit).execute()
             return result.data or []
         except Exception as e:
             logger.warning("Supabase get_memories failed: %s", e)
             return []
 
-    def delete_memory(self, user_id: str, memory_id: str) -> bool:
+    def delete_memory(
+        self, user_id: str, memory_id: str, tenant_id: Optional[str] = None
+    ) -> bool:
         try:
-            result = (
+            query = (
                 self._get_client()
                 .table("ai_memory")
                 .delete()
                 .eq("id", memory_id)
                 .eq("user_id", user_id)
-                .execute()
             )
+            query = self._build_tenant_filter(query, tenant_id)
+            result = query.execute()
             return len(result.data) > 0 if result.data else False
         except Exception as e:
             logger.warning("Supabase delete_memory failed: %s", e)
@@ -535,110 +561,174 @@ class SupabaseStore:
 
     # --- Connections ---
 
-    def get_connections(self, user_id: str) -> list[dict]:
+    def get_connections(
+        self, user_id: str, tenant_id: Optional[str] = None
+    ) -> list[dict]:
         try:
-            result = (
+            query = (
                 self._get_client()
                 .table("connections")
                 .select("*")
                 .eq("user_id", user_id)
                 .order("created_at", desc=True)
-                .execute()
             )
+            query = self._build_tenant_filter(query, tenant_id)
+            result = query.execute()
             return result.data or []
         except Exception as e:
             logger.warning("Supabase get_connections failed: %s", e)
-            return []
+            return list(self._fallback_collection("connections", user_id).values())
 
-    def get_connection(self, user_id: str, connection_id: str) -> dict | None:
+    def get_connection(
+        self, user_id: str, connection_id: str, tenant_id: Optional[str] = None
+    ) -> dict | None:
         try:
-            result = (
+            query = (
                 self._get_client()
                 .table("connections")
                 .select("*")
                 .eq("id", connection_id)
                 .eq("user_id", user_id)
-                .execute()
             )
+            query = self._build_tenant_filter(query, tenant_id)
+            result = query.execute()
             return result.data[0] if result.data else None
         except Exception as e:
             logger.warning("Supabase get_connection failed: %s", e)
-            return None
+            return self._fallback_collection("connections", user_id).get(connection_id)
 
-    def create_connection(self, user_id: str, data: dict) -> dict:
+    def create_connection(
+        self, user_id: str, data: dict, tenant_id: Optional[str] = None
+    ) -> dict:
         data["user_id"] = user_id
+        if tenant_id and settings.enable_multitenant:
+            data["tenant_id"] = tenant_id
         try:
             result = self._get_client().table("connections").insert(data).execute()
             return result.data[0] if result.data else data
         except Exception as e:
             logger.warning("Supabase create_connection failed: %s", e)
+            self._fallback_collection("connections", user_id)[data["id"]] = data
             return data
 
     def update_connection(
-        self, user_id: str, connection_id: str, data: dict
+        self,
+        user_id: str,
+        connection_id: str,
+        data: dict,
+        tenant_id: Optional[str] = None,
     ) -> dict | None:
         try:
-            result = (
+            query = (
                 self._get_client()
                 .table("connections")
                 .update(data)
                 .eq("id", connection_id)
                 .eq("user_id", user_id)
-                .execute()
             )
+            query = self._build_tenant_filter(query, tenant_id)
+            result = query.execute()
             return result.data[0] if result.data else None
         except Exception as e:
             logger.warning("Supabase update_connection failed: %s", e)
-            return None
+            connection = self._fallback_collection("connections", user_id).get(connection_id)
+            if not connection:
+                return None
+            connection.update(data)
+            return connection
 
-    def delete_connection(self, user_id: str, connection_id: str) -> bool:
+    def delete_connection(
+        self, user_id: str, connection_id: str, tenant_id: Optional[str] = None
+    ) -> bool:
         try:
-            result = (
+            query = (
                 self._get_client()
                 .table("connections")
                 .delete()
                 .eq("id", connection_id)
                 .eq("user_id", user_id)
-                .execute()
             )
+            query = self._build_tenant_filter(query, tenant_id)
+            result = query.execute()
             return len(result.data) > 0 if result.data else False
         except Exception as e:
             logger.warning("Supabase delete_connection failed: %s", e)
-            return False
+            return self._fallback_collection("connections", user_id).pop(connection_id, None) is not None
+
+    def get_connections_by_provider(
+        self, provider: str, tenant_id: Optional[str] = None
+    ) -> list[dict]:
+        try:
+            query = (
+                self._get_client()
+                .table("connections")
+                .select("*")
+                .eq("provider", provider)
+                .order("created_at", desc=True)
+            )
+            query = self._build_tenant_filter(query, tenant_id)
+            result = query.execute()
+            return result.data or []
+        except Exception as e:
+            logger.warning("Supabase get_connections_by_provider failed: %s", e)
+            rows: list[dict] = []
+            for user_id, user_connections in self._workflow_fallback.get("connections", {}).items():
+                for connection in user_connections.values():
+                    if connection.get("provider") == provider:
+                        rows.append({**connection, "user_id": user_id})
+            return rows
 
     # --- Sync History ---
 
-    def add_sync_history(self, user_id: str, data: dict) -> dict:
+    def add_sync_history(
+        self, user_id: str, data: dict, tenant_id: Optional[str] = None
+    ) -> dict:
         data["user_id"] = user_id
+        if tenant_id and settings.enable_multitenant:
+            data["tenant_id"] = tenant_id
         try:
             result = self._get_client().table("sync_history").insert(data).execute()
             return result.data[0] if result.data else data
         except Exception as e:
             logger.warning("Supabase add_sync_history failed: %s", e)
+            self._fallback_list("sync_history", user_id).insert(0, data)
             return data
 
     def update_sync_history(
-        self, user_id: str, sync_id: str, data: dict
+        self,
+        user_id: str,
+        sync_id: str,
+        data: dict,
+        tenant_id: Optional[str] = None,
     ) -> dict | None:
         try:
-            result = (
+            query = (
                 self._get_client()
                 .table("sync_history")
                 .update(data)
                 .eq("id", sync_id)
                 .eq("user_id", user_id)
-                .execute()
             )
+            query = self._build_tenant_filter(query, tenant_id)
+            result = query.execute()
             return result.data[0] if result.data else None
         except Exception as e:
             logger.warning("Supabase update_sync_history failed: %s", e)
+            for entry in self._fallback_list("sync_history", user_id):
+                if entry.get("id") == sync_id:
+                    entry.update(data)
+                    return entry
             return None
 
     def get_sync_history(
-        self, user_id: str, connection_id: str, limit: int = 20
+        self,
+        user_id: str,
+        connection_id: str,
+        limit: int = 20,
+        tenant_id: Optional[str] = None,
     ) -> list[dict]:
         try:
-            result = (
+            query = (
                 self._get_client()
                 .table("sync_history")
                 .select("*")
@@ -646,12 +736,17 @@ class SupabaseStore:
                 .eq("user_id", user_id)
                 .order("started_at", desc=True)
                 .limit(limit)
-                .execute()
             )
+            query = self._build_tenant_filter(query, tenant_id)
+            result = query.execute()
             return result.data or []
         except Exception as e:
             logger.warning("Supabase get_sync_history failed: %s", e)
-            return []
+            return [
+                item
+                for item in self._fallback_list("sync_history", user_id)
+                if item.get("connection_id") == connection_id
+            ][:limit]
 
     # --- RL Agent State ---
 
@@ -767,3 +862,362 @@ class SupabaseStore:
         except Exception as e:
             logger.warning("Supabase get_rl_trades failed: %s", e)
             return []
+
+    # --- Workflow domains ---
+
+    def _fallback_collection(self, name: str, user_id: str):
+        return self._workflow_fallback.setdefault(name, {}).setdefault(user_id, {})
+
+    def _fallback_list(self, name: str, user_id: str):
+        return self._workflow_fallback.setdefault(name, {}).setdefault(user_id, [])
+
+    def get_inbox_items(
+        self, user_id: str, tenant_id: Optional[str] = None
+    ) -> list[dict]:
+        try:
+            query = (
+                self._get_client()
+                .table("inbox_items")
+                .select("*")
+                .eq("user_id", user_id)
+                .order("priority_score", desc=True)
+                .order("updated_at", desc=True)
+            )
+            query = self._build_tenant_filter(query, tenant_id)
+            result = query.execute()
+            return result.data or []
+        except Exception as e:
+            logger.warning("Supabase get_inbox_items failed, using fallback: %s", e)
+            return sorted(
+                self._fallback_list("inbox_items", user_id),
+                key=lambda item: (
+                    -float(item.get("priority_score", 0.0)),
+                    item.get("updated_at", ""),
+                ),
+            )
+
+    def replace_inbox_items(
+        self, user_id: str, items: list[dict], tenant_id: Optional[str] = None
+    ) -> list[dict]:
+        try:
+            query = self._get_client().table("inbox_items").delete().eq("user_id", user_id)
+            query = self._build_tenant_filter(query, tenant_id)
+            query.execute()
+            if not items:
+                return []
+            payload = []
+            for item in items:
+                row = {**item, "user_id": user_id}
+                if tenant_id and settings.enable_multitenant:
+                    row["tenant_id"] = tenant_id
+                payload.append(row)
+            result = self._get_client().table("inbox_items").insert(payload).execute()
+            return result.data or payload
+        except Exception as e:
+            logger.warning("Supabase replace_inbox_items failed, using fallback: %s", e)
+            fallback = self._fallback_list("inbox_items", user_id)
+            fallback.clear()
+            fallback.extend(items)
+            return fallback
+
+    def get_inbox_item(
+        self, user_id: str, item_id: str, tenant_id: Optional[str] = None
+    ) -> dict | None:
+        try:
+            query = (
+                self._get_client()
+                .table("inbox_items")
+                .select("*")
+                .eq("user_id", user_id)
+                .eq("id", item_id)
+            )
+            query = self._build_tenant_filter(query, tenant_id)
+            result = query.execute()
+            return result.data[0] if result.data else None
+        except Exception:
+            for item in self._fallback_list("inbox_items", user_id):
+                if item.get("id") == item_id:
+                    return item
+            return None
+
+    def update_inbox_item(
+        self,
+        user_id: str,
+        item_id: str,
+        data: dict,
+        tenant_id: Optional[str] = None,
+    ) -> dict | None:
+        try:
+            query = (
+                self._get_client()
+                .table("inbox_items")
+                .update(data)
+                .eq("user_id", user_id)
+                .eq("id", item_id)
+            )
+            query = self._build_tenant_filter(query, tenant_id)
+            result = query.execute()
+            return result.data[0] if result.data else None
+        except Exception as e:
+            logger.warning("Supabase update_inbox_item failed, using fallback: %s", e)
+            items = self._fallback_list("inbox_items", user_id)
+            for item in items:
+                if item.get("id") == item_id:
+                    item.update(data)
+                    return item
+            return None
+
+    def get_theses(self, user_id: str, tenant_id: Optional[str] = None) -> list[dict]:
+        try:
+            query = (
+                self._get_client()
+                .table("theses")
+                .select("*")
+                .eq("user_id", user_id)
+                .order("updated_at", desc=True)
+            )
+            query = self._build_tenant_filter(query, tenant_id)
+            result = query.execute()
+            return result.data or []
+        except Exception as e:
+            logger.warning("Supabase get_theses failed, using fallback: %s", e)
+            return list(self._fallback_collection("theses", user_id).values())
+
+    def get_thesis(
+        self, user_id: str, thesis_id: str, tenant_id: Optional[str] = None
+    ) -> dict | None:
+        try:
+            query = (
+                self._get_client()
+                .table("theses")
+                .select("*")
+                .eq("user_id", user_id)
+                .eq("id", thesis_id)
+            )
+            query = self._build_tenant_filter(query, tenant_id)
+            result = query.execute()
+            return result.data[0] if result.data else None
+        except Exception:
+            return self._fallback_collection("theses", user_id).get(thesis_id)
+
+    def create_thesis(
+        self, user_id: str, data: dict, tenant_id: Optional[str] = None
+    ) -> dict:
+        thesis = {**data, "id": data.get("id", str(uuid.uuid4())), "user_id": user_id}
+        if tenant_id and settings.enable_multitenant:
+            thesis["tenant_id"] = tenant_id
+        try:
+            result = self._get_client().table("theses").insert(thesis).execute()
+            return result.data[0] if result.data else thesis
+        except Exception as e:
+            logger.warning("Supabase create_thesis failed, using fallback: %s", e)
+            self._fallback_collection("theses", user_id)[thesis["id"]] = thesis
+            return thesis
+
+    def update_thesis(
+        self,
+        user_id: str,
+        thesis_id: str,
+        data: dict,
+        tenant_id: Optional[str] = None,
+    ) -> dict | None:
+        try:
+            query = (
+                self._get_client()
+                .table("theses")
+                .update(data)
+                .eq("user_id", user_id)
+                .eq("id", thesis_id)
+            )
+            query = self._build_tenant_filter(query, tenant_id)
+            result = query.execute()
+            return result.data[0] if result.data else None
+        except Exception as e:
+            logger.warning("Supabase update_thesis failed, using fallback: %s", e)
+            thesis = self._fallback_collection("theses", user_id).get(thesis_id)
+            if not thesis:
+                return None
+            thesis.update(data)
+            return thesis
+
+    def add_thesis_event(
+        self, user_id: str, thesis_id: str, data: dict, tenant_id: Optional[str] = None
+    ) -> dict:
+        event = {
+            **data,
+            "id": data.get("id", str(uuid.uuid4())),
+            "thesis_id": thesis_id,
+            "user_id": user_id,
+        }
+        if tenant_id and settings.enable_multitenant:
+            event["tenant_id"] = tenant_id
+        try:
+            result = self._get_client().table("thesis_events").insert(event).execute()
+            return result.data[0] if result.data else event
+        except Exception as e:
+            logger.warning("Supabase add_thesis_event failed, using fallback: %s", e)
+            events = self._fallback_collection("thesis_events", user_id).setdefault(
+                thesis_id, []
+            )
+            events.insert(0, event)
+            return event
+
+    def get_thesis_events(
+        self, user_id: str, thesis_id: str, tenant_id: Optional[str] = None
+    ) -> list[dict]:
+        try:
+            query = (
+                self._get_client()
+                .table("thesis_events")
+                .select("*")
+                .eq("user_id", user_id)
+                .eq("thesis_id", thesis_id)
+                .order("created_at", desc=True)
+            )
+            query = self._build_tenant_filter(query, tenant_id)
+            result = query.execute()
+            return result.data or []
+        except Exception as e:
+            logger.warning("Supabase get_thesis_events failed, using fallback: %s", e)
+            return self._fallback_collection("thesis_events", user_id).get(thesis_id, [])
+
+    def get_alert_rules(
+        self, user_id: str, tenant_id: Optional[str] = None
+    ) -> list[dict]:
+        try:
+            query = (
+                self._get_client()
+                .table("alert_rules")
+                .select("*")
+                .eq("user_id", user_id)
+                .order("updated_at", desc=True)
+            )
+            query = self._build_tenant_filter(query, tenant_id)
+            result = query.execute()
+            return result.data or []
+        except Exception as e:
+            logger.warning("Supabase get_alert_rules failed, using fallback: %s", e)
+            return list(self._fallback_collection("alert_rules", user_id).values())
+
+    def get_alert_rule(
+        self, user_id: str, rule_id: str, tenant_id: Optional[str] = None
+    ) -> dict | None:
+        try:
+            query = (
+                self._get_client()
+                .table("alert_rules")
+                .select("*")
+                .eq("user_id", user_id)
+                .eq("id", rule_id)
+            )
+            query = self._build_tenant_filter(query, tenant_id)
+            result = query.execute()
+            return result.data[0] if result.data else None
+        except Exception:
+            return self._fallback_collection("alert_rules", user_id).get(rule_id)
+
+    def create_alert_rule(
+        self, user_id: str, data: dict, tenant_id: Optional[str] = None
+    ) -> dict:
+        rule = {**data, "id": data.get("id", str(uuid.uuid4())), "user_id": user_id}
+        if tenant_id and settings.enable_multitenant:
+            rule["tenant_id"] = tenant_id
+        try:
+            result = self._get_client().table("alert_rules").insert(rule).execute()
+            return result.data[0] if result.data else rule
+        except Exception as e:
+            logger.warning("Supabase create_alert_rule failed, using fallback: %s", e)
+            self._fallback_collection("alert_rules", user_id)[rule["id"]] = rule
+            return rule
+
+    def update_alert_rule(
+        self,
+        user_id: str,
+        rule_id: str,
+        data: dict,
+        tenant_id: Optional[str] = None,
+    ) -> dict | None:
+        try:
+            query = (
+                self._get_client()
+                .table("alert_rules")
+                .update(data)
+                .eq("user_id", user_id)
+                .eq("id", rule_id)
+            )
+            query = self._build_tenant_filter(query, tenant_id)
+            result = query.execute()
+            return result.data[0] if result.data else None
+        except Exception as e:
+            logger.warning("Supabase update_alert_rule failed, using fallback: %s", e)
+            rule = self._fallback_collection("alert_rules", user_id).get(rule_id)
+            if not rule:
+                return None
+            rule.update(data)
+            return rule
+
+    def get_research_screens(
+        self, user_id: str, tenant_id: Optional[str] = None
+    ) -> list[dict]:
+        try:
+            query = (
+                self._get_client()
+                .table("research_screens")
+                .select("*")
+                .eq("user_id", user_id)
+                .order("updated_at", desc=True)
+            )
+            query = self._build_tenant_filter(query, tenant_id)
+            result = query.execute()
+            return result.data or []
+        except Exception as e:
+            logger.warning("Supabase get_research_screens failed, using fallback: %s", e)
+            return list(self._fallback_collection("research_screens", user_id).values())
+
+    def save_research_screen(
+        self, user_id: str, data: dict, tenant_id: Optional[str] = None
+    ) -> dict:
+        screen = {**data, "id": data.get("id", str(uuid.uuid4())), "user_id": user_id}
+        if tenant_id and settings.enable_multitenant:
+            screen["tenant_id"] = tenant_id
+        try:
+            result = self._get_client().table("research_screens").upsert(screen).execute()
+            return result.data[0] if result.data else screen
+        except Exception as e:
+            logger.warning("Supabase save_research_screen failed, using fallback: %s", e)
+            self._fallback_collection("research_screens", user_id)[screen["id"]] = screen
+            return screen
+
+    def get_research_snapshots(
+        self, user_id: str, tenant_id: Optional[str] = None
+    ) -> list[dict]:
+        try:
+            query = (
+                self._get_client()
+                .table("research_snapshots")
+                .select("*")
+                .eq("user_id", user_id)
+                .order("captured_at", desc=True)
+            )
+            query = self._build_tenant_filter(query, tenant_id)
+            result = query.execute()
+            return result.data or []
+        except Exception as e:
+            logger.warning("Supabase get_research_snapshots failed, using fallback: %s", e)
+            return self._fallback_list("research_snapshots", user_id)
+
+    def save_research_snapshot(
+        self, user_id: str, data: dict, tenant_id: Optional[str] = None
+    ) -> dict:
+        snapshot = {**data, "id": data.get("id", str(uuid.uuid4())), "user_id": user_id}
+        if tenant_id and settings.enable_multitenant:
+            snapshot["tenant_id"] = tenant_id
+        try:
+            result = (
+                self._get_client().table("research_snapshots").insert(snapshot).execute()
+            )
+            return result.data[0] if result.data else snapshot
+        except Exception as e:
+            logger.warning("Supabase save_research_snapshot failed, using fallback: %s", e)
+            self._fallback_list("research_snapshots", user_id).insert(0, snapshot)
+            return snapshot

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useCallback, useEffect, useState } from "react";
 import {
   Link2,
@@ -149,13 +150,6 @@ const STATUS_CONFIG: Record<string, { icon: typeof CheckCircle2; color: string; 
   disconnected: { icon: AlertTriangle, color: "text-oracle-muted", bg: "bg-oracle-muted/10" },
 };
 
-const TYPE_LABELS: Record<ConnectionType, { es: string; en: string }> = {
-  exchange: { es: "Exchange", en: "Exchange" },
-  wallet: { es: "Wallet", en: "Wallet" },
-  broker: { es: "Broker", en: "Broker" },
-  prediction: { es: "Prediccion", en: "Prediction" },
-};
-
 // --- Status Badge ---
 function StatusBadge({ status }: { status: string }) {
   const config = STATUS_CONFIG[status] || STATUS_CONFIG.disconnected;
@@ -178,12 +172,13 @@ function ProviderLogo({ provider, size = 40 }: { provider: string; size?: number
   if (logo && !imgError) {
     return (
       <div className="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0">
-        <img
+        <Image
           src={logo}
           alt={provider}
           width={size}
           height={size}
           className="w-full h-full object-cover rounded-lg"
+          sizes={`${size}px`}
           onError={() => setImgError(true)}
         />
       </div>
@@ -398,7 +393,14 @@ function AddConnectionModal({
                   : "text-oracle-muted hover:text-oracle-text"
               }`}
             >
-              <img src={tb.icon} alt={tb.label} className="w-4 h-4 rounded-sm" />
+              <Image
+                src={tb.icon}
+                alt={tb.label}
+                width={16}
+                height={16}
+                className="w-4 h-4 rounded-sm"
+                sizes="16px"
+              />
               {tb.label}
             </button>
           ))}

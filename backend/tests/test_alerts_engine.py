@@ -80,6 +80,27 @@ class TestScanAndNotify:
             mock_tg.send_alert.assert_called_once()
 
     @pytest.mark.asyncio
+    async def test_high_alert_uses_personal_chat_when_available(self):
+        alert = _make_test_alert(AlertSeverity.HIGH)
+        with patch("app.services.alerts_engine.scan_symbols", new_callable=AsyncMock) as mock_scan, \
+             patch("app.services.alerts_engine.telegram_service") as mock_tg:
+            mock_scan.return_value = [alert]
+            mock_tg.configured = False
+            mock_tg.send_alert_to_chat = AsyncMock(return_value={"ok": True})
+
+            result = await scan_and_notify(
+                [{"symbol": "AAPL", "type": "stock"}],
+                min_severity="high",
+                chat_id="123456",
+            )
+
+            assert result["total_alerts"] == 1
+            assert result["total_notified"] == 1
+            assert result["telegram_configured"] is True
+            mock_tg.send_alert_to_chat.assert_called_once()
+            mock_tg.send_alert.assert_not_called()
+
+    @pytest.mark.asyncio
     async def test_medium_alert_skipped_with_high_threshold(self):
         alert = _make_test_alert(AlertSeverity.MEDIUM)
         with patch("app.services.alerts_engine.scan_symbols", new_callable=AsyncMock) as mock_scan, \
@@ -151,6 +172,23 @@ class TestScanAndNotify:
 
             assert result["total_alerts"] == 3
             assert result["total_notified"] == 3
+
+    @pytest.mark.asyncio
+    async def test_portfolio_alerts_are_included(self):
+        with patch("app.services.alerts_engine.scan_symbols", new_callable=AsyncMock) as mock_scan, \
+             patch("app.services.alerts_engine.build_portfolio_alerts", new_callable=AsyncMock) as mock_portfolio, \
+             patch("app.services.alerts_engine.telegram_service") as mock_tg:
+            mock_scan.return_value = []
+            mock_portfolio.return_value = [_make_test_alert(AlertSeverity.HIGH, "AAPL")]
+            mock_tg.configured = False
+
+            result = await scan_and_notify(
+                [{"symbol": "AAPL", "type": "stock"}],
+                portfolio_holdings=[{"symbol": "AAPL"}],
+            )
+
+            assert result["total_alerts"] == 1
+            assert result["total_notified"] == 0
 
 
 class TestScanAndNotifyRouter:

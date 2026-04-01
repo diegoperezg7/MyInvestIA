@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { fetchAPI } from "@/lib/api";
-import type { EconomicCalendarResponse, EconomicEvent, EarningsEvent } from "@/types";
+import type { EconomicCalendarResponse, EconomicEvent } from "@/types";
 
 const IMPACT_STYLES: Record<string, string> = {
   high: "bg-red-500/15 text-red-400 border-red-500/30",
