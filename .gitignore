@@ -1,16 +1,6 @@
 # Auto Claude data directory
 .auto-claude/
 
-# Ralph internal state
-.ralph/.call_count
-.ralph/.circuit_breaker_history
-.ralph/.circuit_breaker_state
-.ralph/.exit_signals
-.ralph/.last_reset
-.ralph/.loop_start_sha
-.ralph/.ralph_session
-.ralph/live.log
-.ralph/logs/
 
 # Environment files
 .env
@@ -52,3 +42,4 @@ next-env.d.ts
 .worktrees/
 .security-key
 logs/security/
+.ralph/
