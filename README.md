@@ -254,6 +254,9 @@ Every AI-generated output (sentiment scores, alerts, trade suggestions) passes t
 
 MyInvestIA is an educational and research project. It is not financial advice. The outputs of this system (including sentiment scores, alerts, and trade suggestions) should not be used as the sole basis for investment decisions. Markets are inherently unpredictable, and past performance of any model or signal does not guarantee future results. Use at your own risk.
 
+
 ## License
 
-MIT License. See [LICENSE](LICENSE) for details.
+Copyright (c) 2024-2026 Diego Perez Garcia. All rights reserved.
+
+This repository is published for **portfolio and evaluation purposes only**. You may view and read the contents to evaluate the author's technical capabilities. Copying, modifying, distributing, or using any part of this codebase for any purpose is prohibited without explicit written permission. See [LICENSE](LICENSE) for full terms.
