@@ -1,139 +1,175 @@
 # MyInvestIA
 
-AI-powered investment intelligence dashboard that aggregates real-time market data, technical analysis, sentiment intelligence, macroeconomic indicators, and portfolio tracking into a single explainable decision-support system.
+**AI-powered investment intelligence dashboard with explainable reasoning.**
 
-> **This system does NOT execute trades or provide financial advice.** All outputs are informational. Users retain full control over their investment decisions.
-
-![Python](https://img.shields.io/badge/Python-3.14-blue)
-![Next.js](https://img.shields.io/badge/Next.js-15-black)
-![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688)
-![Tailwind](https://img.shields.io/badge/Tailwind_CSS-4-38bdf8)
-![License](https://img.shields.io/badge/License-MIT-green)
-
----
-
-## Features
-
-### Market Intelligence
-- **Real-time quotes** — stocks, ETFs, crypto, commodities via multi-provider chain (Yahoo Finance + optional AlphaVantage, Finnhub, TwelveData)
-- **Batch data fetching** — single HTTP call for multiple symbols using `yf.download()`
-- **Top movers** — gainers/losers with sparkline charts
-- **Macro dashboard** — VIX, DXY, Treasury yields, gold, oil, copper with AI impact analysis
-- **WebSocket streaming** — live price updates
-
-### Technical Analysis
-- RSI, MACD, EMA/SMA, Bollinger Bands
-- Support/resistance levels and trend channels
-- Overbought/oversold detection with reversal probability
-- Signal summary per asset
-
-### Sentiment Intelligence
-- Multi-source analysis: financial news, social media (X, Reddit), headlines
-- Bullish/bearish classification with -1 to +1 scoring
-- Narrative extraction and sentiment momentum tracking
-- Enhanced multi-source aggregation
-
-### AI Chat & Reasoning
-- Conversational asset analysis powered by Groq
-- Persona-based analysis (bullish, bearish, balanced analysts)
-- AI-generated market briefings
-- What-if scenario simulation
-- Persistent AI memory for personalized context
-
-### Portfolio & Trading
-- Manual portfolio tracking with PnL calculation
-- Import/export via CSV
-- Dividend tracking
-- Paper trading simulator with virtual accounts
-- Transaction history and cost basis
-
-### Alerts & Notifications
-- AI-driven alerting with confidence scoring and reasoning
-- Alert types: price anomalies, technical extremes, sentiment shifts, macro risk, multi-factor opportunities
-- Delivery via Telegram Bot
-- OpenClaw integration for advanced AI agent alerts
-
-### Additional Modules
-- **Screener** — custom filter rules and presets for market scanning
-- **Recommendations** — AI-powered asset suggestions with reasoning
-- **News feed** — aggregated from RSS + NewsAPI with per-article sentiment
-- **Watchlists** — unlimited lists with price tracking and sparklines
-- **Currency conversion** — multi-currency portfolio display
-
----
+MyInvestIA is a full-stack application that combines multi-source sentiment analysis, technical indicators, and LLM-driven reasoning to surface actionable market intelligence. It aggregates data from financial APIs, scores alerts with confidence levels, and provides transparent explanations for every output. Built with FastAPI, Next.js 15, and a dual-LLM strategy for balancing speed and depth of analysis.
 
 ## Architecture
 
-```
-┌──────────────────────────────────────────────────────────┐
-│  Frontend — Next.js 15 + Tailwind CSS 4 + Recharts      │
-│  localhost:3000                                          │
-│  ┌──────────┬──────────┬──────────┬──────────┐          │
-│  │ Overview │ Analysis │ Portfolio│ Screener │ ...       │
-│  └────┬─────┴────┬─────┴────┬─────┴────┬─────┘          │
-│       │  Zustand stores  │  React hooks │                │
-│       └────────┬─────────┴──────┬───────┘                │
-│            fetchAPI (SWR cache, dedup)                    │
-└────────────────┬─────────────────────────────────────────┘
-                 │ /api/* proxy (next.config.ts rewrites)
-┌────────────────▼─────────────────────────────────────────┐
-│  Backend — FastAPI + Python 3.14                         │
-│  localhost:8000                                          │
-│  ┌──────────────────────────────────────────────┐        │
-│  │ Routers: market, portfolio, watchlist, chat,  │        │
-│  │ alerts, news, screener, paper-trading, ...    │        │
-│  └──────────┬───────────────────────────────────┘        │
-│  ┌──────────▼───────────────────────────────────┐        │
-│  │ Services: provider_chain, ai_service,         │        │
-│  │ sentiment, macro_intelligence, cache (SWR),   │        │
-│  │ alert_scorer, recommendations, ...            │        │
-│  └──────────┬───────────────────────────────────┘        │
-│  ┌──────────▼───────────────────────────────────┐        │
-│  │ Data Providers: yfinance │ AlphaVantage │     │        │
-│  │ Finnhub │ TwelveData │ CoinGecko │ NewsAPI   │        │
-│  └──────────────────────────────────────────────┘        │
-└──────────┬────────────────────┬──────────────────────────┘
-           │                    │
-  ┌────────▼────────┐ ┌────────▼────────┐
-  │  Supabase (PG)  │ │  Telegram Bot   │
-  │  + AI Memory    │ │  + OpenClaw     │
-  └─────────────────┘ └─────────────────┘
+```mermaid
+graph TB
+    subgraph Frontend
+        UI[Next.js 15 + React 19]
+        ZS[Zustand Store]
+        SWR[SWR Cache]
+        UI --> ZS
+        UI --> SWR
+    end
+
+    subgraph Backend
+        API[FastAPI — 25+ Routers]
+        SE[Sentiment Engine]
+        TA[Technical Analysis]
+        AE[Alert Scoring Engine]
+        RL[RL Trading Agent]
+        XAI[Explainable AI Layer]
+        BG[Background Agent]
+    end
+
+    subgraph AI Services
+        GROQ[Groq — llama-3.1-8b / llama-3.3-70b]
+        CEREBRAS[Cerebras — deepseek-r1-distill-llama-70b]
+    end
+
+    subgraph Data Providers
+        YF[Yahoo Finance]
+        CG[CoinGecko]
+        FRED[FRED]
+        FB[Fallback Providers]
+        YF -.->|fallback| CG -.->|fallback| FRED -.->|fallback| FB
+    end
+
+    subgraph Infrastructure
+        DB[(Supabase — PostgreSQL + RLS)]
+        CACHE[(Redis / In-Memory)]
+        TG[Telegram Notifications]
+    end
+
+    SWR -->|REST| API
+    API --> SE
+    API --> TA
+    API --> AE
+    API --> RL
+    API --> XAI
+    SE --> GROQ
+    SE --> CEREBRAS
+    AE --> XAI
+    BG --> TG
+    API --> DB
+    API --> CACHE
+    API --> YF
 ```
 
----
+## Key Features
+
+### Market Intelligence
+- Real-time price data with provider chain failover (Yahoo Finance, CoinGecko, FRED)
+- Macro indicators: VIX, DXY, treasury yields, commodities
+- Multi-timeframe analysis with historical data aggregation
+
+### AI and Sentiment Analysis
+- Multi-source sentiment scoring: technical signals (45%), social sentiment (25%), news analysis (20%), price action (10%)
+- Dual LLM strategy: Groq for fast inference, Cerebras for complex reasoning tasks
+- All outputs include confidence scores and natural-language reasoning
+
+### Technical Analysis
+- Indicators: RSI, MACD, EMA/SMA, Bollinger Bands
+- Pattern detection: support/resistance levels, trend channels
+- Configurable timeframes and parameters per asset
+
+### Portfolio Management
+- Portfolio tracking with real-time valuation
+- Paper trading for strategy validation
+- CSV import/export for position management
+- Historical performance tracking
+
+### Alert Engine
+- Confidence-scored alerts with multi-factor reasoning
+- Configurable thresholds per asset and indicator
+- Background agent with Telegram push notifications
+- Alert history and performance tracking
+
+### Macro Intelligence
+- VIX volatility regime detection
+- Dollar index (DXY) trend analysis
+- Treasury yield curve monitoring
+- Commodity correlation tracking
+
+## Tech Stack
+
+| Category | Technology |
+|---|---|
+| Frontend | Next.js 15, React 19, TypeScript, Zustand, Recharts, SWR |
+| Backend | FastAPI, Python 3.11+, Pydantic v2, async/await |
+| AI / LLM | Groq (llama-3.1-8b, llama-3.3-70b), Cerebras (deepseek-r1-distill-llama-70b) |
+| Database | Supabase (PostgreSQL) with Row-Level Security |
+| Cache | Redis (optional, in-memory fallback) |
+| Infrastructure | Docker, Caddy reverse proxy |
+| Notifications | Telegram Bot API |
+
+## Repository Structure
+
+```
+myinvestia/
+├── backend/
+│   ├── app/
+│   │   ├── routers/          # 25+ API route modules
+│   │   ├── services/         # 60+ service modules
+│   │   │   ├── sentiment/    # Multi-source sentiment engine
+│   │   │   ├── technical/    # Technical analysis indicators
+│   │   │   ├── alerts/       # Alert scoring and notifications
+│   │   │   ├── providers/    # Data provider chain
+│   │   │   ├── ai/           # LLM integration and XAI layer
+│   │   │   └── macro/        # Macro intelligence services
+│   │   ├── models/           # Pydantic v2 schemas
+│   │   ├── core/             # Config, dependencies, middleware
+│   │   └── agents/           # RL trading agent, background agent
+│   ├── tests/
+│   ├── requirements.txt
+│   └── Dockerfile
+├── frontend/
+│   ├── src/
+│   │   ├── app/              # Next.js app router
+│   │   ├── components/       # React components
+│   │   ├── stores/           # Zustand state management
+│   │   ├── hooks/            # SWR hooks and utilities
+│   │   └── types/            # TypeScript definitions
+│   ├── package.json
+│   └── Dockerfile
+├── docker-compose.yml
+├── Caddyfile
+├── .env.example
+└── README.md
+```
 
 ## Quick Start
 
-### Prerequisites
-
-- Python 3.12+ (tested on 3.14)
-- Node.js 18+
-- A [Supabase](https://supabase.com) project (free tier works)
-
-### 1. Clone & configure
+### Docker (recommended)
 
 ```bash
-git clone https://github.com/diegoperezg7/MyInvestIA.git
-cd MyInvestIA
+git clone https://github.com/yourusername/myinvestia.git
+cd myinvestia
+cp .env.example .env
+# Edit .env with your API keys
 
-# Backend environment
-cp backend/.env.example backend/.env
-# Edit backend/.env with your credentials (see Environment Variables below)
+docker compose up -d
 ```
 
-### 2. Backend
+The application will be available at `http://localhost:3000`.
+
+### Manual Setup
+
+**Backend:**
 
 ```bash
 cd backend
-python -m venv .venv
-source .venv/bin/activate   # Windows: .venv\Scripts\activate
+python -m venv venv
+source venv/bin/activate
 pip install -r requirements.txt
-uvicorn app.main:app --reload
+uvicorn app.main:app --reload --port 8000
 ```
 
-API at http://localhost:8000 — Interactive docs at http://localhost:8000/docs
-
-### 3. Frontend
+**Frontend:**
 
 ```bash
 cd frontend
@@ -141,135 +177,83 @@ npm install
 npm run dev
 ```
 
-Dashboard at http://localhost:3000
-
----
-
 ## Environment Variables
 
-Create `backend/.env` from `backend/.env.example`:
+Copy `.env.example` to `.env` and configure the following categories:
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `SUPABASE_URL` | Yes | Supabase project URL |
-| `SUPABASE_KEY` | Yes | Supabase anon/public key |
-| `SUPABASE_SERVICE_KEY` | No | Supabase service role key for admin operations and persistence helpers |
-| `CEREBRAS_API_KEY` | No | Cerebras / OpenAI-compatible key used by legacy briefing, recommendation, and analysis flows |
-| `GROQ_API_KEY` | No | Groq key used by active chat and low-latency AI flows |
-| `TELEGRAM_BOT_TOKEN` | No | Telegram Bot for alerts |
-| `TELEGRAM_CHAT_ID` | No | Telegram chat to receive alerts |
-| `NEWSAPI_KEY` | No | NewsAPI.org key (100 req/day free) |
-| `ALPHAVANTAGE_API_KEY` | No | AlphaVantage fallback provider |
-| `FINNHUB_API_KEY` | No | Finnhub fallback provider |
-| `TWELVEDATA_API_KEY` | No | TwelveData fallback provider |
-| `OPENCLAW_URL` | No | OpenClaw agent URL |
-| `OPENCLAW_TOKEN` | No | OpenClaw auth token |
-| `DISPLAY_CURRENCY` | No | Default display currency (default: USD) |
-| `REDIS_URL` | No | Redis URL for caching |
-| `DEBUG` | No | Enable debug logging |
-
-> Yahoo Finance (primary market data provider) requires **no API key**.
-
----
+| Category | Variables | Required |
+|---|---|---|
+| Market Data | `YAHOO_FINANCE_API_KEY`, `COINGECKO_API_KEY`, `FRED_API_KEY` | At least one provider |
+| AI / LLM | `GROQ_API_KEY`, `CEREBRAS_API_KEY` | Yes |
+| Database | `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_KEY` | Yes |
+| Cache | `REDIS_URL` | No (falls back to in-memory) |
+| Notifications | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` | No |
 
 ## API Overview
 
-All endpoints are under `/api/v1/`. Full interactive docs at `/docs` when the backend is running.
+| Endpoint Group | Path | Description |
+|---|---|---|
+| Market Data | `/api/v1/market/*` | Prices, quotes, historical data |
+| Sentiment | `/api/v1/sentiment/*` | Multi-source sentiment scores |
+| Technical | `/api/v1/technical/*` | Indicators, patterns, signals |
+| Alerts | `/api/v1/alerts/*` | Alert management and history |
+| Portfolio | `/api/v1/portfolio/*` | Holdings, paper trades, P&L |
+| Macro | `/api/v1/macro/*` | VIX, DXY, yields, commodities |
+| AI / Explain | `/api/v1/ai/*` | LLM queries, reasoning, XAI |
+| Agent | `/api/v1/agent/*` | RL agent status and actions |
 
-| Module | Endpoints | Description |
-|--------|-----------|-------------|
-| **Market** | `GET /market/`, `/market/quote/{symbol}`, `/market/movers`, `/market/macro`, `/market/history/{symbol}`, `/market/analysis/{symbol}` | Real-time quotes, movers, macro indicators, history, technical analysis |
-| **Portfolio** | `GET/POST/PATCH/DELETE /portfolio/`, `/portfolio/export`, `/portfolio/dividends` | Holdings CRUD, CSV import/export, dividends |
-| **Watchlists** | `GET/POST/DELETE /watchlists/`, `/watchlists/{id}/assets` | Watchlist management with live prices |
-| **Chat** | `POST /chat/`, `GET /chat/analyze/{symbol}`, `/chat/briefing`, `/chat/recommendations` | AI chat, analysis, briefings, persona-based analysis |
-| **Alerts** | `GET /alerts/`, `GET /alerts/scan/{symbol}`, `POST /alerts/scan-and-notify` | Alert engine with Telegram delivery |
-| **News** | `GET /news/feed` | Aggregated news with sentiment |
-| **Inbox** | `GET /inbox/`, `POST /inbox/refresh`, `PATCH /inbox/{id}` | Workflow inbox with actionable insights |
-| **Theses** | `GET /theses/`, `POST /theses/`, `POST /theses/{id}/review` | Thesis lifecycle and review workflow |
-| **Research** | `GET /research/rankings`, `GET /research/factors/{symbol}`, `GET /research/snapshots` | Quant ranking, factor review, and saved screens |
-| **Connections** | `GET /connections/`, `POST /connections/{type}`, `POST /connections/{id}/sync` | External exchange, wallet, broker, and prediction connections |
-| **Screener** | `POST /screener/scan`, `GET /screener/presets` | Market scanning with custom filters |
-| **Paper Trading** | `POST /paper/accounts`, `/paper/accounts/{id}/trade` | Virtual trading simulator |
-| **Notifications** | `POST /notifications/send`, `/notifications/test` | Telegram/OpenClaw notifications |
+Full API documentation is available at `/docs` (Swagger UI) when the backend is running.
 
----
+## Screenshots
 
-## Project Structure
+<!-- Screenshot: Dashboard Overview -->
 
-```
-├── backend/
-│   ├── app/
-│   │   ├── main.py              # FastAPI app & router registration
-│   │   ├── config.py            # Settings (env vars)
-│   │   ├── routers/             # API endpoint handlers (20+ modules)
-│   │   ├── schemas/             # Pydantic v2 data models
-│   │   └── services/            # Business logic (60+ services)
-│   │       ├── providers/       # Market data provider plugins
-│   │       ├── cache.py         # In-memory TTL cache with stale-while-revalidate
-│   │       ├── market_data.py   # Quotes, history, movers (batch fetch)
-│   │       ├── ai_service.py    # Cerebras / OpenAI-compatible AI integration
-│   │       ├── groq_service.py  # Groq chat and low-latency AI integration
-│   │       ├── macro_intelligence.py
-│   │       ├── sentiment_service.py
-│   │       ├── alert_scorer.py
-│   │       └── ...
-│   ├── tests/                   # pytest test suite
-│   ├── supabase/                # Database migrations
-│   └── requirements.txt
-├── frontend/
-│   ├── src/
-│   │   ├── app/                 # Next.js app router (page, layout, globals)
-│   │   ├── components/
-│   │   │   ├── views/           # Page-level views (Overview, Analysis, Screener, ...)
-│   │   │   ├── dashboard/       # Dashboard panels (18+ components)
-│   │   │   ├── portfolio/       # Portfolio-specific components
-│   │   │   ├── charts/          # Chart components
-│   │   │   ├── screener/        # Screener UI
-│   │   │   └── ui/              # Reusable UI primitives
-│   │   ├── hooks/               # Custom React hooks
-│   │   ├── stores/              # Zustand state management
-│   │   ├── lib/api.ts           # API client with cache & request dedup
-│   │   └── types/index.ts       # TypeScript type definitions
-│   ├── next.config.ts           # API proxy rewrites
-│   └── package.json
-└── openclaw/                    # OpenClaw AI agent integration
-```
+<!-- Screenshot: Sentiment Analysis Panel -->
 
----
+<!-- Screenshot: Technical Analysis Charts -->
 
-## Performance
+<!-- Screenshot: Alert Engine with Confidence Scores -->
 
-The system is optimized for fast dashboard loads:
+<!-- Screenshot: Portfolio Tracker -->
 
-- **Batch fetching** — `yf.download()` fetches 11+ symbols in a single HTTP call instead of N individual requests
-- **Stale-while-revalidate cache** — returns cached data instantly while refreshing in the background (2x TTL grace window)
-- **Tuned TTLs** — quotes: 120s, history: 600s, macro: 180s
-- **Frontend caching** — 30s client-side cache with request deduplication
-- **Reduced polling** — market: 60s, portfolio: 30s, watchlists: 60s
-- **Lazy-loaded sections** — heavy components (recommendations, news) load after initial render
+<!-- Screenshot: Macro Intelligence View -->
 
----
+## Architecture Details
 
-## Tech Stack
+### Provider Chain Pattern
 
-| Layer | Technology |
-|-------|-----------|
-| Frontend | Next.js 15, React 19, Tailwind CSS 4, Recharts, Zustand, TypeScript |
-| Backend | Python 3.14, FastAPI, Pydantic v2, Uvicorn |
-| Database | Supabase (PostgreSQL) with Row Level Security |
-| AI | Groq + Cerebras-compatible OpenAI client |
-| Market Data | Yahoo Finance (primary), AlphaVantage, Finnhub, TwelveData (fallbacks), CoinGecko (crypto) |
-| Notifications | Telegram Bot API, OpenClaw |
-| Testing | pytest, pytest-asyncio |
+Data providers are organized in a priority chain with automatic failover. When Yahoo Finance is unavailable or rate-limited, the system falls back to CoinGecko, then FRED, then cached data. Each provider implements a common interface, making it straightforward to add new sources. Responses are normalized to a unified schema regardless of the originating provider.
 
----
+### Sentiment Engine Methodology
+
+The sentiment engine combines four signal sources with empirically tuned weights:
+
+- **Technical signals (45%):** Derived from indicator convergence/divergence across multiple timeframes. This receives the highest weight because price-derived signals have the most direct predictive relationship.
+- **Social sentiment (25%):** Aggregated from community discussions and social platforms. Processed through LLM-based classification for nuance beyond keyword matching.
+- **News analysis (20%):** Financial news headlines and articles scored for directional sentiment and magnitude.
+- **Price action (10%):** Recent price momentum and volume patterns as a confirming signal.
+
+The final score is a weighted composite normalized to a -1 to +1 range, accompanied by a confidence metric and a natural-language explanation generated by the AI layer.
+
+### Alert Scoring System
+
+Alerts are not binary triggers. Each alert carries a confidence score (0-100) computed from the strength and agreement of contributing signals. The scoring engine evaluates indicator alignment, historical accuracy of similar signal configurations, and current market regime. Alerts below a configurable confidence threshold are suppressed. Every alert includes a reasoning chain explaining which factors contributed to the score.
+
+### Explainable AI Approach
+
+Every AI-generated output (sentiment scores, alerts, trade suggestions) passes through an explanation layer. The system uses the dual-LLM architecture: Groq handles fast classification and scoring, while Cerebras generates detailed reasoning for high-stakes outputs. Explanations reference specific data points (indicator values, news sources, price levels) rather than generic statements. This makes the system auditable and helps users build intuition about market conditions.
+
+## Roadmap
+
+- **Options flow integration:** Add unusual options activity detection as an additional sentiment signal source.
+- **Multi-portfolio strategies:** Support distinct strategies per portfolio with independent risk parameters and alert configurations.
+- **Backtesting framework:** Historical strategy validation with configurable date ranges, slippage modeling, and performance attribution.
+- **Mobile companion:** Lightweight mobile client focused on alert consumption and quick portfolio checks.
 
 ## Disclaimer
 
-MyInvestIA is a decision-support tool for informational purposes only. It does not provide financial advice, and it does not execute trades. All AI-generated outputs include confidence scores and reasoning for transparency. Users are solely responsible for their investment decisions.
-
----
+MyInvestIA is an educational and research project. It is not financial advice. The outputs of this system (including sentiment scores, alerts, and trade suggestions) should not be used as the sole basis for investment decisions. Markets are inherently unpredictable, and past performance of any model or signal does not guarantee future results. Use at your own risk.
 
 ## License
 
-MIT
+MIT License. See [LICENSE](LICENSE) for details.

@@ -2,9 +2,15 @@
 Groq AI service for fast, free inference.
 """
 
-import os
-from typing import Optional, List, Dict, Any
-from groq import AsyncGroq
+from typing import Optional, Dict, Any
+
+try:
+    from groq import AsyncGroq
+
+    GROQ_SDK_AVAILABLE = True
+except ImportError:
+    AsyncGroq = None
+    GROQ_SDK_AVAILABLE = False
 
 from app.config import settings
 
@@ -18,13 +24,19 @@ MODELS = {
 
 class GroqService:
     def __init__(self):
-        api_key = settings.groq_api_key or os.getenv(
-            "GROQ_API_KEY", "gsk_GGjAhjuK2NqW6kNAD68WGdyb3FY6vgPWSP6beLdntk3B6Xdxqec"
-        )
-        self._client = AsyncGroq(api_key=api_key)
+        self._client: AsyncGroq | None = None
 
     def is_available(self) -> bool:
-        return True
+        return GROQ_SDK_AVAILABLE and bool(settings.groq_api_key)
+
+    def _get_client(self) -> AsyncGroq:
+        if not GROQ_SDK_AVAILABLE:
+            raise ValueError("groq package not installed")
+        if not settings.groq_api_key:
+            raise ValueError("GROQ_API_KEY not configured")
+        if self._client is None:
+            self._client = AsyncGroq(api_key=settings.groq_api_key)
+        return self._client
 
     async def chat(
         self,
@@ -34,6 +46,7 @@ class GroqService:
         temperature: float = 0.7,
     ) -> str:
         """Generate a chat completion."""
+        client = self._get_client()
         messages = []
         if system_prompt:
             messages.append({"role": "system", "content": system_prompt})
@@ -41,13 +54,31 @@ class GroqService:
 
         model_name = MODELS.get(model, MODELS["powerful"])
 
-        response = await self._client.chat.completions.create(
+        response = await client.chat.completions.create(
             model=model_name,
             messages=messages,
             temperature=temperature,
         )
 
-        return response.choices[0].message.content
+        return response.choices[0].message.content or ""
+
+    async def stream_chat(
+        self,
+        messages: list[dict],
+        model: str = "powerful",
+        temperature: float = 0.7,
+        max_tokens: int = 1500,
+    ):
+        """Open a streaming chat completion."""
+        client = self._get_client()
+        model_name = MODELS.get(model, MODELS["powerful"])
+        return await client.chat.completions.create(
+            model=model_name,
+            messages=messages,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            stream=True,
+        )
 
     async def analyze_trading_signal(
         self,

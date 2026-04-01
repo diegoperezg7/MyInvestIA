@@ -23,10 +23,9 @@ function formatPercent(value: number): string {
 }
 
 /** Stacked horizontal allocation bar */
-function AllocationBar({ holdings, totalValue, formatPrice }: {
+function AllocationBar({ holdings, totalValue }: {
   holdings: PortfolioHolding[];
   totalValue: number;
-  formatPrice: (v: number, d?: number) => string;
 }) {
   if (holdings.length === 0 || totalValue <= 0) return null;
 
@@ -420,7 +419,7 @@ export default function PortfolioSummary() {
 
           {activeTab === "holdings" && (
             <>
-              <AllocationBar holdings={holdings} totalValue={totalValue} formatPrice={formatPrice} />
+              <AllocationBar holdings={holdings} totalValue={totalValue} />
               <div className="space-y-2 mt-3 max-h-64 overflow-y-auto">
                 {holdings.map((h, i) => (
                   <HoldingCard

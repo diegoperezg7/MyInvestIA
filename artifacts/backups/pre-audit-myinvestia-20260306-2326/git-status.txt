@@ -1,0 +1,104 @@
+## codex/ux-restructure
+ M Caddyfile
+ M backend/.env.example
+ M backend/app/config.py
+ M backend/app/main.py
+ M backend/app/routers/alerts.py
+ M backend/app/routers/auth.py
+ M backend/app/routers/chat.py
+ M backend/app/routers/market.py
+ M backend/app/routers/news.py
+ M backend/app/routers/notifications.py
+ M backend/app/routers/user_profile.py
+ M backend/app/schemas/asset.py
+ M backend/app/schemas/news_feed.py
+ M backend/app/schemas/recommendations.py
+ M backend/app/services/ai_service.py
+ M backend/app/services/alerts_engine.py
+ M backend/app/services/connection_service.py
+ M backend/app/services/economic_calendar.py
+ M backend/app/services/enhanced_sentiment_service.py
+ M backend/app/services/groq_service.py
+ M backend/app/services/news_aggregator.py
+ M backend/app/services/portfolio_risk.py
+ M backend/app/services/provider_chain.py
+ M backend/app/services/providers/bloomberg_provider.py
+ M backend/app/services/reddit_service.py
+ M backend/app/services/rl_trading_service.py
+ M backend/app/services/sentiment_service.py
+ M backend/app/services/store.py
+ M backend/app/services/supabase_store.py
+ M backend/app/services/telegram_service.py
+ M backend/pyproject.toml
+ M backend/tests/conftest.py
+ M backend/tests/test_alerts_engine.py
+ M backend/tests/test_chat.py
+ M backend/tests/test_macro.py
+ M backend/tests/test_market.py
+ M backend/tests/test_memory.py
+ M backend/tests/test_notifications.py
+ M backend/tests/test_rl_agent.py
+ M backend/tests/test_sentiment.py
+ M docker-compose.yml
+ M frontend/.env.local.example
+ M frontend/src/app/globals.css
+ M frontend/src/components/Dashboard.tsx
+ M frontend/src/components/auth/LoginPage.tsx
+ M frontend/src/components/dashboard/AlertsPanel.tsx
+ M frontend/src/components/dashboard/BreakingNewsFeed.tsx
+ M frontend/src/components/dashboard/ChatPanel.tsx
+ M frontend/src/components/dashboard/EnhancedSentimentCard.tsx
+ M frontend/src/components/dashboard/MarketOverviewCard.tsx
+ M frontend/src/components/dashboard/NotificationsPanel.tsx
+ M frontend/src/components/layout/CommandBar.tsx
+ M frontend/src/components/layout/KeyboardShortcuts.tsx
+ M frontend/src/components/layout/MobileTopBar.tsx
+ M frontend/src/components/layout/Sidebar.tsx
+ M frontend/src/components/layout/TopBar.tsx
+ M frontend/src/components/views/ChatView.tsx
+ M frontend/src/components/views/OverviewView.tsx
+ M frontend/src/components/views/PaperTradingView.tsx
+ M frontend/src/components/views/RecommendationsView.tsx
+ M frontend/src/components/views/SettingsView.tsx
+ M frontend/src/contexts/AuthContext.tsx
+ M frontend/src/contexts/ViewContext.tsx
+ M frontend/src/lib/api.ts
+ M frontend/src/lib/auth.ts
+ M frontend/src/stores/useLanguageStore.ts
+ M frontend/src/types/index.ts
+?? artifacts/
+?? backend/app/routers/inbox.py
+?? backend/app/routers/research.py
+?? backend/app/routers/theses.py
+?? backend/app/schemas/workflow.py
+?? backend/app/services/event_engine.py
+?? backend/app/services/gdelt_service.py
+?? backend/app/services/inbox_service.py
+?? backend/app/services/insider_service.py
+?? backend/app/services/macro_context_service.py
+?? backend/app/services/news_intelligence.py
+?? backend/app/services/personal_bot_service.py
+?? backend/app/services/profile_service.py
+?? backend/app/services/research_service.py
+?? backend/app/services/sec_service.py
+?? backend/app/services/thesis_service.py
+?? backend/tests/test_auth.py
+?? backend/tests/test_bloomberg_provider.py
+?? backend/tests/test_news_intelligence.py
+?? backend/tests/test_personal_bot.py
+?? backend/tests/test_workflow.py
+?? frontend/src/components/layout/MobileBottomNav.tsx
+?? frontend/src/components/layout/SectionWorkspace.tsx
+?? frontend/src/components/views/AssistantView.tsx
+?? frontend/src/components/views/InboxView.tsx
+?? frontend/src/components/views/MarketsView.tsx
+?? frontend/src/components/views/PortfolioView.tsx
+?? frontend/src/components/views/ResearchView.tsx
+?? frontend/src/components/views/TerminalView.tsx
+?? frontend/src/components/views/ThesesView.tsx
+?? frontend/src/hooks/useInbox.ts
+?? frontend/src/hooks/useResearch.ts
+?? frontend/src/hooks/useTheses.ts
+?? frontend/src/lib/api-base.ts
+?? frontend/src/lib/presentation.ts
+?? frontend/src/lib/shell.ts

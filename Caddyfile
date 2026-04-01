@@ -1,4 +1,4 @@
-(myinvestia_routes) {
+(local_routes) {
 	# API and health → backend
 	handle /api/* {
 		reverse_proxy backend:8000
@@ -12,9 +12,87 @@
 		reverse_proxy backend:8000
 	}
 
-	# Everything else → frontend
+	# Frontend static assets
+	handle /_next/static/* {
+		reverse_proxy frontend:3000 {
+			header_down Cache-Control "public, max-age=31536000, immutable"
+		}
+	}
+	handle /icon.svg {
+		reverse_proxy frontend:3000 {
+			header_down Cache-Control "public, max-age=31536000, immutable"
+		}
+	}
+	handle /logos/* {
+		reverse_proxy frontend:3000 {
+			header_down Cache-Control "public, max-age=31536000, immutable"
+		}
+	}
+
+	# App shell
 	handle {
-		reverse_proxy frontend:3000
+		reverse_proxy frontend:3000 {
+			header_down Cache-Control "no-store, max-age=0, must-revalidate"
+		}
+	}
+
+	# Security headers
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+	}
+}
+
+(production_routes) {
+	# API and health → backend
+	handle /api/* {
+		reverse_proxy backend:8000 {
+			header_up X-Forwarded-Proto https
+			header_up X-Forwarded-Host {host}
+			header_up X-Forwarded-Port 443
+		}
+	}
+	handle /health {
+		reverse_proxy backend:8000 {
+			header_up X-Forwarded-Proto https
+			header_up X-Forwarded-Host {host}
+			header_up X-Forwarded-Port 443
+		}
+	}
+
+	# WebSocket
+	handle /api/v1/ws/* {
+		reverse_proxy backend:8000 {
+			header_up X-Forwarded-Proto https
+			header_up X-Forwarded-Host {host}
+			header_up X-Forwarded-Port 443
+		}
+	}
+
+	# Frontend static assets
+	handle /_next/static/* {
+		reverse_proxy frontend:3000 {
+			header_down Cache-Control "public, max-age=31536000, immutable"
+		}
+	}
+	handle /icon.svg {
+		reverse_proxy frontend:3000 {
+			header_down Cache-Control "public, max-age=31536000, immutable"
+		}
+	}
+	handle /logos/* {
+		reverse_proxy frontend:3000 {
+			header_down Cache-Control "public, max-age=31536000, immutable"
+		}
+	}
+
+	# App shell
+	handle {
+		reverse_proxy frontend:3000 {
+			header_down Cache-Control "no-store, max-age=0, must-revalidate"
+		}
 	}
 
 	# Security headers
@@ -27,9 +105,10 @@
 }
 
 http://localhost {
-	import myinvestia_routes
+	import local_routes
 }
 
-http://myinvestia.darc3.com {
-	import myinvestia_routes
-}
+# Production: replace with your domain, e.g. http://myinvestia.your-domain.com
+# http://myinvestia.your-domain.com {
+#	import production_routes
+# }

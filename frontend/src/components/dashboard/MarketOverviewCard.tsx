@@ -108,15 +108,15 @@ function MoverDetail({ symbol, sparkData, formatPrice, positive }: {
       {/* Key metrics grid */}
       <div className="grid grid-cols-3 gap-2 text-xs">
         <div className="bg-oracle-panel rounded-md px-2 py-1.5">
-          <p className="text-oracle-muted text-[10px] uppercase tracking-wide mb-0.5">Prev Close</p>
+          <p className="text-oracle-muted text-[10px] uppercase tracking-wide mb-0.5">Cierre previo</p>
           <p className="text-oracle-text font-mono font-medium">{formatPrice(quote.previous_close)}</p>
         </div>
         <div className="bg-oracle-panel rounded-md px-2 py-1.5">
-          <p className="text-oracle-muted text-[10px] uppercase tracking-wide mb-0.5">Volume</p>
+          <p className="text-oracle-muted text-[10px] uppercase tracking-wide mb-0.5">Volumen</p>
           <p className="text-oracle-text font-mono font-medium">{formatVolume(quote.volume)}</p>
         </div>
         <div className="bg-oracle-panel rounded-md px-2 py-1.5">
-          <p className="text-oracle-muted text-[10px] uppercase tracking-wide mb-0.5">Mkt Cap</p>
+          <p className="text-oracle-muted text-[10px] uppercase tracking-wide mb-0.5">Capitalización</p>
           <p className="text-oracle-text font-mono font-medium">{formatMarketCap(quote.market_cap)}</p>
         </div>
       </div>

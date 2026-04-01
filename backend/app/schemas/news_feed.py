@@ -46,6 +46,14 @@ class AnalyzedArticle(BaseModel):
     score: int | None = None
     num_comments: int | None = None
     sentiment_label: str | None = None  # StockTwits: "Bullish" | "Bearish"
+    sentiment_score: float = 0.0
+    confidence: float = 0.0
+    relevance_score: float = 0.0
+    ticker_mentions: list[str] = []
+    source_reliability: float = 0.0
+    duplicate_group: str = ""
+    engagement: float = 0.0
+    retrieval_mode: str = "unknown"
 
 
 class NewsFeedResponse(BaseModel):
@@ -54,6 +62,8 @@ class NewsFeedResponse(BaseModel):
     sources_active: dict[str, bool]
     category_counts: dict[str, int]
     generated_at: str
+    top_narratives: list[dict] = []
+    source_health: dict[str, dict] = {}
 
 
 class EnhancedSentimentSource(BaseModel):
@@ -68,5 +78,12 @@ class EnhancedSentimentResponse(BaseModel):
     unified_score: float
     unified_label: str
     sources: list[EnhancedSentimentSource]
+    coverage_confidence: float = 0.0
+    news_momentum: float = 0.0
+    social_momentum: float = 0.0
+    top_narratives: list[dict] = []
+    source_breakdown: list[dict] = []
+    cross_source_divergence: float = 0.0
+    source_health: dict[str, dict] = {}
     total_data_points: int
     generated_at: str

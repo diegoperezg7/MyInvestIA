@@ -97,17 +97,16 @@ class AppConfig(BaseModel):
 
     # Paths
     models_path: str = os.environ.get(
-        "MODELS_PATH", "/Users/darce/tensortrade-project/models"
+        "MODELS_PATH", "./models"
     )
     logs_path: str = os.environ.get(
-        "LOGS_PATH", "/Users/darce/tensortrade-project/logs"
+        "LOGS_PATH", "./logs"
     )
 
     # CORS
     cors_origins: list = [
         "http://localhost:3000",
         "http://localhost:5173",
-        "https://portal.darc3.com",
     ]
 
     class Config:
@@ -165,8 +164,8 @@ REDIS_HOST=localhost
 REDIS_PORT=6379
 
 # Paths
-MODELS_PATH=/Users/darce/tensortrade-project/models
-LOGS_PATH=/Users/darce/tensortrade-project/logs
+MODELS_PATH=./models
+LOGS_PATH=./logs
 
 # App
 DEBUG=false

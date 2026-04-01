@@ -285,9 +285,37 @@ class MacroSummary(BaseModel):
     key_signals: list[str] = []
 
 
+class DataSourceStatus(BaseModel):
+    name: str
+    active: bool = False
+    retrieval_mode: str = "unknown"
+    confidence: float = 0.0
+    note: str = ""
+
+
+class OfficialSeriesPoint(BaseModel):
+    id: str
+    name: str
+    value: float | None = None
+    date: str = ""
+    change_percent: float = 0.0
+    unit: str = ""
+    source: str = ""
+
+
+class FearGreedIndex(BaseModel):
+    value: int = 0
+    classification: str = "unknown"
+    timestamp: str = ""
+    source: str = ""
+
+
 class MacroIntelligenceResponse(BaseModel):
     indicators: list[MacroIndicatorDetail] = []
     summary: MacroSummary = MacroSummary()
+    sources: list[DataSourceStatus] = []
+    official_series: list[OfficialSeriesPoint] = []
+    fear_greed: FearGreedIndex | None = None
 
 
 # --- Sentiment Analysis Schemas ---
@@ -405,6 +433,44 @@ class EconomicCalendarResponse(BaseModel):
     events: list[EconomicEvent] = []
     earnings: list[EarningsEvent] = []
     date_range: dict = {}
+    sources: list[DataSourceStatus] = []
+
+
+class FilingItem(BaseModel):
+    form: str = ""
+    filed_at: str = ""
+    description: str = ""
+    items: str = ""
+    url: str = ""
+    accession_number: str = ""
+
+
+class FilingsResponse(BaseModel):
+    symbol: str
+    company_name: str = ""
+    cik: str = ""
+    source: str = "sec"
+    filings: list[FilingItem] = []
+    generated_at: str = ""
+
+
+class InsiderTransaction(BaseModel):
+    insider_name: str = ""
+    relation: str = ""
+    transaction_type: str = ""
+    shares: float = 0.0
+    share_price: float = 0.0
+    value: float = 0.0
+    filing_date: str = ""
+    source: str = ""
+    url: str = ""
+
+
+class InsiderActivityResponse(BaseModel):
+    symbol: str
+    source: str = ""
+    transactions: list[InsiderTransaction] = []
+    generated_at: str = ""
 
 
 # --- Portfolio Risk Schemas ---
@@ -443,11 +509,35 @@ class StressTestScenario(BaseModel):
     estimated_portfolio_loss_pct: float = 0.0
 
 
+class ExposureItem(BaseModel):
+    key: str
+    weight: float = 0.0
+    value: float = 0.0
+
+
+class FactorProxy(BaseModel):
+    name: str
+    exposure: float = 0.0
+    confidence: float = 0.0
+    note: str = ""
+
+
+class CorrelatedCluster(BaseModel):
+    symbols: list[str] = []
+    average_correlation: float = 0.0
+
+
 class PortfolioRiskResponse(BaseModel):
     metrics: PortfolioRiskMetrics = PortfolioRiskMetrics()
     concentration: ConcentrationRisk = ConcentrationRisk()
     correlation: CorrelationData = CorrelationData()
     stress_tests: list[StressTestScenario] = []
+    sector_exposure: list[ExposureItem] = []
+    country_exposure: list[ExposureItem] = []
+    currency_exposure: list[ExposureItem] = []
+    factor_proxies: list[FactorProxy] | None = None
+    correlated_clusters: list[CorrelatedCluster] = []
+    scenario_results: list[StressTestScenario] = []
     portfolio_value: float = 0.0
 
 

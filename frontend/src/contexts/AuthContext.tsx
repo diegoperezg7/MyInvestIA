@@ -16,17 +16,64 @@ import {
   setTokens,
   type AuthUser,
 } from "@/lib/auth";
-
-const AIDENTITY_API = process.env.NEXT_PUBLIC_API_URL ?? "";
+import { API_BASE } from "@/lib/api-base";
 
 interface AuthContextValue {
   user: AuthUser | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (identifier: string, password: string) => Promise<void>;
   logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
+
+function extractAuthError(payload: unknown): string {
+  if (typeof payload === "string" && payload.trim()) {
+    return payload;
+  }
+  if (!payload || typeof payload !== "object") {
+    return "Error al iniciar sesión";
+  }
+
+  const data = payload as {
+    detail?: unknown;
+    error_description?: unknown;
+    msg?: unknown;
+    message?: unknown;
+  };
+
+  if (typeof data.detail === "string" && data.detail.trim()) {
+    return data.detail;
+  }
+
+  if (Array.isArray(data.detail) && data.detail.length > 0) {
+    const messages = data.detail
+      .map((item) => {
+        if (typeof item === "string") return item;
+        if (item && typeof item === "object" && "msg" in item) {
+          const msg = (item as { msg?: unknown }).msg;
+          return typeof msg === "string" ? msg : "";
+        }
+        return "";
+      })
+      .filter(Boolean);
+    if (messages.length > 0) {
+      return messages.join(". ");
+    }
+  }
+
+  for (const candidate of [
+    data.error_description,
+    data.msg,
+    data.message,
+  ]) {
+    if (typeof candidate === "string" && candidate.trim()) {
+      return candidate;
+    }
+  }
+
+  return "Error al iniciar sesión";
+}
 
 export function useAuth() {
   const ctx = useContext(AuthContext);
@@ -40,7 +87,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refreshAccessToken = useCallback(async (): Promise<string | null> => {
     try {
-      const res = await fetch(`${AIDENTITY_API}/api/v1/auth/refresh`, {
+      const res = await fetch(`${API_BASE}/api/v1/auth/refresh`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -100,15 +147,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => clearInterval(interval);
   }, [refreshAccessToken]);
 
-  const login = useCallback(async (email: string, password: string) => {
-    const res = await fetch(`${AIDENTITY_API}/api/v1/auth/login`, {
+  const login = useCallback(async (identifier: string, password: string) => {
+    const res = await fetch(`${API_BASE}/api/v1/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ login: email, password }),
+      body: JSON.stringify({ login: identifier, password }),
     });
     if (!res.ok) {
-      const err = await res.json().catch(() => ({ detail: "Error de conexión" }));
-      throw new Error(err.detail || "Login failed");
+      const err = await res
+        .json()
+        .catch(async () => ({ detail: await res.text().catch(() => "Error de conexión") }));
+      throw new Error(extractAuthError(err));
     }
     const data = await res.json();
     if (data.access_token) {
@@ -120,7 +169,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(() => {
     const token = getToken();
-    fetch(`${AIDENTITY_API}/api/v1/auth/logout`, {
+    fetch(`${API_BASE}/api/v1/auth/logout`, {
       method: "POST",
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     }).catch(() => {});

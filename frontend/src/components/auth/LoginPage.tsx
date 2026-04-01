@@ -6,7 +6,7 @@ import { Lock, Mail, Eye, EyeOff, AlertCircle } from "lucide-react";
 
 export default function LoginPage() {
   const { login } = useAuth();
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
@@ -17,7 +17,7 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
     try {
-      await login(email, password);
+      await login(identifier, password);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al iniciar sesión");
     } finally {
@@ -56,28 +56,38 @@ export default function LoginPage() {
           )}
 
           <div>
-            <label className="block text-xs text-oracle-muted mb-1">Email</label>
+            <label
+              htmlFor="login-identifier"
+              className="block text-xs text-oracle-muted mb-1"
+            >
+              Email o usuario
+            </label>
             <div className="relative">
               <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-oracle-muted" />
               <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                id="login-identifier"
+                type="text"
+                value={identifier}
+                onChange={(e) => setIdentifier(e.target.value)}
                 required
-                autoComplete="email"
-                placeholder="tu@email.com"
+                autoComplete="username"
+                placeholder="tu@email.com o usuario"
                 className="w-full bg-oracle-bg border border-oracle-border rounded pl-10 pr-3 py-2.5 text-sm text-oracle-text placeholder:text-oracle-muted focus:outline-none focus:border-oracle-accent transition-colors"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs text-oracle-muted mb-1">
+            <label
+              htmlFor="login-password"
+              className="block text-xs text-oracle-muted mb-1"
+            >
               Contraseña
             </label>
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-oracle-muted" />
               <input
+                id="login-password"
                 type={showPassword ? "text" : "password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}

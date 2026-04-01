@@ -216,6 +216,9 @@ def covariance_matrix(
 ) -> np.ndarray:
     if returns_matrix.ndim != 2 or returns_matrix.size == 0:
         return np.empty((0, 0), dtype=np.float64)
+    if returns_matrix.shape[1] == 1:
+        variance = float(np.var(returns_matrix[:, 0], ddof=1)) if returns_matrix.shape[0] >= 2 else 0.0
+        return np.array([[variance * periods_per_year]], dtype=np.float64)
     return np.cov(returns_matrix, rowvar=False) * periods_per_year
 
 

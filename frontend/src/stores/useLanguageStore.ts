@@ -16,6 +16,8 @@ interface LanguageState {
 const translations: Translations = {
   // --- Navigation ---
   "nav.overview": { es: "Resumen", en: "Overview" },
+  "nav.inbox": { es: "Inbox", en: "Inbox" },
+  "nav.terminal": { es: "Terminal", en: "Terminal" },
   "nav.analysis": { es: "Analisis", en: "Analysis" },
   "nav.screener": { es: "Screener", en: "Screener" },
   "nav.movers": { es: "Movers", en: "Movers" },
@@ -31,6 +33,8 @@ const translations: Translations = {
   "nav.connections": { es: "Conexiones", en: "Connections" },
   "nav.calendar": { es: "Calendario", en: "Calendar" },
   "nav.heatmap": { es: "Heatmap", en: "Heatmap" },
+  "nav.theses": { es: "Thesis", en: "Theses" },
+  "nav.research": { es: "Research", en: "Research" },
   "nav.settings": { es: "Ajustes", en: "Settings" },
 
   // --- Nav groups ---
@@ -94,6 +98,10 @@ const translations: Translations = {
   // --- View titles ---
   "view.overview.title": { es: "Resumen", en: "Overview" },
   "view.overview.desc": { es: "Resumen del portafolio y mercado", en: "Portfolio summary and market snapshot" },
+  "view.inbox.title": { es: "Inbox", en: "Inbox" },
+  "view.inbox.desc": { es: "Prioridades del dia con ranking de decision", en: "Decision-ranked daily priorities" },
+  "view.terminal.title": { es: "Terminal", en: "Terminal" },
+  "view.terminal.desc": { es: "Workspace denso con precio, flujo de noticias, macro y filings", en: "Dense workspace for price, wire, macro and filings" },
   "view.analysis.title": { es: "Analisis", en: "Analysis" },
   "view.analysis.desc": { es: "Analisis tecnico, sentimiento y senales", en: "Technical analysis, sentiment, and signals" },
   "view.screener.title": { es: "Screener", en: "Screener" },
@@ -118,6 +126,10 @@ const translations: Translations = {
   "view.prediction.desc": { es: "Prediccion todo-en-uno sintetizando todas las fuentes de datos", en: "All-in-one prediction synthesizing every data source" },
   "view.recommendations.title": { es: "Recomendaciones IA", en: "AI Recommendations" },
   "view.recommendations.desc": { es: "Recomendaciones diarias basadas en tu portafolio", en: "Daily recommendations based on your portfolio" },
+  "view.theses.title": { es: "Thesis", en: "Theses" },
+  "view.theses.desc": { es: "Seguimiento de tesis y revisiones", en: "Thesis tracking and review timeline" },
+  "view.research.title": { es: "Research", en: "Research" },
+  "view.research.desc": { es: "Ranking cuantitativo y snapshots", en: "Quant ranking and snapshots" },
   "view.heatmap.title": { es: "Mapa de Calor Sectorial", en: "Sector Heatmap" },
   "view.heatmap.desc": { es: "Rendimiento por sector con mapa de calor interactivo", en: "Sector performance with interactive heatmap" },
   "view.calendar.title": { es: "Calendario Economico", en: "Economic Calendar" },

@@ -1,10 +1,11 @@
 """Tests for alert scoring service and alerts router."""
 
+from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.services.alert_scorer import score_asset
+from app.services.alert_scorer import build_portfolio_alerts, score_asset
 
 
 class TestScoreAsset:
@@ -124,6 +125,39 @@ class TestScoreAsset:
         alerts = score_asset("UNKNOWN", None, None)
         assert len(alerts) == 0
 
+    def test_sentiment_shift_alert(self):
+        quote = {"price": 180.0, "change_percent": 2.0, "volume": 30000000}
+        indicators = {
+            "rsi": {"value": 58.0, "signal": "bullish"},
+            "overall_signal": "bullish",
+            "signal_counts": {"bullish": 3, "bearish": 1, "neutral": 1},
+        }
+        sentiment = {
+            "unified_score": 0.35,
+            "coverage_confidence": 0.5,
+            "recent_shift": 0.42,
+            "sources": [{"source_name": "Structured News Flow"}],
+            "warnings": [],
+        }
+        alerts = score_asset("AAPL", quote, indicators, sentiment)
+        assert any(alert.type.value == "sentiment" for alert in alerts)
+
+    def test_recent_filing_generates_alert(self):
+        recent_filed_at = (datetime.now(timezone.utc) - timedelta(hours=2)).isoformat()
+        filings = {
+            "filings": [
+                {
+                    "form": "8-K",
+                    "filed_at": recent_filed_at,
+                    "description": "Current report",
+                    "items": "2.02; 8.01",
+                }
+            ]
+        }
+        alerts = score_asset("AAPL", None, None, None, filings)
+        assert len(alerts) == 1
+        assert "filing" in alerts[0].title.lower()
+
 
 class TestAlertsRouter:
     """Integration tests for alerts API endpoints."""
@@ -168,3 +202,46 @@ class TestAlertsRouter:
         call_args = mock_scan.call_args[0][0]
         symbols = [s["symbol"] for s in call_args]
         assert "MSFT" in symbols
+
+
+class TestPortfolioAlerts:
+    @pytest.mark.asyncio
+    async def test_portfolio_concentration_generates_alert(self):
+        holdings = [
+            {"symbol": "AAPL", "name": "Apple", "type": "stock", "quantity": 10, "avg_buy_price": 100.0},
+            {"symbol": "MSFT", "name": "Microsoft", "type": "stock", "quantity": 2, "avg_buy_price": 100.0},
+        ]
+        with patch("app.services.alert_scorer.market_data_service.get_quote", new_callable=AsyncMock) as mock_quote, \
+             patch("app.services.alert_scorer.build_portfolio_intelligence", new_callable=AsyncMock) as mock_intel, \
+             patch("app.services.alert_scorer.get_all_macro_indicators", new_callable=AsyncMock) as mock_macro:
+            mock_quote.side_effect = [
+                {"symbol": "AAPL", "price": 200.0},
+                {"symbol": "MSFT", "price": 100.0},
+            ]
+            mock_intel.return_value = {
+                "generated_at": "2026-03-07T10:00:00+00:00",
+                "warnings": [],
+                "allocation": [
+                    {"symbol": "AAPL", "weight": 0.67},
+                    {"symbol": "MSFT", "weight": 0.33},
+                ],
+                "concentration": {
+                    "asset": {"items": [{"key": "AAPL", "weight": 0.67}], "top_weight": 0.67},
+                    "sector": {"items": [{"key": "Technology", "weight": 1.0}], "top_weight": 1.0},
+                },
+                "strategy_snapshots": [
+                    {
+                        "name": "equal_weight",
+                        "target_weights": [
+                            {"symbol": "AAPL", "weight": 0.5},
+                            {"symbol": "MSFT", "weight": 0.5},
+                        ],
+                    }
+                ],
+                "correlation": {"high_correlations": []},
+            }
+            mock_macro.return_value = []
+            alerts = await build_portfolio_alerts(holdings)
+
+        assert alerts
+        assert any("concentration" in alert.title.lower() for alert in alerts)

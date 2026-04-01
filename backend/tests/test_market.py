@@ -20,8 +20,10 @@ async def test_get_market_overview(client):
         ],
     }
     with patch("app.routers.market.market_data_service") as mock_svc, \
-         patch("app.routers.market.get_all_macro_indicators", return_value=[]):
-        mock_svc.get_top_movers = MagicMock(return_value=mock_movers)
+         patch("app.routers.market.get_all_macro_indicators", return_value=[]), \
+         patch("app.services.sentiment_aggregator.compute_market_sentiment", new_callable=AsyncMock) as mock_sent:
+        mock_svc.get_top_movers = AsyncMock(return_value=mock_movers)
+        mock_sent.return_value = 0.1
         response = await client.get("/api/v1/market/")
 
     assert response.status_code == 200
@@ -73,7 +75,7 @@ async def test_get_history(client):
         {"date": "2025-01-02T00:00:00", "open": 103.0, "high": 107.0, "low": 102.0, "close": 106.0, "volume": 1200000},
     ]
     with patch("app.routers.market.market_data_service") as mock_svc:
-        mock_svc.get_history = MagicMock(return_value=mock_history)
+        mock_svc.get_history = AsyncMock(return_value=mock_history)
         response = await client.get("/api/v1/market/history/AAPL?period=1mo&interval=1d")
 
     assert response.status_code == 200
@@ -87,7 +89,7 @@ async def test_get_history(client):
 async def test_get_history_not_found(client):
     """Empty history should return 404."""
     with patch("app.routers.market.market_data_service") as mock_svc:
-        mock_svc.get_history = MagicMock(return_value=[])
+        mock_svc.get_history = AsyncMock(return_value=[])
         response = await client.get("/api/v1/market/history/INVALID")
 
     assert response.status_code == 404
@@ -103,7 +105,7 @@ async def test_get_technical_analysis(client):
         for i in range(60)
     ]
     with patch("app.routers.market.market_data_service") as mock_svc:
-        mock_svc.get_history = MagicMock(return_value=mock_history)
+        mock_svc.get_history = AsyncMock(return_value=mock_history)
         response = await client.get("/api/v1/market/analysis/AAPL")
 
     assert response.status_code == 200
@@ -126,7 +128,7 @@ async def test_get_technical_analysis_insufficient_data(client):
         for i in range(10)
     ]
     with patch("app.routers.market.market_data_service") as mock_svc:
-        mock_svc.get_history = MagicMock(return_value=mock_history)
+        mock_svc.get_history = AsyncMock(return_value=mock_history)
         response = await client.get("/api/v1/market/analysis/TINY")
 
     assert response.status_code == 404

@@ -9,11 +9,13 @@ from app.schemas.asset import (
     AssetQuote,
     AssetType,
     BollingerBandsIndicator,
+    FilingsResponse,
     EMAIndicator,
     EconomicCalendarResponse,
     FundamentalsResponse,
     HistoricalData,
     HistoricalDataPoint,
+    InsiderActivityResponse,
     MACDIndicator,
     MacroIndicator,
     MacroIndicatorDetail,
@@ -32,6 +34,9 @@ from app.services.scoring_engine import build_asset_score
 from app.schemas.signals import SignalSummary
 from app.services.macro_intelligence import get_all_macro_indicators, get_macro_summary
 from app.services.market_data import COMMODITY_FUTURES_MAP, market_data_service
+from app.services.macro_context_service import get_macro_context
+from app.services.news_aggregator import get_ai_analyzed_feed
+from app.services.news_intelligence import build_social_sentiment_from_articles
 from app.services.news_service import news_service
 from app.services.provider_chain import provider_chain
 from app.services.sentiment_service import analyze_sentiment
@@ -681,12 +686,16 @@ async def get_macro_intelligence():
     """Get macro economic indicators (VIX, DXY, Treasury yields, Gold, Oil) with analysis."""
     raw_indicators = await get_all_macro_indicators()
     summary = get_macro_summary(raw_indicators)
+    macro_context = await get_macro_context()
 
     indicators = [MacroIndicatorDetail(**m) for m in raw_indicators]
 
     return MacroIntelligenceResponse(
         indicators=indicators,
         summary=MacroSummary(**summary),
+        sources=macro_context.get("sources", []),
+        official_series=macro_context.get("official_series", []),
+        fear_greed=macro_context.get("fear_greed"),
     )
 
 
@@ -732,23 +741,15 @@ async def get_sentiment(
 @router.get("/social-sentiment/{symbol}")
 async def get_social_sentiment(symbol: str):
     """Get social media sentiment (Reddit + Twitter) for a symbol via Finnhub."""
-    if not news_service.is_configured:
-        return {
-            "configured": False,
-            "symbol": symbol.upper(),
-            "reddit": {"mentions": 0, "score": 0},
-            "twitter": {"mentions": 0, "score": 0},
-            "total_mentions": 0,
-            "combined_score": 0,
-            "buzz_level": "none",
-            "sentiment_label": "neutral",
-        }
+    data = await news_service.get_social_sentiment(symbol) if news_service.is_configured else None
+    if data:
+        data["configured"] = True
+        return data
 
-    data = await news_service.get_social_sentiment(symbol)
-    if not data:
-        raise HTTPException(status_code=404, detail=f"No social sentiment data for '{symbol.upper()}'")
-    data["configured"] = True
-    return data
+    feed = await get_ai_analyzed_feed(limit=60)
+    fallback = build_social_sentiment_from_articles(symbol, feed.get("articles", []))
+    fallback["configured"] = False
+    return fallback
 
 
 @router.get("/enhanced-sentiment/{symbol}")
@@ -801,6 +802,22 @@ async def get_economic_calendar(
     from app.services.economic_calendar import fetch_economic_calendar
     result = await fetch_economic_calendar(start_date, end_date)
     return EconomicCalendarResponse(**result)
+
+
+@router.get("/filings/{symbol}", response_model=FilingsResponse)
+async def get_filings(symbol: str):
+    """Get recent SEC filings for a symbol."""
+    from app.services.sec_service import get_company_filings
+
+    return FilingsResponse(**(await get_company_filings(symbol)))
+
+
+@router.get("/insiders/{symbol}", response_model=InsiderActivityResponse)
+async def get_insider_activity(symbol: str):
+    """Get recent insider activity for a symbol."""
+    from app.services.insider_service import get_insider_activity
+
+    return InsiderActivityResponse(**(await get_insider_activity(symbol)))
 
 
 @router.get("/sectors/heatmap", response_model=SectorHeatmapResponse)

@@ -4,55 +4,66 @@ import pytest
 
 from app.services.store import store
 
+TEST_USER = "test-user"
+
+
+@pytest.fixture(autouse=True)
+def reset_memory_store():
+    if hasattr(store, "_tenants"):
+        store._tenants.clear()
+    yield
+    if hasattr(store, "_tenants"):
+        store._tenants.clear()
+
 
 class TestStoreMemoryMethods:
     """Tests for InMemoryStore AI memory methods."""
 
     def test_save_memory(self):
-        entry = store.save_memory("user_preference", "Prefers tech stocks")
+        entry = store.save_memory(TEST_USER, "user_preference", "Prefers tech stocks")
         assert entry["category"] == "user_preference"
         assert entry["content"] == "Prefers tech stocks"
         assert entry["id"]
         assert entry["metadata"] == {}
 
     def test_save_memory_with_metadata(self):
-        entry = store.save_memory("market_note", "BTC bullish", {"source": "chat"})
+        entry = store.save_memory(TEST_USER, "market_note", "BTC bullish", {"source": "chat"})
         assert entry["metadata"] == {"source": "chat"}
 
     def test_get_memories_all(self):
-        store.save_memory("interaction", "Asked about AAPL")
-        store.save_memory("user_preference", "Risk-averse investor")
-        memories = store.get_memories()
+        store.save_memory(TEST_USER, "interaction", "Asked about AAPL")
+        store.save_memory(TEST_USER, "user_preference", "Risk-averse investor")
+        memories = store.get_memories(TEST_USER)
         assert len(memories) == 2
 
     def test_get_memories_by_category(self):
-        store.save_memory("interaction", "Asked about AAPL")
-        store.save_memory("user_preference", "Risk-averse investor")
-        store.save_memory("interaction", "Asked about BTC")
-        memories = store.get_memories(category="interaction")
+        store.save_memory(TEST_USER, "interaction", "Asked about AAPL")
+        store.save_memory(TEST_USER, "user_preference", "Risk-averse investor")
+        store.save_memory(TEST_USER, "interaction", "Asked about BTC")
+        memories = store.get_memories(TEST_USER, category="interaction")
         assert len(memories) == 2
         assert all(m["category"] == "interaction" for m in memories)
 
     def test_get_memories_limit(self):
         for i in range(10):
-            store.save_memory("interaction", f"Message {i}")
-        memories = store.get_memories(limit=3)
+            store.save_memory(TEST_USER, "interaction", f"Message {i}")
+        memories = store.get_memories(TEST_USER, limit=3)
         assert len(memories) == 3
 
     def test_get_memories_most_recent_first(self):
-        store.save_memory("interaction", "First")
-        store.save_memory("interaction", "Second")
-        memories = store.get_memories()
+        store.save_memory(TEST_USER, "interaction", "First")
+        store.save_memory(TEST_USER, "interaction", "Second")
+        memories = store.get_memories(TEST_USER)
         assert memories[0]["content"] == "Second"
         assert memories[1]["content"] == "First"
 
     def test_delete_memory(self):
-        entry = store.save_memory("interaction", "Test")
-        assert store.delete_memory(entry["id"]) is True
-        assert store.get_memories() == []
+        entry = store.save_memory(TEST_USER, "interaction", "Test")
+        assert store.delete_memory(TEST_USER, entry["id"]) is True
+        assert store.get_memories(TEST_USER) == []
 
     def test_delete_memory_not_found(self):
-        assert store.delete_memory("nonexistent-id") is False
+        assert store.delete_memory(TEST_USER, "nonexistent-id") is False
 
 
 class TestMemoryRouter:

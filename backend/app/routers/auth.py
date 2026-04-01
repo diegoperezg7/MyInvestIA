@@ -1,22 +1,23 @@
-"""Authentication endpoints — proxy to Supabase Auth (GoTrue).
+"""Authentication endpoints — shared auth for Supabase + AIdentity.
 
 Provides login, register (admin-only), refresh, logout, and
-a verify endpoint used by Caddy forward_auth for SSO across *.darc3.com.
+a verify endpoint used by Caddy forward_auth for SSO.
 
 Password and email changes are handled exclusively by AIdentity.
 """
 
 import logging
+import os
 import time
 from collections import defaultdict
-from typing import Optional
+from typing import Literal, Optional
 from urllib.parse import quote
 
 import httpx
 import jwt as pyjwt
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse, RedirectResponse, Response
-from pydantic import BaseModel, EmailStr
+from pydantic import AliasChoices, BaseModel, EmailStr, Field
 
 from app.config import settings
 from app.dependencies import AuthUser, get_current_user, require_admin
@@ -27,8 +28,9 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 # GoTrue is accessible via the Supabase API gateway (Kong) at /auth/v1
 GOTRUE_URL = f"{settings.supabase_url}/auth/v1"
+AIDENTITY_URL = settings.aidentity_url.rstrip("/")
 
-COOKIE_DOMAIN = ".darc3.com"
+COOKIE_DOMAIN = os.getenv("COOKIE_DOMAIN", "localhost")
 
 
 def _headers(*, use_service_key: bool = False) -> dict:
@@ -103,7 +105,7 @@ def _clear_auth_cookies(response: Response):
 
 
 class LoginRequest(BaseModel):
-    email: EmailStr
+    login: str = Field(min_length=1, validation_alias=AliasChoices("login", "email"))
     password: str
 
 
@@ -122,6 +124,108 @@ class AuthResponse(BaseModel):
     refresh_token: str
     expires_in: int
     user: dict
+
+
+def _normalize_login(login: str) -> str:
+    identifier = login.strip()
+    if "@" in identifier:
+        return identifier.lower()
+    return identifier
+
+
+def _supabase_enabled() -> bool:
+    return bool(settings.supabase_url and settings.supabase_key)
+
+
+def _aidentity_enabled() -> bool:
+    return bool(AIDENTITY_URL and settings.aidentity_secret)
+
+
+def _decode_auth_token(token: str) -> tuple[Literal["aidentity", "supabase"], dict]:
+    if settings.aidentity_secret:
+        try:
+            payload = pyjwt.decode(
+                token,
+                settings.aidentity_secret,
+                algorithms=["HS256"],
+            )
+            if payload.get("type") == "access":
+                return "aidentity", payload
+        except (pyjwt.ExpiredSignatureError, pyjwt.InvalidTokenError):
+            pass
+
+    if settings.jwt_secret:
+        payload = pyjwt.decode(
+            token,
+            settings.jwt_secret,
+            algorithms=["HS256"],
+            audience="authenticated",
+        )
+        return "supabase", payload
+
+    raise pyjwt.InvalidTokenError("Unsupported token")
+
+
+def _expires_in_from_token(token: str, fallback: int = 3600) -> int:
+    try:
+        _, payload = _decode_auth_token(token)
+        exp = int(payload.get("exp", 0))
+        if exp:
+            return max(exp - int(time.time()), 0)
+    except Exception:
+        pass
+    return fallback
+
+
+def _sanitize_aidentity_user(user: dict, access_token: str = "") -> dict:
+    token_payload: dict = {}
+    if access_token:
+        try:
+            provider, payload = _decode_auth_token(access_token)
+            if provider == "aidentity":
+                token_payload = payload
+        except Exception:
+            token_payload = {}
+
+    is_admin = bool(user.get("is_admin") or user.get("is_superadmin"))
+    role = user.get("role") or ("admin" if is_admin else token_payload.get("role") or "user")
+    return {
+        "id": user.get("id") or token_payload.get("sub", ""),
+        "email": user.get("email") or token_payload.get("email", ""),
+        "role": role,
+        "created_at": user.get("created_at", ""),
+    }
+
+
+def _build_auth_response(
+    *,
+    access_token: str,
+    refresh_token: str,
+    expires_in: int,
+    user: dict,
+) -> JSONResponse:
+    result = {
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "expires_in": expires_in,
+        "user": user,
+    }
+    response = JSONResponse(content=result)
+    _set_auth_cookies(response, access_token, refresh_token)
+    return response
+
+
+def _extract_error_detail(resp: httpx.Response, default: str) -> str:
+    try:
+        body = resp.json()
+    except Exception:
+        return default
+
+    for field in ("detail", "error_description", "msg", "message", "error"):
+        value = body.get(field)
+        if isinstance(value, str) and value.strip():
+            return value
+    return default
 
 
 # --- Endpoints ---
@@ -146,20 +250,20 @@ async def verify(request: Request):
         return _redirect_to_login(request)
 
     try:
-        payload = pyjwt.decode(
-            token,
-            settings.jwt_secret,
-            algorithms=["HS256"],
-            audience="authenticated",
-        )
-    except (pyjwt.ExpiredSignatureError, pyjwt.InvalidTokenError):
+        provider, payload = _decode_auth_token(token)
+    except pyjwt.ExpiredSignatureError:
+        return _redirect_to_login(request)
+    except pyjwt.InvalidTokenError:
         return _redirect_to_login(request)
 
     user_id = payload.get("sub", "")
     email = payload.get("email", "")
-    app_meta = payload.get("app_metadata", {})
-    user_meta = payload.get("user_metadata", {})
-    role = app_meta.get("role") or user_meta.get("role", "user")
+    if provider == "aidentity":
+        role = payload.get("role", "user")
+    else:
+        app_meta = payload.get("app_metadata", {})
+        user_meta = payload.get("user_metadata", {})
+        role = app_meta.get("role") or user_meta.get("role", "user")
 
     resp = Response(status_code=200)
     resp.headers["X-Auth-User"] = user_id
@@ -176,10 +280,12 @@ def _redirect_to_login(request: Request) -> RedirectResponse:
     fwd_uri = request.headers.get("X-Forwarded-Uri", "/")
 
     original_url = ""
-    if fwd_host and fwd_host.endswith(".darc3.com") and fwd_scheme == "https":
+    portal_domain = os.getenv("PORTAL_URL", "")
+    cookie_domain = COOKIE_DOMAIN.lstrip(".")
+    if fwd_host and cookie_domain and fwd_host.endswith(cookie_domain) and fwd_scheme == "https":
         original_url = f"{fwd_scheme}://{fwd_host}{fwd_uri}"
 
-    login_url = "https://portal.darc3.com"
+    login_url = portal_domain or "/"
     if original_url:
         login_url += f"?redirect={quote(original_url, safe='')}"
 
@@ -190,34 +296,57 @@ def _redirect_to_login(request: Request) -> RedirectResponse:
 async def login(req: LoginRequest, request: Request):
     """Authenticate with email/password. Returns JWT tokens + sets SSO cookies."""
     _check_rate_limit(f"login:{_client_ip(request)}", max_requests=5, window=60)
+    login_identifier = _normalize_login(req.login)
 
     async with httpx.AsyncClient() as client:
-        resp = await client.post(
-            f"{GOTRUE_URL}/token?grant_type=password",
-            headers=_headers(),
-            json={"email": req.email, "password": req.password},
-        )
+        supabase_error = "Invalid credentials"
 
-    if resp.status_code != 200:
-        detail = "Invalid credentials"
-        try:
-            body = resp.json()
-            detail = body.get("error_description") or body.get("msg") or detail
-        except Exception:
-            pass
-        raise HTTPException(status_code=401, detail=detail)
+        if _supabase_enabled() and "@" in login_identifier:
+            resp = await client.post(
+                f"{GOTRUE_URL}/token?grant_type=password",
+                headers=_headers(),
+                json={"email": login_identifier, "password": req.password},
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                return _build_auth_response(
+                    access_token=data["access_token"],
+                    refresh_token=data["refresh_token"],
+                    expires_in=data["expires_in"],
+                    user=_sanitize_user(data.get("user", {})),
+                )
+            supabase_error = _extract_error_detail(resp, supabase_error)
 
-    data = resp.json()
-    result = {
-        "access_token": data["access_token"],
-        "refresh_token": data["refresh_token"],
-        "expires_in": data["expires_in"],
-        "user": _sanitize_user(data.get("user", {})),
-    }
+        if _aidentity_enabled():
+            resp = await client.post(
+                f"{AIDENTITY_URL}/auth/login",
+                json={"login": login_identifier, "password": req.password},
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                if data.get("requires_2fa"):
+                    raise HTTPException(
+                        status_code=403,
+                        detail="Tu cuenta requiere 2FA en AIdentity y MyInvestIA aún no soporta ese paso.",
+                    )
+                return _build_auth_response(
+                    access_token=data["access_token"],
+                    refresh_token=data["refresh_token"],
+                    expires_in=_expires_in_from_token(
+                        data["access_token"],
+                        fallback=data.get("expires_in", 3600),
+                    ),
+                    user=_sanitize_aidentity_user(
+                        data.get("user", {}),
+                        data["access_token"],
+                    ),
+                )
+            raise HTTPException(
+                status_code=401,
+                detail=_extract_error_detail(resp, supabase_error),
+            )
 
-    response = JSONResponse(content=result)
-    _set_auth_cookies(response, data["access_token"], data["refresh_token"])
-    return response
+    raise HTTPException(status_code=401, detail=supabase_error)
 
 
 @router.post("/register")
@@ -294,26 +423,38 @@ async def refresh_token(request: Request, req: RefreshRequest = None):
         raise HTTPException(status_code=401, detail="No refresh token provided")
 
     async with httpx.AsyncClient() as client:
-        resp = await client.post(
-            f"{GOTRUE_URL}/token?grant_type=refresh_token",
-            headers=_headers(),
-            json={"refresh_token": token},
-        )
+        if _supabase_enabled():
+            resp = await client.post(
+                f"{GOTRUE_URL}/token?grant_type=refresh_token",
+                headers=_headers(),
+                json={"refresh_token": token},
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                return _build_auth_response(
+                    access_token=data["access_token"],
+                    refresh_token=data["refresh_token"],
+                    expires_in=data["expires_in"],
+                    user=_sanitize_user(data.get("user", {})),
+                )
 
-    if resp.status_code != 200:
-        raise HTTPException(status_code=401, detail="Invalid refresh token")
+        if _aidentity_enabled():
+            resp = await client.post(
+                f"{AIDENTITY_URL}/auth/refresh",
+                json={"refresh_token": token},
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                access_token = data["access_token"]
+                refresh_token_value = data["refresh_token"]
+                return _build_auth_response(
+                    access_token=access_token,
+                    refresh_token=refresh_token_value,
+                    expires_in=_expires_in_from_token(access_token, fallback=3600),
+                    user=_sanitize_aidentity_user({}, access_token),
+                )
 
-    data = resp.json()
-    result = {
-        "access_token": data["access_token"],
-        "refresh_token": data["refresh_token"],
-        "expires_in": data["expires_in"],
-        "user": _sanitize_user(data.get("user", {})),
-    }
-
-    response = JSONResponse(content=result)
-    _set_auth_cookies(response, data["access_token"], data["refresh_token"])
-    return response
+    raise HTTPException(status_code=401, detail="Invalid refresh token")
 
 
 @router.post("/logout")
@@ -324,14 +465,27 @@ async def logout(request: Request, user: AuthUser = Depends(get_current_user)):
     if not user_token:
         user_token = request.cookies.get("darc3_token", "")
 
+    provider: Literal["aidentity", "supabase"] | None = None
+    if user_token:
+        try:
+            provider, _ = _decode_auth_token(user_token)
+        except Exception:
+            provider = None
+
     async with httpx.AsyncClient() as client:
-        await client.post(
-            f"{GOTRUE_URL}/logout",
-            headers={
-                **_headers(),
-                "Authorization": f"Bearer {user_token}",
-            },
-        )
+        if provider == "aidentity" and _aidentity_enabled():
+            await client.post(
+                f"{AIDENTITY_URL}/auth/logout",
+                headers={"Authorization": f"Bearer {user_token}"},
+            )
+        elif provider == "supabase" and _supabase_enabled():
+            await client.post(
+                f"{GOTRUE_URL}/logout",
+                headers={
+                    **_headers(),
+                    "Authorization": f"Bearer {user_token}",
+                },
+            )
 
     response = JSONResponse(content={"message": "Logged out"})
     _clear_auth_cookies(response)

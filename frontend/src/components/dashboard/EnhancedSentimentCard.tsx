@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useReducer } from "react";
 import { fetchAPI } from "@/lib/api";
 import type {
   SentimentAnalysis,
@@ -70,7 +70,7 @@ function SourceContributionBar({
 }) {
   const SOURCE_COLORS: Record<string, string> = {
     "AI Sentiment": "bg-oracle-accent",
-    "Social Media (Reddit + Twitter)": "bg-cyan-400",
+    "Social Pulse": "bg-cyan-400",
     "News Coverage": "bg-oracle-yellow",
   };
 
@@ -86,7 +86,7 @@ function SourceContributionBar({
           const color = SOURCE_COLORS[src.source_name] || "bg-oracle-muted";
           return (
             <div
-              key={i}
+              key={src.source_name}
               className={`h-full ${color} ${i === 0 ? "rounded-l-full" : ""} ${
                 i === sources.length - 1 ? "rounded-r-full" : ""
               }`}
@@ -98,7 +98,7 @@ function SourceContributionBar({
       </div>
       {/* Source breakdown */}
       <div className="space-y-1.5">
-        {sources.map((src, i) => {
+        {sources.map((src) => {
           const color = SOURCE_COLORS[src.source_name] || "bg-oracle-muted";
           const scoreColor =
             src.score > 0.1
@@ -107,7 +107,7 @@ function SourceContributionBar({
                 ? "text-oracle-red"
                 : "text-oracle-muted";
           return (
-            <div key={i} className="flex items-center justify-between text-xs">
+            <div key={src.source_name} className="flex items-center justify-between text-xs">
               <div className="flex items-center gap-2">
                 <span className={`w-2 h-2 rounded-full ${color}`} />
                 <span className="text-oracle-text">{src.source_name}</span>
@@ -165,26 +165,82 @@ function SocialBuzzSection({ data }: { data: SocialSentimentData }) {
   );
 }
 
-export default function EnhancedSentimentCard() {
-  const [symbol, setSymbol] = useState("");
-  const [data, setData] = useState<SentimentAnalysis | null>(null);
-  const [socialData, setSocialData] = useState<SocialSentimentData | null>(
-    null
-  );
-  const [enhancedData, setEnhancedData] =
-    useState<EnhancedSentimentResponse | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+interface SentimentState {
+  symbol: string;
+  data: SentimentAnalysis | null;
+  socialData: SocialSentimentData | null;
+  enhancedData: EnhancedSentimentResponse | null;
+  loading: boolean;
+  error: string | null;
+}
 
-  async function handleAnalyze() {
-    const s = symbol.trim().toUpperCase();
+type SentimentAction =
+  | { type: "set_symbol"; symbol: string }
+  | { type: "analyze_start" }
+  | {
+      type: "analyze_complete";
+      data: SentimentAnalysis | null;
+      socialData: SocialSentimentData | null;
+      enhancedData: EnhancedSentimentResponse | null;
+      error: string | null;
+    }
+  | { type: "analyze_error"; error: string };
+
+const INITIAL_STATE: SentimentState = {
+  symbol: "",
+  data: null,
+  socialData: null,
+  enhancedData: null,
+  loading: false,
+  error: null,
+};
+
+function sentimentReducer(
+  state: SentimentState,
+  action: SentimentAction
+): SentimentState {
+  switch (action.type) {
+    case "set_symbol":
+      return { ...state, symbol: action.symbol };
+    case "analyze_start":
+      return {
+        ...state,
+        data: null,
+        socialData: null,
+        enhancedData: null,
+        loading: true,
+        error: null,
+      };
+    case "analyze_complete":
+      return {
+        ...state,
+        data: action.data,
+        socialData: action.socialData,
+        enhancedData: action.enhancedData,
+        loading: false,
+        error: action.error,
+      };
+    case "analyze_error":
+      return {
+        ...state,
+        loading: false,
+        error: action.error,
+      };
+    default:
+      return state;
+  }
+}
+
+export default function EnhancedSentimentCard() {
+  const [state, dispatch] = useReducer(sentimentReducer, INITIAL_STATE);
+  const { symbol, data, socialData, enhancedData, loading, error } = state;
+
+  async function handleAnalyze(nextSymbol?: string) {
+    const s = (nextSymbol ?? symbol).trim().toUpperCase();
     if (!s) return;
 
-    setLoading(true);
-    setError(null);
-    setData(null);
-    setSocialData(null);
-    setEnhancedData(null);
+    dispatch({ type: "set_symbol", symbol: s });
+    dispatch({ type: "analyze_start" });
 
     try {
       const [aiResult, socialResult, enhancedResult] =
@@ -196,24 +252,25 @@ export default function EnhancedSentimentCard() {
           ),
         ]);
 
-      if (aiResult.status === "fulfilled") setData(aiResult.value);
-      if (socialResult.status === "fulfilled") setSocialData(socialResult.value);
-      if (enhancedResult.status === "fulfilled")
-        setEnhancedData(enhancedResult.value);
-
-      if (
+      const analyzeError =
         aiResult.status === "rejected" &&
         socialResult.status === "rejected" &&
         enhancedResult.status === "rejected"
-      ) {
-        setError("Error al analizar sentimiento");
-      }
+          ? "Error al analizar sentimiento"
+          : null;
+
+      dispatch({
+        type: "analyze_complete",
+        data: aiResult.status === "fulfilled" ? aiResult.value : null,
+        socialData: socialResult.status === "fulfilled" ? socialResult.value : null,
+        enhancedData: enhancedResult.status === "fulfilled" ? enhancedResult.value : null,
+        error: analyzeError,
+      });
     } catch (e) {
-      setError(
-        e instanceof Error ? e.message : "Error al analizar sentimiento"
-      );
-    } finally {
-      setLoading(false);
+      dispatch({
+        type: "analyze_error",
+        error: e instanceof Error ? e.message : "Error al analizar sentimiento",
+      });
     }
   }
 
@@ -227,16 +284,17 @@ export default function EnhancedSentimentCard() {
       <div className="flex gap-2 mb-4">
         <SymbolAutocomplete
           value={symbol}
-          onChange={setSymbol}
+          onChange={(nextSymbol) =>
+            dispatch({ type: "set_symbol", symbol: nextSymbol })
+          }
           onSubmit={(s) => {
-            setSymbol(s);
-            handleAnalyze();
+            void handleAnalyze(s);
           }}
           placeholder="Ingresa símbolo (ej: AAPL)"
           className="flex-1"
         />
         <button
-          onClick={handleAnalyze}
+          onClick={() => void handleAnalyze()}
           disabled={loading || !symbol.trim()}
           className="px-3 py-1.5 text-sm bg-oracle-accent/20 text-oracle-accent border border-oracle-accent/30 rounded hover:bg-oracle-accent/30 disabled:opacity-50"
         >
@@ -282,8 +340,52 @@ export default function EnhancedSentimentCard() {
             </p>
           )}
 
+          <div className="grid grid-cols-3 gap-2">
+            <div className="bg-oracle-bg rounded p-2">
+              <p className="text-[10px] uppercase text-oracle-muted mb-1">Coverage</p>
+              <p className="text-sm font-mono text-oracle-text">
+                {(enhancedData.coverage_confidence * 100).toFixed(0)}%
+              </p>
+            </div>
+            <div className="bg-oracle-bg rounded p-2">
+              <p className="text-[10px] uppercase text-oracle-muted mb-1">News Mom.</p>
+              <p className={`text-sm font-mono ${enhancedData.news_momentum >= 0 ? "text-oracle-green" : "text-oracle-red"}`}>
+                {enhancedData.news_momentum > 0 ? "+" : ""}
+                {enhancedData.news_momentum.toFixed(2)}
+              </p>
+            </div>
+            <div className="bg-oracle-bg rounded p-2">
+              <p className="text-[10px] uppercase text-oracle-muted mb-1">Social Mom.</p>
+              <p className={`text-sm font-mono ${enhancedData.social_momentum >= 0 ? "text-oracle-green" : "text-oracle-red"}`}>
+                {enhancedData.social_momentum > 0 ? "+" : ""}
+                {enhancedData.social_momentum.toFixed(2)}
+              </p>
+            </div>
+          </div>
+
           {/* Source contribution */}
           <SourceContributionBar sources={enhancedData.sources} />
+
+          {enhancedData.top_narratives.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-xs text-oracle-muted uppercase tracking-wide">Narrativas</p>
+              {enhancedData.top_narratives.slice(0, 3).map((narrative) => (
+                <div key={`${narrative.label}-${narrative.symbols.join("-")}`} className="bg-oracle-bg rounded p-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-sm text-oracle-text">{narrative.label}</span>
+                    <span className={`text-xs font-mono ${narrative.avg_sentiment >= 0 ? "text-oracle-green" : "text-oracle-red"}`}>
+                      {narrative.avg_sentiment > 0 ? "+" : ""}
+                      {narrative.avg_sentiment.toFixed(2)}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-[11px] text-oracle-muted">
+                    {narrative.mentions} menciones
+                    {narrative.symbols.length > 0 ? ` · ${narrative.symbols.join(", ")}` : ""}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -316,9 +418,9 @@ export default function EnhancedSentimentCard() {
                 Factores Clave
               </p>
               <ul className="space-y-1">
-                {data.key_factors.map((factor, i) => (
+                {data.key_factors.map((factor) => (
                   <li
-                    key={i}
+                    key={factor}
                     className="text-xs text-oracle-text flex gap-2"
                   >
                     <span className="text-oracle-accent shrink-0">*</span>

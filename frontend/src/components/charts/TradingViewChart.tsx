@@ -282,7 +282,10 @@ export default function TradingViewChart({
     ) => {
       const opts: Record<string, unknown> = { color, lineWidth, title };
       if (lineStyle !== undefined) opts.lineStyle = lineStyle;
-      const series = chart.addSeries(LineSeries, opts as any);
+      const series = chart.addSeries(
+        LineSeries,
+        opts as Parameters<IChartApi["addSeries"]>[1],
+      );
       series.setData(
         lineData
           .map((v, i) => (v !== null ? { time: times[i], value: v } : null))

@@ -1,16 +1,10 @@
-"""Alerts engine that combines multi-factor alert scanning with Telegram delivery.
-
-Orchestrates the full alert pipeline:
-1. Scan assets using the alert scorer
-2. Filter by severity threshold
-3. Deliver qualifying alerts via Telegram
-4. Return results summary
-"""
+"""Alerts engine that combines structured alert scanning with Telegram delivery."""
 
 import logging
 
-from app.schemas.asset import Alert, AlertSeverity
-from app.services.alert_scorer import scan_symbols
+from app.schemas.alerting import StructuredAlert
+from app.schemas.asset import AlertSeverity
+from app.services.alert_scorer import build_portfolio_alerts, scan_symbols, sort_alerts
 from app.services.telegram_service import telegram_service
 
 logger = logging.getLogger(__name__)
@@ -30,7 +24,7 @@ MIN_SEVERITY_FOR_NOTIFY = {
 }
 
 
-def _meets_threshold(alert: Alert, min_severity: AlertSeverity) -> bool:
+def _meets_threshold(alert: StructuredAlert, min_severity: AlertSeverity) -> bool:
     """Check if alert severity meets the minimum threshold."""
     return SEVERITY_ORDER.get(alert.severity, 0) >= SEVERITY_ORDER.get(min_severity, 0)
 
@@ -38,6 +32,8 @@ def _meets_threshold(alert: Alert, min_severity: AlertSeverity) -> bool:
 async def scan_and_notify(
     symbols: list[dict],
     min_severity: str = "high",
+    chat_id: str | None = None,
+    portfolio_holdings: list[dict] | None = None,
 ) -> dict:
     """Scan symbols for alerts and deliver qualifying ones via Telegram.
 
@@ -51,7 +47,9 @@ async def scan_and_notify(
                    total_alerts, total_notified, telegram_configured
     """
     # Run the scan
-    alerts = await scan_symbols(symbols)
+    asset_alerts = await scan_symbols(symbols)
+    portfolio_alerts = await build_portfolio_alerts(portfolio_holdings or [])
+    alerts = sort_alerts(asset_alerts + portfolio_alerts)
 
     # Determine threshold
     threshold = MIN_SEVERITY_FOR_NOTIFY.get(min_severity, AlertSeverity.HIGH)
@@ -59,27 +57,43 @@ async def scan_and_notify(
     # Filter alerts that meet the notification threshold
     notify_alerts = [a for a in alerts if _meets_threshold(a, threshold)]
 
-    # Deliver via Telegram
+    # Deliver via Telegram (personal bot chat if available, otherwise legacy global chat)
     notified: list[dict] = []
-    telegram_ok = telegram_service.configured
+    telegram_ok = bool(chat_id) or telegram_service.configured
 
     if telegram_ok and notify_alerts:
         for alert in notify_alerts:
+            reason = getattr(alert, "reason", "") or getattr(alert, "reasoning", "")
+            sources = list(getattr(alert, "sources", []) or [])
+            warnings = list(getattr(alert, "warnings", []) or [])
+            evidence = [
+                item.model_dump() if hasattr(item, "model_dump") else item
+                for item in list(getattr(alert, "evidence", []) or [])
+            ]
             alert_dict = {
                 "title": alert.title,
                 "description": alert.description,
+                "reason": reason,
+                "reasoning": alert.reasoning,
                 "severity": alert.severity.value,
                 "asset_symbol": alert.asset_symbol or "",
                 "suggested_action": alert.suggested_action.value,
                 "confidence": alert.confidence,
+                "sources": sources,
+                "warnings": warnings,
+                "evidence": evidence,
             }
-            result = await telegram_service.send_alert(alert_dict)
+            if chat_id:
+                result = await telegram_service.send_alert_to_chat(chat_id, alert_dict)
+            else:
+                result = await telegram_service.send_alert(alert_dict)
             notified.append({
                 "alert_id": alert.id,
                 "symbol": alert.asset_symbol,
                 "title": alert.title,
                 "severity": alert.severity.value,
                 "delivered": result is not None,
+                "sources": sources,
             })
 
     return {

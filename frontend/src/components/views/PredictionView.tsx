@@ -555,7 +555,6 @@ const FACTOR_LABELS: Record<string, string> = {
 };
 
 function FactorBar({ name, value, weight }: { name: string; value: number; weight: number }) {
-  const pct = Math.round(((value + 1) / 2) * 100); // [-1,1] → [0,100]
   const color = value > 0.15 ? "bg-emerald-500" : value < -0.15 ? "bg-red-500" : "bg-yellow-500";
   const textColor = value > 0.15 ? "text-emerald-400" : value < -0.15 ? "text-red-400" : "text-yellow-400";
 
@@ -587,7 +586,6 @@ function FactorBar({ name, value, weight }: { name: string; value: number; weigh
 
 function QuantScoreCard({ quant }: { quant: QuantScores }) {
   const composite = quant.composite_score;
-  const compositePct = Math.round(((composite + 1) / 2) * 100);
   const compositeColor =
     composite > 0.25
       ? "text-emerald-400"

@@ -64,7 +64,7 @@ This is a positive move because it better matches the product surface. However, 
 
 - Some large components now own too much state and too many responsibilities
 - Lint configuration is not committed, so quality gates are weak
-- Auth and storage naming still carry older Oracle / darc3 coupling
+- Auth and storage naming still carry older Oracle coupling
 - Some screens eagerly combine many concerns instead of composing smaller feature panels
 
 ## Backend Architecture

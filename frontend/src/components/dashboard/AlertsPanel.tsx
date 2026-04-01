@@ -24,10 +24,11 @@ function AlertCard({ alert, sparkData }: { alert: Alert; sparkData: number[] }) 
   const [expanded, setExpanded] = useState(false);
 
   return (
-    <div
+    <button
+      type="button"
       className={`border rounded-lg px-4 py-3 cursor-pointer transition-colors ${
         SEVERITY_STYLES[alert.severity] || SEVERITY_STYLES.low
-      }`}
+      } w-full text-left`}
       onClick={() => setExpanded(!expanded)}
     >
       <div className="flex items-center justify-between">
@@ -62,7 +63,7 @@ function AlertCard({ alert, sparkData }: { alert: Alert; sparkData: number[] }) 
           </div>
         </div>
       )}
-    </div>
+    </button>
   );
 }
 
@@ -106,18 +107,18 @@ export default function AlertsPanel() {
       setAlerts(data.alerts);
       setScanned(true);
       if (!data.telegram_configured) {
-        setNotifyResult("Telegram not configured");
+        setNotifyResult("No tienes conectado tu bot personal de Telegram para enviar alertas.");
       } else if (data.total_notified > 0) {
         setNotifyResult(
-          `Sent ${data.total_notified} alert${data.total_notified > 1 ? "s" : ""} to Telegram`
+          `Enviada${data.total_notified > 1 ? "s" : ""} ${data.total_notified} alerta${data.total_notified > 1 ? "s" : ""} a Telegram`
         );
       } else {
         setNotifyResult(
-          `${data.total_alerts} alert${data.total_alerts !== 1 ? "s" : ""} found, none met notification threshold`
+          `${data.total_alerts} alerta${data.total_alerts !== 1 ? "s" : ""} detectada${data.total_alerts !== 1 ? "s" : ""}, pero ninguna superó el umbral de envío`
         );
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Scan & notify failed");
+      setError(e instanceof Error ? e.message : "Fallo al escanear y notificar");
     } finally {
       setNotifying(false);
     }
@@ -127,7 +128,7 @@ export default function AlertsPanel() {
     <div className="bg-oracle-panel border border-oracle-border rounded-lg p-6">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-oracle-muted text-sm font-medium uppercase tracking-wide">
-          Active Alerts
+          Alertas activas
         </h3>
         <div className="flex gap-2">
           <button
@@ -135,14 +136,14 @@ export default function AlertsPanel() {
             disabled={loading || notifying}
             className="bg-oracle-green/20 text-oracle-green text-xs px-3 py-1.5 rounded border border-oracle-green/30 hover:bg-oracle-green/30 disabled:opacity-50 transition-colors"
           >
-            {notifying ? "Notifying..." : "Scan & Notify"}
+            {notifying ? "Enviando..." : "Escanear y avisar"}
           </button>
           <button
             onClick={handleScan}
             disabled={loading || notifying}
             className="bg-oracle-accent text-white text-xs px-3 py-1.5 rounded hover:bg-oracle-accent/80 disabled:opacity-50 transition-colors"
           >
-            {loading ? "Scanning..." : "Scan"}
+            {loading ? "Escaneando..." : "Escanear"}
           </button>
         </div>
       </div>
@@ -154,14 +155,13 @@ export default function AlertsPanel() {
 
       {!scanned && alerts.length === 0 && (
         <p className="text-oracle-muted text-sm">
-          Click &quot;Scan&quot; to analyze assets, or &quot;Scan &amp;
-          Notify&quot; to also send high-severity alerts to Telegram.
+          Pulsa &quot;Escanear&quot; para analizar activos, o &quot;Escanear y avisar&quot; para enviar las alertas más relevantes a tu Telegram.
         </p>
       )}
 
       {scanned && alerts.length === 0 && (
         <p className="text-oracle-muted text-sm">
-          No alerts found. Your assets are within normal parameters.
+          No se han detectado alertas. Tus activos están dentro de parámetros normales.
         </p>
       )}
 

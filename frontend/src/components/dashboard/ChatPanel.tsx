@@ -5,7 +5,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { fetchAPI, postAPI, postStream } from "@/lib/api";
 import { useBriefing } from "@/hooks/useBriefing";
-import type { AIStatus, ChatMessage, ChatResponse } from "@/types";
+import type { AIStatus, ChatMessage } from "@/types";
 
 interface Persona {
   id: string;
@@ -88,7 +88,7 @@ export default function ChatPanel({ expanded = false }: { expanded?: boolean }) 
         const assistantMsg: ChatMessage = { role: "assistant", content: data.analysis };
         setMessages([...updatedMessages, assistantMsg]);
         setSuggestions(extractSuggestions(data.analysis));
-      } catch (e) {
+      } catch {
         setMessages([...updatedMessages, { role: "assistant", content: "Sorry, something went wrong. Please try again." }]);
         setSuggestions([]);
       } finally {
@@ -144,18 +144,26 @@ export default function ChatPanel({ expanded = false }: { expanded?: boolean }) 
   const isConfigured = aiStatus?.configured ?? false;
   const currentPersona = personas.find((p) => p.id === activePersona);
   const isBriefingLoading = briefing.loading && messages.length === 0;
+  const shellClass = expanded
+    ? "flex flex-1 min-h-0 flex-col rounded-2xl border border-oracle-border bg-oracle-panel p-3 shadow-sm sm:p-4"
+    : "flex flex-col rounded-lg border border-oracle-border bg-oracle-panel p-6";
+  const assistantBubbleClass = expanded
+    ? "max-w-[96%] border border-oracle-border bg-oracle-panel text-oracle-text shadow-sm sm:max-w-[92%]"
+    : "max-w-[85%] border border-oracle-border bg-oracle-bg/70 text-oracle-text";
+  const markdownClass =
+    "oracle-prose prose prose-sm max-w-none prose-p:my-1 prose-headings:my-2 prose-ul:my-1 prose-ol:my-1 prose-li:my-0.5 prose-code:before:content-none prose-code:after:content-none";
 
   return (
-    <div className={`flex flex-col ${expanded ? "flex-1 min-h-0" : "bg-oracle-panel border border-oracle-border rounded-lg p-6"}`}>
-      <div className="flex items-center justify-between mb-3">
+    <div className={shellClass}>
+      <div className="mb-4 flex flex-col gap-3 border-b border-oracle-border pb-3 sm:flex-row sm:items-center sm:justify-between">
         <h3 className="text-oracle-muted text-sm font-medium uppercase tracking-wide">
           AI Chat
         </h3>
-        <div className="flex items-center gap-2">
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
           {hasConversation && (
             <button
               onClick={startNewConversation}
-              className="text-xs px-2 py-0.5 rounded border border-oracle-border text-oracle-muted hover:text-oracle-text hover:border-oracle-accent/50 transition-colors"
+              className="rounded border border-oracle-border px-2 py-1 text-xs text-oracle-muted transition-colors hover:border-oracle-accent/50 hover:text-oracle-text"
               title="Start new conversation"
             >
               New Chat
@@ -165,7 +173,7 @@ export default function ChatPanel({ expanded = false }: { expanded?: boolean }) 
             <select
               value={activePersona || ""}
               onChange={(e) => setActivePersona(e.target.value || null)}
-              className="bg-oracle-bg border border-oracle-border rounded px-2 py-0.5 text-xs text-oracle-text"
+              className="min-w-0 flex-1 rounded border border-oracle-border bg-oracle-bg px-2 py-1 text-xs text-oracle-text sm:min-w-[180px] sm:flex-none"
             >
               <option value="">Default AI</option>
               {personas.map((p) => (
@@ -176,7 +184,7 @@ export default function ChatPanel({ expanded = false }: { expanded?: boolean }) 
             </select>
           )}
           <span
-            className={`text-xs px-2 py-0.5 rounded ${
+            className={`shrink-0 rounded px-2 py-1 text-xs ${
               isConfigured
                 ? "bg-oracle-green/10 text-oracle-green border border-oracle-green/30"
                 : "bg-oracle-red/10 text-oracle-red border border-oracle-red/30"
@@ -188,7 +196,7 @@ export default function ChatPanel({ expanded = false }: { expanded?: boolean }) 
       </div>
 
       {currentPersona && (
-        <div className="bg-oracle-bg rounded px-3 py-1.5 mb-3 text-xs text-oracle-muted">
+        <div className="mb-3 rounded-xl border border-oracle-border bg-oracle-bg/60 px-3 py-2 text-xs text-oracle-muted">
           Chatting as <span className="text-oracle-text font-medium">{currentPersona.name}</span>
           {" - "}{currentPersona.style}
         </div>
@@ -196,14 +204,14 @@ export default function ChatPanel({ expanded = false }: { expanded?: boolean }) 
 
       <div
         ref={scrollRef}
-        className={`flex-1 overflow-y-auto space-y-3 mb-3 min-h-0 ${
+        className={`mb-3 flex-1 space-y-3 overflow-y-auto rounded-2xl border border-oracle-border bg-oracle-bg/35 p-3 min-h-0 sm:p-4 ${
           expanded ? "" : "min-h-[200px] max-h-[400px]"
         }`}
       >
         {/* Briefing loading state */}
         {isBriefingLoading && (
           <div className="flex justify-start">
-            <div className="bg-oracle-bg text-oracle-muted border border-oracle-border rounded-lg px-4 py-3 text-sm flex items-center gap-2">
+            <div className="flex items-center gap-2 rounded-lg border border-oracle-border bg-oracle-panel px-4 py-3 text-sm text-oracle-muted">
               <span className="inline-block w-2 h-2 bg-oracle-accent rounded-full animate-pulse" />
               Scanning your portfolio and market news...
             </div>
@@ -232,14 +240,14 @@ export default function ChatPanel({ expanded = false }: { expanded?: boolean }) 
             <div
               className={`rounded-lg px-4 py-2.5 text-sm ${
                 msg.role === "user"
-                  ? "max-w-[75%] bg-oracle-accent text-white"
-                  : `${expanded ? "max-w-[90%]" : "max-w-[85%]"} bg-oracle-bg text-oracle-text border border-oracle-border`
+                  ? "max-w-[88%] bg-oracle-accent text-white sm:max-w-[75%]"
+                  : assistantBubbleClass
               }`}
             >
               {msg.role === "user" ? (
                 <p className="whitespace-pre-wrap">{msg.content}</p>
               ) : (
-                <div className="prose prose-invert prose-sm max-w-none prose-p:my-1 prose-headings:my-2 prose-ul:my-1 prose-ol:my-1 prose-li:my-0.5 prose-pre:bg-black/30 prose-pre:border prose-pre:border-oracle-border prose-pre:rounded prose-code:text-oracle-accent prose-code:before:content-none prose-code:after:content-none prose-strong:text-oracle-text prose-a:text-oracle-accent prose-table:border-collapse prose-th:border prose-th:border-oracle-border prose-th:bg-oracle-panel prose-th:px-3 prose-th:py-1.5 prose-th:text-left prose-th:text-oracle-text prose-th:font-semibold prose-td:border prose-td:border-oracle-border prose-td:px-3 prose-td:py-1.5 prose-hr:border-oracle-border">
+                <div className={markdownClass}>
                   <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
                 </div>
               )}
@@ -249,8 +257,8 @@ export default function ChatPanel({ expanded = false }: { expanded?: boolean }) 
 
         {loading && streamingContent && (
           <div className="flex justify-start">
-            <div className={`${expanded ? "max-w-[90%]" : "max-w-[85%]"} bg-oracle-bg text-oracle-text border border-oracle-border rounded-lg px-4 py-2.5 text-sm`}>
-              <div className="prose prose-invert prose-sm max-w-none prose-p:my-1 prose-headings:my-2 prose-ul:my-1 prose-ol:my-1 prose-li:my-0.5 prose-pre:bg-black/30 prose-pre:border prose-pre:border-oracle-border prose-pre:rounded prose-code:text-oracle-accent prose-code:before:content-none prose-code:after:content-none prose-strong:text-oracle-text prose-a:text-oracle-accent prose-table:border-collapse prose-th:border prose-th:border-oracle-border prose-th:bg-oracle-panel prose-th:px-3 prose-th:py-1.5 prose-th:text-left prose-th:text-oracle-text prose-th:font-semibold prose-td:border prose-td:border-oracle-border prose-td:px-3 prose-td:py-1.5 prose-hr:border-oracle-border">
+            <div className={`${assistantBubbleClass} rounded-lg px-4 py-2.5 text-sm`}>
+              <div className={markdownClass}>
                 <ReactMarkdown remarkPlugins={[remarkGfm]}>{streamingContent}</ReactMarkdown>
               </div>
               <span className="inline-block w-[2px] h-[1em] bg-oracle-accent align-middle ml-0.5 animate-pulse" />
@@ -260,7 +268,7 @@ export default function ChatPanel({ expanded = false }: { expanded?: boolean }) 
 
         {loading && !streamingContent && (
           <div className="flex justify-start">
-            <div className="bg-oracle-bg text-oracle-muted border border-oracle-border rounded-lg px-3 py-2 text-sm flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 rounded-lg border border-oracle-border bg-oracle-panel px-3 py-2 text-sm text-oracle-muted">
               <span className="w-1.5 h-1.5 rounded-full bg-oracle-accent/60 animate-bounce [animation-delay:0ms]" />
               <span className="w-1.5 h-1.5 rounded-full bg-oracle-accent/60 animate-bounce [animation-delay:150ms]" />
               <span className="w-1.5 h-1.5 rounded-full bg-oracle-accent/60 animate-bounce [animation-delay:300ms]" />
@@ -271,12 +279,12 @@ export default function ChatPanel({ expanded = false }: { expanded?: boolean }) 
 
       {/* Suggestion chips */}
       {suggestions.length > 0 && !loading && (
-        <div className="flex flex-wrap gap-2 mb-3">
+        <div className="mb-3 flex flex-wrap gap-2">
           {suggestions.map((chip) => (
             <button
               key={chip}
               onClick={() => handleChipClick(chip)}
-              className="text-xs px-3 py-1.5 rounded-full border border-oracle-accent/40 text-oracle-accent bg-oracle-accent/5 hover:bg-oracle-accent/15 hover:border-oracle-accent/60 transition-colors cursor-pointer"
+              className="cursor-pointer rounded-full border border-oracle-accent/40 bg-oracle-accent/5 px-3 py-1.5 text-xs text-oracle-accent transition-colors hover:border-oracle-accent/60 hover:bg-oracle-accent/15"
             >
               {chip}
             </button>
@@ -284,7 +292,7 @@ export default function ChatPanel({ expanded = false }: { expanded?: boolean }) 
         </div>
       )}
 
-      <div className="flex gap-2">
+      <div className="mt-auto flex flex-col gap-2 sm:flex-row">
         <input
           type="text"
           value={input}
@@ -298,12 +306,12 @@ export default function ChatPanel({ expanded = false }: { expanded?: boolean }) 
               : "AI not configured - set GROQ_API_KEY"
           }
           disabled={!isConfigured && messages.length === 0}
-          className="flex-1 bg-oracle-bg border border-oracle-border rounded px-3 py-2 text-sm text-oracle-text placeholder:text-oracle-muted focus:outline-none focus:border-oracle-accent disabled:opacity-50"
+          className="flex-1 rounded-xl border border-oracle-border bg-oracle-bg px-3 py-2 text-sm text-oracle-text placeholder:text-oracle-muted focus:border-oracle-accent focus:outline-none disabled:opacity-50"
         />
         <button
           onClick={handleSend}
           disabled={loading || !input.trim()}
-          className="bg-oracle-accent text-white text-sm px-4 py-2 rounded hover:bg-oracle-accent/80 disabled:opacity-50 transition-colors"
+          className="w-full rounded-xl bg-oracle-accent px-4 py-2 text-sm text-white transition-colors hover:bg-oracle-accent/80 disabled:opacity-50 sm:w-auto"
         >
           {loading ? "..." : "Send"}
         </button>

@@ -1,6 +1,6 @@
 """Tests for macro intelligence service and market macro endpoint."""
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -100,19 +100,28 @@ class TestCommodityImpact:
 
 
 class TestGetMacroIndicator:
-    def test_unknown_ticker(self):
-        assert get_macro_indicator("UNKNOWN") is None
+    @pytest.mark.asyncio
+    async def test_unknown_ticker(self):
+        with patch("app.services.macro_intelligence.get_all_macro_indicators", new_callable=AsyncMock, return_value=[]):
+            assert await get_macro_indicator("UNKNOWN") is None
 
-    @patch("app.services.macro_intelligence.yf")
-    def test_successful_fetch(self, mock_yf):
-        mock_ticker = MagicMock()
-        mock_ticker.fast_info = {
-            "lastPrice": 18.5,
-            "previousClose": 17.0,
-        }
-        mock_yf.Ticker.return_value = mock_ticker
-
-        result = get_macro_indicator("^VIX")
+    @pytest.mark.asyncio
+    async def test_successful_fetch(self):
+        with patch(
+            "app.services.macro_intelligence.get_all_macro_indicators",
+            new_callable=AsyncMock,
+            return_value=[
+                {
+                    "name": "VIX (Volatility Index)",
+                    "ticker": "^VIX",
+                    "value": 18.5,
+                    "category": "volatility",
+                    "trend": "stable",
+                    "impact_description": "Normal volatility",
+                }
+            ],
+        ):
+            result = await get_macro_indicator("^VIX")
         assert result is not None
         assert result["name"] == "VIX (Volatility Index)"
         assert result["value"] == 18.5
@@ -120,37 +129,34 @@ class TestGetMacroIndicator:
         assert "trend" in result
         assert "impact_description" in result
 
-    @patch("app.services.macro_intelligence.yf")
-    def test_no_price_returns_none(self, mock_yf):
-        mock_ticker = MagicMock()
-        mock_ticker.fast_info = {"lastPrice": 0.0, "previousClose": 0.0}
-        mock_yf.Ticker.return_value = mock_ticker
-
-        result = get_macro_indicator("^VIX")
-        assert result is None
-
-    @patch("app.services.macro_intelligence.yf")
-    def test_exception_returns_none(self, mock_yf):
-        mock_yf.Ticker.side_effect = Exception("API down")
-        result = get_macro_indicator("^VIX")
+    @pytest.mark.asyncio
+    async def test_no_match_returns_none(self):
+        with patch(
+            "app.services.macro_intelligence.get_all_macro_indicators",
+            new_callable=AsyncMock,
+            return_value=[
+                {"name": "US Dollar Index (DXY)", "ticker": "DX-Y.NYB", "value": 104.2, "trend": "up"}
+            ],
+        ):
+            result = await get_macro_indicator("^VIX")
         assert result is None
 
 
 class TestGetAllMacroIndicators:
-    @patch("app.services.macro_intelligence.get_macro_indicator")
-    def test_returns_only_successful(self, mock_get):
-        mock_get.side_effect = [
-            {"name": "VIX", "value": 18.5, "trend": "stable"},
-            None,
-            {"name": "DXY", "value": 104.2, "trend": "up"},
-            None,
-            None,
-            None,
-        ]
-        results = get_all_macro_indicators()
+    @pytest.mark.asyncio
+    async def test_returns_only_successful(self):
+        with patch(
+            "app.services.macro_intelligence.macro_provider_chain.get_indicators",
+            new_callable=AsyncMock,
+            return_value=[
+                {"name": "VIX (Volatility Index)", "ticker": "^VIX", "value": 18.5},
+                {"name": "US Dollar Index (DXY)", "ticker": "DX-Y.NYB", "value": 104.2},
+            ],
+        ):
+            results = await get_all_macro_indicators()
         assert len(results) == 2
-        assert results[0]["name"] == "VIX"
-        assert results[1]["name"] == "DXY"
+        assert results[0]["name"] == "VIX (Volatility Index)"
+        assert results[1]["name"] == "US Dollar Index (DXY)"
 
 
 class TestGetMacroSummary:
@@ -209,7 +215,8 @@ class TestMacroRouter:
     @pytest.mark.asyncio
     async def test_get_macro_endpoint(self, client):
         with patch("app.routers.market.get_all_macro_indicators") as mock_all, \
-             patch("app.routers.market.get_macro_summary") as mock_summary:
+             patch("app.routers.market.get_macro_summary") as mock_summary, \
+             patch("app.routers.market.get_macro_context", new_callable=AsyncMock) as mock_context:
             mock_all.return_value = [
                 {
                     "name": "VIX (Volatility Index)",
@@ -226,6 +233,7 @@ class TestMacroRouter:
                 "risk_level": "moderate",
                 "key_signals": [],
             }
+            mock_context.return_value = {"sources": [], "official_series": [], "fear_greed": None}
             response = await client.get("/api/v1/market/macro")
 
         assert response.status_code == 200

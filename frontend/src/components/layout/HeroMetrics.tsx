@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useView, type View } from "@/contexts/ViewContext";
+import { useView } from "@/contexts/ViewContext";
 import { fetchAPI } from "@/lib/api";
 import useLanguageStore from "@/stores/useLanguageStore";
 import useCurrencyStore from "@/stores/useCurrencyStore";
@@ -14,13 +14,6 @@ const MARKET_CLOSE_MIN = 960; // 4:00 PM ET
 
 function getEasternNow(): Date {
   return new Date(new Date().toLocaleString("en-US", { timeZone: "America/New_York" }));
-}
-
-function isMarketOpen(): boolean {
-  const eastern = getEasternNow();
-  const day = eastern.getDay();
-  const time = eastern.getHours() * 60 + eastern.getMinutes();
-  return day >= 1 && day <= 5 && time >= MARKET_OPEN_MIN && time < MARKET_CLOSE_MIN;
 }
 
 /** Returns seconds until next market close (if open) or next market open (if closed). */

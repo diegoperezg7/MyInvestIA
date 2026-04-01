@@ -7,6 +7,15 @@ import { Treemap, ResponsiveContainer } from "recharts";
 
 type Period = "1d" | "1w" | "1m";
 
+interface TreemapCellProps {
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+  name?: string;
+  perf?: number;
+}
+
 function getPerformance(sector: SectorPerformance, period: Period): number {
   if (period === "1d") return sector.performance_1d;
   if (period === "1w") return sector.performance_1w;
@@ -24,8 +33,7 @@ function perfColor(perf: number): string {
 }
 
 // Custom cell renderer for Treemap
-const CustomCell = (props: any) => {
-  const { x, y, width, height, name, perf } = props;
+const CustomCell = ({ x = 0, y = 0, width = 0, height = 0, name = "", perf = 0 }: TreemapCellProps) => {
   if (width < 10 || height < 10) return null;
 
   const perfStr = `${perf >= 0 ? "+" : ""}${(perf * 100).toFixed(2)}%`;

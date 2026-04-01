@@ -1,3 +1,4 @@
+from pydantic import field_validator
 from pydantic_settings import BaseSettings
 
 
@@ -5,9 +6,15 @@ class Settings(BaseSettings):
     app_name: str = "InvestIA"
     debug: bool = False
     cors_origins: list[str] = [
-        "https://myinvestia.darc3.com",
-        "https://portal.darc3.com",
+        "http://localhost:3000",
     ]
+
+    @field_validator("cors_origins", mode="before")
+    @classmethod
+    def parse_cors_origins(cls, v):
+        if isinstance(v, str):
+            return [origin.strip() for origin in v.split(",") if origin.strip()]
+        return v
 
     # Supabase
     supabase_url: str = ""
@@ -72,7 +79,7 @@ class Settings(BaseSettings):
     # Auth / JWT
     jwt_secret: str = ""
     supabase_service_key: str = ""
-    aidentity_url: str = "https://aidentity.darc3.com/api/v1"
+    aidentity_url: str = ""
     aidentity_secret: str = ""
 
     # Display currency
@@ -85,6 +92,11 @@ class Settings(BaseSettings):
     score_weight_macro: float = 0.15
     score_weight_portfolio_fit: float = 0.20
     portfolio_candidate_weight: float = 0.10
+
+    # Structured sentiment engine
+    sentiment_decay_half_life_hours: float = 18.0
+    sentiment_noise_confidence_threshold: float = 0.35
+    sentiment_finbert_enabled: bool = False
 
     # Redis
     redis_url: str = "redis://localhost:6379"

@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.dependencies import get_current_user
+from app.schemas.news_feed import NewsFeedResponse
 from app.services.news_aggregator import get_ai_analyzed_feed, get_article_analysis
 
 logger = logging.getLogger(__name__)
@@ -13,7 +14,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/news", tags=["news"], dependencies=[Depends(get_current_user)])
 
 
-@router.get("/feed")
+@router.get("/feed", response_model=NewsFeedResponse)
 async def get_news_feed():
     """Get AI-analyzed news feed from all sources (Finnhub + NewsAPI + RSS + Reddit + StockTwits + Twitter)."""
     try:
@@ -24,6 +25,8 @@ async def get_news_feed():
             "sources_active": result.get("sources_active", {}),
             "category_counts": result.get("category_counts", {"news": 0, "social": 0, "blog": 0}),
             "generated_at": datetime.now(timezone.utc).isoformat(),
+            "top_narratives": result.get("top_narratives", []),
+            "source_health": result.get("source_health", {}),
         }
     except Exception as e:
         logger.error("News feed error: %s", e)

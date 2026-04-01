@@ -90,8 +90,7 @@ The main issue is not lack of capability; it is architectural drift. The codebas
   - AIdentity first
   - Supabase JWT fallback
   - optional automatic Supabase user creation
-- Frontend auth cookies are coupled to a hardcoded domain in `frontend/src/lib/auth.ts`:
-  - `.darc3.com`
+- Frontend auth cookies were previously coupled to a hardcoded domain in `frontend/src/lib/auth.ts` (now configurable via env var)
 - Access token is intentionally JS-readable, which simplifies SSO but increases browser-side exposure compared with fully HttpOnly token handling
 - OpenClaw router is intentionally unauthenticated and exposes:
   - wake

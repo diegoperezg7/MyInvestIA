@@ -4,6 +4,7 @@ Service for RL Trading Agent integration.
 
 import os
 import json
+from pathlib import Path
 from typing import Optional, Dict, Any, List
 from datetime import datetime
 import pandas as pd
@@ -14,16 +15,17 @@ from app.agents.rl_agent.agent import RLTradingAgent
 _agents: Dict[str, RLTradingAgent] = {}
 
 # File-based persistence
-DATA_DIR = "/data/rl_agent"
-os.makedirs(DATA_DIR, exist_ok=True)
+DEFAULT_DATA_DIR = Path(__file__).resolve().parents[2] / ".runtime" / "rl_agent"
+DATA_DIR = Path(os.getenv("RL_AGENT_DATA_DIR", str(DEFAULT_DATA_DIR)))
+DATA_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def _get_state_file(user_id: str) -> str:
-    return os.path.join(DATA_DIR, f"state_{user_id}.json")
+    return str(DATA_DIR / f"state_{user_id}.json")
 
 
 def _get_trades_file(user_id: str) -> str:
-    return os.path.join(DATA_DIR, f"trades_{user_id}.json")
+    return str(DATA_DIR / f"trades_{user_id}.json")
 
 
 def _load_state(user_id: str) -> Optional[Dict]:
