@@ -1,4 +1,11 @@
 (local_routes) {
+	forward_auth aidentity:8085 {
+		uri /api/v1/auth/verify
+		header_up X-Forwarded-Host {host}
+		header_up X-Forwarded-Uri {uri}
+		header_up X-Forwarded-Proto https
+		copy_headers X-Auth-User X-Auth-Email X-Auth-Role
+	}
 	# API and health → backend
 	handle /api/* {
 		reverse_proxy backend:8000
@@ -46,6 +53,13 @@
 }
 
 (production_routes) {
+	forward_auth aidentity:8085 {
+		uri /api/v1/auth/verify
+		header_up X-Forwarded-Host {host}
+		header_up X-Forwarded-Uri {uri}
+		header_up X-Forwarded-Proto https
+		copy_headers X-Auth-User X-Auth-Email X-Auth-Role
+	}
 	# API and health → backend
 	handle /api/* {
 		reverse_proxy backend:8000 {
@@ -104,7 +118,7 @@
 	}
 }
 
-http://localhost {
+:80 {
 	import local_routes
 }
 

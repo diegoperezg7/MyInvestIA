@@ -10,6 +10,7 @@ services:
     networks:
       - default
       - supabase_default
+      - edge-myinvestia
     restart: unless-stopped
     volumes:
       - rl-agent-data:/data/rl_agent
@@ -33,8 +34,6 @@ services:
   caddy:
     image: caddy:2-alpine
     ports:
-      - "127.0.0.1:80:80"
-      - "127.0.0.1:443:443"
       - "127.0.0.1:8080:80"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
@@ -43,9 +42,14 @@ services:
     depends_on:
       - backend
       - frontend
+    networks:
+      - default
+      - edge-myinvestia
     restart: unless-stopped
 
 networks:
+  edge-myinvestia:
+    external: true
   supabase_default:
     external: true
 
