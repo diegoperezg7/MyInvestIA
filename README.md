@@ -179,13 +179,14 @@ npm run dev
 
 ## Environment Variables
 
-Copy `.env.example` to `.env` and configure the following categories:
+Copy `backend/.env.example` to an untracked `.env` and configure the following categories. `.mcp.json` does not store the database password: the Postgres MCP connection string expands `POSTGRES_PASSWORD` from the environment (`postgresql://postgres:${POSTGRES_PASSWORD}@localhost:5432/postgres`). Export that variable in your shell or define it in the untracked `.env` file. Never commit the real value.
 
 | Category | Variables | Required |
 |---|---|---|
 | Market Data | `YAHOO_FINANCE_API_KEY`, `COINGECKO_API_KEY`, `FRED_API_KEY` | At least one provider |
 | AI / LLM | `GROQ_API_KEY`, `CEREBRAS_API_KEY` | Yes |
 | Database | `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_KEY` | Yes |
+| Local MCP Postgres | `POSTGRES_PASSWORD` | Only for the Postgres MCP server in `.mcp.json` |
 | Cache | `REDIS_URL` | No (falls back to in-memory) |
 | Notifications | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` | No |
 

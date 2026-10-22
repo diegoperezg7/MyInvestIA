@@ -2,11 +2,12 @@
 .auto-claude/
 
 
-# Environment files
+# Environment files. Ignore every local env file, including nested ones,
+# but keep tracked examples with placeholders.
 .env
-.env.local
-backend/.env
-frontend/.env.local
+.env.*
+!.env.example
+!.env.*.example
 
 # Python
 __pycache__/
