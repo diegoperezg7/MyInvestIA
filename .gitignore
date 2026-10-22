@@ -36,6 +36,9 @@ next-env.d.ts
 *.swo
 .DS_Store
 
+# Local backup dumps. Never commit these; they have contained secrets.
+artifacts/
+
 # Auto Claude generated files
 .auto-claude-security.json
 .auto-claude-status

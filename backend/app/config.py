@@ -27,7 +27,7 @@ class Settings(BaseSettings):
     # Cerebras AI
     cerebras_api_key: str = ""
 
-    # Groq AI (free, fast inference)
+    # Groq AI (free, fast inference). Loaded from the GROQ_API_KEY environment variable.
     groq_api_key: str = ""
 
     # CoinGecko (optional - free tier works without key)
