@@ -128,9 +128,9 @@ That ambiguity is one of the largest architectural risks in the current codebase
 There are two active AI integration paths:
 
 - `groq_service`
-  - used by chat and several live or latency-sensitive flows
+  - a fast LLM for classification and scoring, used by chat and several live or latency-sensitive flows
 - `ai_service`
-  - Cerebras / OpenAI-compatible path
+  - LLM provider failover
   - still used by legacy recommendations, briefing, some sentiment and news analysis
 
 This is workable short term, but it means the AI strategy is not yet consolidated.

@@ -87,8 +87,8 @@ That means the visible product layer can expose why an item exists and how solid
 Priority:
 
 1. structured analytics
-2. Groq free models when available
-3. Cerebras/OpenAI-compatible path as secondary fallback for explanation only
+2. a fast LLM for classification and scoring, when available
+3. LLM provider failover as a secondary fallback for explanation only
 4. deterministic fallback if no LLM is available
 
 ## Test coverage

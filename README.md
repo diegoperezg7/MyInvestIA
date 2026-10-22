@@ -27,8 +27,8 @@ graph TB
     end
 
     subgraph AI Services
-        GROQ[Groq — llama-3.1-8b / llama-3.3-70b]
-        CEREBRAS[Cerebras — deepseek-r1-distill-llama-70b]
+        FAST[Fast LLM — classification and scoring]
+        REASON[Larger reasoning LLM — complex analysis]
     end
 
     subgraph Data Providers
@@ -51,8 +51,8 @@ graph TB
     API --> AE
     API --> RL
     API --> XAI
-    SE --> GROQ
-    SE --> CEREBRAS
+    SE --> FAST
+    SE --> REASON
     AE --> XAI
     BG --> TG
     API --> DB
@@ -69,7 +69,7 @@ graph TB
 
 ### AI and Sentiment Analysis
 - Multi-source sentiment scoring: technical signals (45%), social sentiment (25%), news analysis (20%), price action (10%)
-- Dual LLM strategy: Groq for fast inference, Cerebras for complex reasoning tasks
+- Dual LLM strategy: a fast LLM for classification and scoring, and a larger reasoning LLM for complex analysis
 - All outputs include confidence scores and natural-language reasoning
 
 ### Technical Analysis
@@ -101,7 +101,7 @@ graph TB
 |---|---|
 | Frontend | Next.js 15, React 19, TypeScript, Zustand, Recharts, SWR |
 | Backend | FastAPI, Python 3.11+, Pydantic v2, async/await |
-| AI / LLM | Groq (llama-3.1-8b, llama-3.3-70b), Cerebras (deepseek-r1-distill-llama-70b) |
+| AI / LLM | A fast LLM for classification and scoring, and a larger reasoning LLM for complex analysis |
 | Database | Supabase (PostgreSQL) with Row-Level Security |
 | Cache | Redis (optional, in-memory fallback) |
 | Infrastructure | Docker, Caddy reverse proxy |
@@ -184,7 +184,7 @@ Copy `backend/.env.example` to an untracked `.env` and configure the following c
 | Category | Variables | Required |
 |---|---|---|
 | Market Data | `YAHOO_FINANCE_API_KEY`, `COINGECKO_API_KEY`, `FRED_API_KEY` | At least one provider |
-| AI / LLM | `GROQ_API_KEY`, `CEREBRAS_API_KEY` | Yes |
+| AI / LLM | `GROQ_API_KEY`, `CEREBRAS_API_KEY` (LLM provider API keys) | Yes |
 | Database | `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_KEY` | Yes |
 | Local MCP Postgres | `POSTGRES_PASSWORD` | Only for the Postgres MCP server in `.mcp.json` |
 | Cache | `REDIS_URL` | No (falls back to in-memory) |
@@ -242,7 +242,7 @@ Alerts are not binary triggers. Each alert carries a confidence score (0-100) co
 
 ### Explainable AI Approach
 
-Every AI-generated output (sentiment scores, alerts, trade suggestions) passes through an explanation layer. The system uses the dual-LLM architecture: Groq handles fast classification and scoring, while Cerebras generates detailed reasoning for high-stakes outputs. Explanations reference specific data points (indicator values, news sources, price levels) rather than generic statements. This makes the system auditable and helps users build intuition about market conditions.
+Every AI-generated output (sentiment scores, alerts, trade suggestions) passes through an explanation layer. The system uses the dual-LLM architecture: a fast LLM handles classification and scoring, while a larger reasoning LLM generates detailed reasoning for high-stakes outputs. Explanations reference specific data points (indicator values, news sources, price levels) rather than generic statements. This makes the system auditable and helps users build intuition about market conditions.
 
 ## Roadmap
 

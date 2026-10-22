@@ -62,8 +62,8 @@ The main issue is not lack of capability; it is architectural drift. The codebas
 ### P1 Architecture Drift
 
 - README and code diverged materially:
-  - README still references Mistral in multiple sections
-  - runtime code uses both `groq_service` and `ai_service` (Cerebras/OpenAI-compatible path)
+  - README named specific hosted LLM providers and models
+  - runtime code uses both `groq_service` and `ai_service` (LLM provider failover)
   - newer modules such as inbox, theses, research, and connections were missing or under-described
 - Product naming is inconsistent:
   - repo is `MyInvestIA`
@@ -124,8 +124,8 @@ The main issue is not lack of capability; it is architectural drift. The codebas
 ## What Seems Extra Or Duplicated
 
 - Dual AI service paths:
-  - `groq_service` for active chat and some live flows
-  - `ai_service` for batch analysis, legacy recommendations, briefing, and some sentiment/news flows
+  - `groq_service`, a fast LLM for classification and scoring, for active chat and some live flows
+  - `ai_service`, LLM provider failover, for batch analysis, legacy recommendations, briefing, and some sentiment/news flows
 - Dual workflow generation:
   - older recommendation / briefing services
   - newer inbox-centric workflow assembly

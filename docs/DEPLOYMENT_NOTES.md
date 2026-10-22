@@ -19,7 +19,7 @@ GDELT_API_KEY=your-key
 REDDIT_CLIENT_ID=your-key
 REDDIT_CLIENT_SECRET=your-key
 
-# AI Services (optional)
+# AI Services (optional). Each value is an LLM provider API key.
 GROQ_API_KEY=your-key
 OPENAI_API_KEY=your-key
 
@@ -79,12 +79,12 @@ MyInvestIA is designed to work with free tier data providers:
 | GDELT | 15 min delay | No key required |
 | Reddit | 60 calls/min | OAuth setup |
 
-### AI Services (Free)
+### AI Services
 
-| Service | Model | Limit |
-|---------|-------|-------|
-| Groq | llama-3.1-70b | High throughput |
-| Cerebras | llama-3.1-70b | Very high |
+| Role | Use | Capacity |
+|------|-----|----------|
+| Fast LLM | Classification and scoring | High throughput |
+| Larger reasoning LLM | Complex analysis | High capacity |
 
 ## Supabase Setup (Optional)
 
