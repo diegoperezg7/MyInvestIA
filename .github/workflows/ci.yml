@@ -18,8 +18,11 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Pull requests run the workflow from the PR. Test, lint, and build stay on
+  # GitHub-hosted runners so untrusted PR code never lands on the self-hosted
+  # machine. Only deploy uses that runner, and only outside pull_request.
   backend:
-    runs-on: [self-hosted, macOS, ARM64]
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -55,12 +58,19 @@ jobs:
             myinvestia-backend:ci python -m pytest tests/test_auth.py -q
 
   frontend:
-    runs-on: [self-hosted, macOS, ARM64]
+    runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: frontend
     steps:
       - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
 
       - name: Instalar dependencias
         run: npm ci
@@ -77,7 +87,7 @@ jobs:
         run: npm run build
 
   validate-infra:
-    runs-on: [self-hosted, macOS, ARM64]
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -96,7 +106,9 @@ jobs:
 
   deploy:
     needs: [backend, frontend, validate-infra]
-    if: github.event_name != 'pull_request'
+    # Self-hosted deploy only for this repository, and only on push to main
+    # or a manual workflow_dispatch. Never for pull_request.
+    if: github.event_name != 'pull_request' && github.repository_owner == 'diegoperezg7' && (github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main')
     runs-on: [self-hosted, macOS, ARM64]
     timeout-minutes: 25
 
