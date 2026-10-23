@@ -203,3 +203,21 @@ export function getConfidenceBand(
   if (value >= 0.45) return language === "es" ? "Media" : "Medium";
   return language === "es" ? "Baja" : "Low";
 }
+
+const ISO_DATETIME = /\b(\d{4}-\d{2}-\d{2})(?:T(\d{2}):(\d{2})(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:?\d{2})?)?\b/g;
+
+/** Replace ISO dates embedded in backend text ("Scheduled for 2026-10-23T00:00:00") with locale dates. */
+export function formatInlineDates(text: string, language: "es" | "en" = "es") {
+  const locale = language === "es" ? "es-ES" : "en-US";
+  return text.replace(ISO_DATETIME, (match, day: string, hour?: string, minute?: string) => {
+    const date = new Date(`${day}T${hour ?? "00"}:${minute ?? "00"}:00`);
+    if (Number.isNaN(date.getTime())) return match;
+    const hasTime = hour !== undefined && (hour !== "00" || minute !== "00");
+    return date.toLocaleString(locale, {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      ...(hasTime ? { hour: "2-digit", minute: "2-digit" } : {}),
+    });
+  });
+}

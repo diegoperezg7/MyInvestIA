@@ -25,6 +25,7 @@ import {
   getInboxScopeLabel,
   getInboxStateLabel,
   getInboxStatusLabel,
+  formatInlineDates,
 } from "@/lib/presentation";
 import type { InboxItem } from "@/types";
 import { useView } from "@/contexts/ViewContext";
@@ -289,7 +290,7 @@ export default function InboxView() {
               <div className="grid gap-4 lg:grid-cols-2">
                 <div className="rounded-xl border border-oracle-border bg-oracle-bg/50 p-4">
                   <p className="text-[11px] uppercase tracking-wide text-oracle-muted">Qué pasa</p>
-                  <p className="mt-2 text-sm leading-6 text-oracle-text">{selectedItem.why_now || "Todavía esperamos confirmación adicional."}</p>
+                  <p className="mt-2 text-sm leading-6 text-oracle-text">{selectedItem.why_now ? formatInlineDates(selectedItem.why_now, language) : "Todavía esperamos confirmación adicional."}</p>
                 </div>
                 <div className="rounded-xl border border-oracle-border bg-oracle-bg/50 p-4">
                   <p className="text-[11px] uppercase tracking-wide text-oracle-muted">Por qué importa</p>

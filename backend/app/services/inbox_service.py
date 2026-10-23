@@ -495,7 +495,7 @@ class InsightAssembler:
                     "kind": kind,
                     "title": event.get("title", "Event"),
                     "summary": event.get("description", ""),
-                    "why_now": f"Scheduled at {event.get('event_at', '')}",
+                    "why_now": f"Scheduled for {event.get('event_at', '')}",
                     "symbols": [event["symbol"]] if event.get("symbol") else [],
                     "primary_symbol": event.get("symbol"),
                     "confidence": 0.7,

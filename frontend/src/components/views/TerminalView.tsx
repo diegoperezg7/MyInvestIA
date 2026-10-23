@@ -28,6 +28,8 @@ import {
 } from "lucide-react";
 
 import { useView } from "@/contexts/ViewContext";
+import { formatInlineDates } from "@/lib/presentation";
+import useLanguageStore from "@/stores/useLanguageStore";
 import { fetchAPI } from "@/lib/api";
 import type {
   AnalyzedArticle,
@@ -206,6 +208,7 @@ function NewsWire({ articles }: { articles: AnalyzedArticle[] }) {
 }
 
 export default function TerminalView() {
+  const language = useLanguageStore((state) => state.language);
   const { selectedSymbol, setSelectedSymbol } = useView();
   const { formatPrice } = useCurrencyStore();
   const [inputSymbol, setInputSymbol] = useState(selectedSymbol || DEFAULT_SYMBOL);
@@ -637,7 +640,7 @@ export default function TerminalView() {
                   <p className="text-[11px] uppercase tracking-wide text-oracle-muted">Lo más importante ahora</p>
                   <p className="mt-2 text-sm font-medium text-oracle-text">{decisionInbox[0].title}</p>
                   <p className="mt-1 text-xs leading-5 text-oracle-muted">
-                    {decisionInbox[0].why_now || decisionInbox[0].summary}
+                    {formatInlineDates(decisionInbox[0].why_now || decisionInbox[0].summary, language)}
                   </p>
                 </div>
               ) : null}

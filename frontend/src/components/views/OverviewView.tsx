@@ -8,7 +8,7 @@ import BreakingNewsFeed from "@/components/dashboard/BreakingNewsFeed";
 import { useInbox } from "@/hooks/useInbox";
 import { useBriefing } from "@/hooks/useBriefing";
 import { useView } from "@/contexts/ViewContext";
-import { getInboxStateLabel } from "@/lib/presentation";
+import { formatInlineDates, getInboxStateLabel } from "@/lib/presentation";
 import useLanguageStore from "@/stores/useLanguageStore";
 
 const COPY = {
@@ -72,6 +72,12 @@ export default function OverviewView() {
   const c = COPY[language];
   const topItems = inbox?.items.slice(0, 3) ?? [];
   const nextEvents = briefing?.next_events?.slice(0, 3) ?? [];
+  // The briefing arrives as markdown: keep the first section's bullet points.
+  const briefingLines = (briefing?.briefing?.split("\n## ")[0] ?? "")
+    .split("\n")
+    .filter((line) => line.trim().startsWith("- "))
+    .map((line) => formatInlineDates(line.trim().slice(2), language))
+    .slice(0, 4);
 
   return (
     <div className="space-y-4">
@@ -87,9 +93,18 @@ export default function OverviewView() {
             </p>
             <div className="mt-4 rounded-2xl border border-oracle-border bg-oracle-bg/60 p-4">
               <p className="text-[11px] uppercase tracking-wide text-oracle-muted">{c.brief}</p>
-              <p className="mt-2 text-sm leading-6 text-oracle-text">
-                {briefing?.briefing?.split("\n").filter((line) => !line.startsWith("#")).slice(0, 4).join(" ") || c.generating}
-              </p>
+              {briefingLines.length > 0 ? (
+                <ul className="mt-2 space-y-1.5 text-sm leading-6 text-oracle-text">
+                  {briefingLines.map((line) => (
+                    <li key={line} className="flex gap-2">
+                      <span className="mt-2.5 h-1 w-1 shrink-0 rounded-full bg-oracle-accent" />
+                      <span>{line}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="mt-2 text-sm leading-6 text-oracle-text">{c.generating}</p>
+              )}
               <div className="mt-3 flex flex-wrap gap-2">
                 {(briefing?.suggestions ?? []).slice(0, 4).map((suggestion) => (
                   <button
@@ -184,7 +199,7 @@ export default function OverviewView() {
                   <span className="ml-auto text-xs font-mono text-oracle-accent">{item.priority_score.toFixed(0)}</span>
                 </div>
                 <p className="mt-3 text-sm font-semibold text-oracle-text">{item.title}</p>
-                <p className="mt-1 text-xs leading-5 text-oracle-muted">{item.why_now || item.summary}</p>
+                <p className="mt-1 text-xs leading-5 text-oracle-muted">{formatInlineDates(item.why_now || item.summary, language)}</p>
                 <div className="mt-3 inline-flex items-center gap-1 text-xs text-oracle-accent">
                   {c.details}
                   <ArrowRight className="h-3.5 w-3.5" />
