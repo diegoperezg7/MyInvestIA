@@ -1,7 +1,3 @@
-# Auto Claude data directory
-.auto-claude/
-
-
 # Environment files. Ignore every local env file, including nested ones,
 # but keep tracked examples with placeholders.
 .env
@@ -39,11 +35,6 @@ next-env.d.ts
 # Local backup dumps. Never commit these; they have contained secrets.
 artifacts/
 
-# Auto Claude generated files
-.auto-claude-security.json
-.auto-claude-status
-.claude_settings.json
 .worktrees/
 .security-key
 logs/security/
-.ralph/

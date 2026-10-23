@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="320" viewBox="0 0 1280 320">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#11151f"/>
+      <stop offset="1" stop-color="#05070b"/>
+    </linearGradient>
+    <linearGradient id="line" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#12b5b0" stop-opacity="0"/>
+      <stop offset="0.35" stop-color="#12b5b0" stop-opacity="0.9"/>
+      <stop offset="1" stop-color="#12b5b0"/>
+    </linearGradient>
+    <linearGradient id="area" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#12b5b0" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="#12b5b0" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <rect width="1280" height="320" rx="24" fill="url(#bg)"/>
+  <rect x="1" y="1" width="1278" height="318" rx="23" fill="none" stroke="#12b5b0" stroke-opacity="0.25"/>
+
+  <!-- price line -->
+  <path d="M840 290 L880 280 L915 286 L955 262 L990 270 L1030 236 L1065 246 L1105 198 L1140 210 L1180 150 L1205 160 L1232 100 L1232 320 L840 320 Z" fill="url(#area)"/>
+  <polyline points="840,290 880,280 915,286 955,262 990,270 1030,236 1065,246 1105,198 1140,210 1180,150 1205,160 1232,100" fill="none" stroke="url(#line)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="1232" cy="100" r="7" fill="#12b5b0"/>
+  <circle cx="1232" cy="100" r="16" fill="#12b5b0" fill-opacity="0.18"/>
+
+  <!-- mark -->
+  <g transform="translate(72 88) scale(0.28)">
+    <rect width="512" height="512" rx="96" fill="#1a1f2e"/>
+    <rect x="3" y="3" width="506" height="506" rx="94" fill="none" stroke="#12b5b0" stroke-width="6" opacity="0.35"/>
+    <path d="M72 390V135h12l90 140 90-140h12v255h-52V232l-50 80h-1l-50-80v158H72z" fill="#ffffff"/>
+    <path d="M330 135h60v255h-60z" fill="#12b5b0"/>
+  </g>
+
+  <text x="240" y="150" font-family="Inter, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="60" font-weight="700" fill="#ffffff">MyInvest<tspan fill="#12b5b0">IA</tspan></text>
+  <text x="242" y="196" font-family="Inter, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="24" fill="#a7b0c0">Investment intelligence with explainable, confidence-scored signals</text>
+  <text x="242" y="236" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="17" fill="#6b7587">market data · quant scoring · sentiment · macro · LLM reasoning</text>
+</svg>

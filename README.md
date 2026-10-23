@@ -1,263 +1,213 @@
-# MyInvestIA
+<p align="center">
+  <img src="docs/banner.svg" alt="MyInvestIA" width="100%">
+</p>
 
-**AI-powered investment intelligence dashboard with explainable reasoning.**
+<p align="center">
+  <img alt="Python" src="https://img.shields.io/badge/Python-3.11+-3776AB?logo=python&logoColor=white">
+  <img alt="FastAPI" src="https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white">
+  <img alt="Next.js" src="https://img.shields.io/badge/Next.js-15-000000?logo=nextdotjs&logoColor=white">
+  <img alt="React" src="https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black">
+  <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white">
+  <img alt="Supabase" src="https://img.shields.io/badge/Supabase-PostgreSQL-3FCF8E?logo=supabase&logoColor=white">
+  <img alt="Redis" src="https://img.shields.io/badge/Redis-DC382D?logo=redis&logoColor=white">
+  <img alt="Docker" src="https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=white">
+  <img alt="Tests" src="https://img.shields.io/badge/tests-309%20passing-2ea44f">
+</p>
 
-MyInvestIA is a full-stack application that combines multi-source sentiment analysis, technical indicators, and LLM-driven reasoning to surface actionable market intelligence. It aggregates data from financial APIs, scores alerts with confidence levels, and provides transparent explanations for every output. Built with FastAPI, Next.js 15, and a dual-LLM strategy for balancing speed and depth of analysis.
+<p align="center"><b>A personal investment cockpit that turns market data, news and macro context into ranked, explainable signals instead of twenty dashboards.</b></p>
+
+MyInvestIA aggregates prices, fundamentals, filings, news, social sentiment and macro indicators from a chain of free and paid providers, scores every asset with a regime-aware quantitative engine, and uses LLMs only where language helps: classifying sentiment, writing briefings and explaining why a signal fired. Every output carries a confidence score and the data points behind it.
+
+![Home: daily briefing, ranked priorities and upcoming events](docs/screenshots/home.png)
+
+## Screenshots
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/portfolio.png" alt="Portfolio and risk"><br><sub><b>Portfolio and risk</b>: live valuation, allocation, per-position P&amp;L and a relevance-scored news feed.</sub></td>
+    <td width="50%"><img src="docs/screenshots/ai-signal.png" alt="AI signal and quant engine"><br><sub><b>AI signal</b>: one verdict per symbol with confidence, backed by the eight-factor quant engine.</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/factors.png" alt="Technical and fundamental factors"><br><sub><b>Factors</b>: RSI, MACD, moving averages and Bollinger width next to valuation, profitability and peers.</sub></td>
+    <td width="50%"><img src="docs/screenshots/macro.png" alt="Macro intelligence"><br><sub><b>Macro intelligence</b>: VIX, DXY, yields and commodities summarised into an environment and risk level.</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/markets-today.png" alt="Markets today"><br><sub><b>Markets today</b>: top movers with sparklines and the real-time news stream.</sub></td>
+    <td width="50%">
+      Screenshots are taken from a local instance with a demo portfolio and live market data (1440x900, dark theme). Prices are shown in EUR through the display-currency setting.
+    </td>
+  </tr>
+</table>
 
 ## Architecture
 
 ```mermaid
-graph TB
-    subgraph Frontend
-        UI[Next.js 15 + React 19]
-        ZS[Zustand Store]
-        SWR[SWR Cache]
-        UI --> ZS
-        UI --> SWR
+flowchart LR
+    subgraph Client["Frontend - Next.js 15"]
+        UI["Sections: Home, Priorities,<br/>Portfolio, Research, Markets, Assistant"]
     end
 
-    subgraph Backend
-        API[FastAPI — 25+ Routers]
-        SE[Sentiment Engine]
-        TA[Technical Analysis]
-        AE[Alert Scoring Engine]
-        RL[RL Trading Agent]
-        XAI[Explainable AI Layer]
-        BG[Background Agent]
+    subgraph API["Backend - FastAPI"]
+        R["Routers<br/>(portfolio, market, research,<br/>inbox, alerts, chat, ...)"]
+        Q["Quant engine<br/>8 factors, ADX regime"]
+        S["Sentiment engine<br/>news + social + price"]
+        P["Analysis pipeline<br/>and prediction"]
+        X["Explanation layer"]
+        IN["Priorities inbox<br/>and alert scorer"]
+        BG["Background agents"]
     end
 
-    subgraph AI Services
-        FAST[Fast LLM — classification and scoring]
-        REASON[Larger reasoning LLM — complex analysis]
+    subgraph Providers["Data provider chain"]
+        MK["Market: yfinance, Alpha Vantage,<br/>Finnhub, Twelve Data"]
+        CR["Crypto: CoinGecko"]
+        MC["Macro: FRED, World Bank, BLS"]
+        NW["News: GDELT, RSS, Finnhub,<br/>Reddit, StockTwits, NewsAPI"]
+        FL["Filings: SEC EDGAR"]
     end
 
-    subgraph Data Providers
-        YF[Yahoo Finance]
-        CG[CoinGecko]
-        FRED[FRED]
-        FB[Fallback Providers]
-        YF -.->|fallback| CG -.->|fallback| FRED -.->|fallback| FB
+    subgraph LLM["LLM providers"]
+        BIG["Llama 3.3 70B<br/>analysis, chat, briefings"]
+        SMALL["Llama 3.1 8B<br/>sentiment classification"]
     end
 
-    subgraph Infrastructure
-        DB[(Supabase — PostgreSQL + RLS)]
-        CACHE[(Redis / In-Memory)]
-        TG[Telegram Notifications]
-    end
+    DB[("Supabase Postgres<br/>or in-memory store")]
+    RD[("Redis cache")]
+    TG["Telegram bot"]
 
-    SWR -->|REST| API
-    API --> SE
-    API --> TA
-    API --> AE
-    API --> RL
-    API --> XAI
-    SE --> FAST
-    SE --> REASON
-    AE --> XAI
+    UI -->|REST + WebSocket| R
+    R --> P
+    P --> Q
+    P --> S
+    P --> X
+    R --> IN
+    Q --> MK
+    S --> NW
+    S --> SMALL
+    X --> BIG
+    P --> MC
+    P --> CR
+    P --> FL
+    R --> DB
+    R --> RD
+    BG --> IN
     BG --> TG
-    API --> DB
-    API --> CACHE
-    API --> YF
 ```
 
-## Key Features
+A request for a signal goes through the analysis pipeline: quotes and history come from the market chain, the quant engine computes eight factor scores, the sentiment engine merges news and social signals, macro context adjusts the risk level, and the explanation layer turns the result into text that cites the numbers it used.
 
-### Market Intelligence
-- Real-time price data with provider chain failover (Yahoo Finance, CoinGecko, FRED)
-- Macro indicators: VIX, DXY, treasury yields, commodities
-- Multi-timeframe analysis with historical data aggregation
+## Key engineering decisions
 
-### AI and Sentiment Analysis
-- Multi-source sentiment scoring: technical signals (45%), social sentiment (25%), news analysis (20%), price action (10%)
-- Dual LLM strategy: a fast LLM for classification and scoring, and a larger reasoning LLM for complex analysis
-- All outputs include confidence scores and natural-language reasoning
+- **Provider chains instead of a single data vendor.** Each data domain (market, crypto, macro, news, fundamentals, filings) has an ordered chain configured from the environment, for example `MARKET_PROVIDER_ORDER=yfinance,alphavantage,finnhub,twelvedata`. A provider that fails or is rate-limited is logged and skipped, and responses are normalised to one schema, so the app keeps working on free tiers and new sources are a single adapter.
+- **Regime-aware quant scoring.** The quant engine scores trend, mean reversion, momentum, volume, support/resistance, candlesticks, macro and sentiment on a -1 to +1 scale. ADX (Wilder, 14 periods) decides whether the market is trending or range-bound, and each regime has its own weight set: trend factors dominate in trends, mean reversion in ranges. Factor agreement is reported separately as conviction.
+- **LLMs where language matters, not for arithmetic.** Indicators, scores and risk metrics are deterministic Python. A small model (Llama 3.1 8B) classifies sentiment; a larger one (Llama 3.3 70B) writes briefings and explanations. If no LLM key is configured the scores still compute and the UI says the narrative is unavailable instead of failing.
+- **Explainability as a contract.** Signals, alerts and inbox items carry a confidence value, the contributing factors and their weights. The explanation layer is prompted to reference concrete values (indicator readings, sources, price levels) rather than generic commentary.
+- **A priorities inbox over raw alerts.** Risk alerts, earnings, macro events and research ideas are merged into one ranked list with priority, reliability and time horizon, so the home screen answers "what should I look at now" first.
+- **Runs without infrastructure.** When Supabase is not configured the store falls back to an in-memory implementation, and Redis is optional. The whole stack can be started locally with two processes.
+- **Tested core.** 309 deterministic backend tests cover scoring, providers, sentiment, alerts, portfolio and the RL agent. CI builds the backend image, runs the tests, builds the frontend and validates the Caddy and Compose configuration on GitHub-hosted runners.
 
-### Technical Analysis
-- Indicators: RSI, MACD, EMA/SMA, Bollinger Bands
-- Pattern detection: support/resistance levels, trend channels
-- Configurable timeframes and parameters per asset
+## Quickstart
 
-### Portfolio Management
-- Portfolio tracking with real-time valuation
-- Paper trading for strategy validation
-- CSV import/export for position management
-- Historical performance tracking
+### Local development
 
-### Alert Engine
-- Confidence-scored alerts with multi-factor reasoning
-- Configurable thresholds per asset and indicator
-- Background agent with Telegram push notifications
-- Alert history and performance tracking
-
-### Macro Intelligence
-- VIX volatility regime detection
-- Dollar index (DXY) trend analysis
-- Treasury yield curve monitoring
-- Commodity correlation tracking
-
-## Tech Stack
-
-| Category | Technology |
-|---|---|
-| Frontend | Next.js 15, React 19, TypeScript, Zustand, Recharts, SWR |
-| Backend | FastAPI, Python 3.11+, Pydantic v2, async/await |
-| AI / LLM | A fast LLM for classification and scoring, and a larger reasoning LLM for complex analysis |
-| Database | Supabase (PostgreSQL) with Row-Level Security |
-| Cache | Redis (optional, in-memory fallback) |
-| Infrastructure | Docker, Caddy reverse proxy |
-| Notifications | Telegram Bot API |
-
-## Repository Structure
-
-```
-myinvestia/
-├── backend/
-│   ├── app/
-│   │   ├── routers/          # 25+ API route modules
-│   │   ├── services/         # 60+ service modules
-│   │   │   ├── sentiment/    # Multi-source sentiment engine
-│   │   │   ├── technical/    # Technical analysis indicators
-│   │   │   ├── alerts/       # Alert scoring and notifications
-│   │   │   ├── providers/    # Data provider chain
-│   │   │   ├── ai/           # LLM integration and XAI layer
-│   │   │   └── macro/        # Macro intelligence services
-│   │   ├── models/           # Pydantic v2 schemas
-│   │   ├── core/             # Config, dependencies, middleware
-│   │   └── agents/           # RL trading agent, background agent
-│   ├── tests/
-│   ├── requirements.txt
-│   └── Dockerfile
-├── frontend/
-│   ├── src/
-│   │   ├── app/              # Next.js app router
-│   │   ├── components/       # React components
-│   │   ├── stores/           # Zustand state management
-│   │   ├── hooks/            # SWR hooks and utilities
-│   │   └── types/            # TypeScript definitions
-│   ├── package.json
-│   └── Dockerfile
-├── docker-compose.yml
-├── Caddyfile
-├── .env.example
-└── README.md
-```
-
-## Quick Start
-
-### Docker (recommended)
+Requirements: Python 3.11+, Node.js 22.
 
 ```bash
-git clone https://github.com/yourusername/myinvestia.git
-cd myinvestia
-cp .env.example .env
-# Edit .env with your API keys
+git clone https://github.com/diegoperezg7/MyInvestIA.git
+cd MyInvestIA
 
-docker compose up -d
-```
-
-The application will be available at `http://localhost:3000`.
-
-### Manual Setup
-
-**Backend:**
-
-```bash
+# Backend
 cd backend
-python -m venv venv
-source venv/bin/activate
+python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
+cp .env.example .env            # set AIDENTITY_SECRET; LLM and provider keys are optional
 uvicorn app.main:app --reload --port 8000
+
+# Frontend (second terminal)
+cd frontend
+npm ci
+npm run dev                     # http://localhost:3000, /api is proxied to :8000
 ```
 
-**Frontend:**
+The API expects a signed JWT (cookie `darc3_token` or `Authorization: Bearer`). For local use, sign one with the same `AIDENTITY_SECRET`:
 
 ```bash
-cd frontend
-npm install
-npm run dev
+python -c "import jwt,time; print(jwt.encode({'sub':'00000000-0000-0000-0000-000000000001','email':'demo@example.com','role':'admin','type':'access','exp':int(time.time())+86400}, 'YOUR_AIDENTITY_SECRET', algorithm='HS256'))"
 ```
 
-## Environment Variables
+Without `SUPABASE_URL` the backend uses the in-memory store, so data resets on restart.
 
-Copy `backend/.env.example` to an untracked `.env` and configure the following categories. `.mcp.json` does not store the database password: the Postgres MCP connection string expands `POSTGRES_PASSWORD` from the environment (`postgresql://postgres:${POSTGRES_PASSWORD}@localhost:5432/postgres`). Export that variable in your shell or define it in the untracked `.env` file. Never commit the real value.
+### Docker
 
-| Category | Variables | Required |
+```bash
+cp backend/.env.example backend/.env
+docker compose up -d --build    # backend, frontend, Redis and Caddy on 127.0.0.1:8080
+```
+
+The Compose file expects two external Docker networks (`edge-myinvestia` and `supabase_default`) used by the self-hosted deployment. Create them with `docker network create` or remove them for a standalone run.
+
+### Tests
+
+```bash
+cd backend && python -m pytest tests -q --ignore=tests/test_auth.py
+```
+
+## Configuration
+
+All settings live in `backend/.env` (see `backend/.env.example`).
+
+| Area | Variables | Required |
 |---|---|---|
-| Market Data | `YAHOO_FINANCE_API_KEY`, `COINGECKO_API_KEY`, `FRED_API_KEY` | At least one provider |
-| AI / LLM | `GROQ_API_KEY`, `CEREBRAS_API_KEY` (LLM provider API keys) | Yes |
-| Database | `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_KEY` | Yes |
-| Local MCP Postgres | `POSTGRES_PASSWORD` | Only for the Postgres MCP server in `.mcp.json` |
-| Cache | `REDIS_URL` | No (falls back to in-memory) |
+| Auth | `AIDENTITY_SECRET` | Yes |
+| LLM | `CEREBRAS_API_KEY`, `GROQ_API_KEY` | No, narratives are disabled without them |
+| Database | `SUPABASE_URL`, `SUPABASE_KEY` | No, falls back to in-memory |
+| Market data | `ALPHAVANTAGE_API_KEY`, `FINNHUB_API_KEY`, `TWELVEDATA_API_KEY` | No, yfinance works without keys |
+| Macro and filings | `FRED_API_KEY`, `BLS_API_KEY`, `SEC_USER_AGENT` | No |
+| News and social | `NEWSAPI_KEY`, `REDDIT_CLIENT_ID`, `REDDIT_CLIENT_SECRET` | No |
+| Provider order | `MARKET_PROVIDER_ORDER`, `NEWS_PROVIDER_ORDER`, ... | No, sensible defaults |
+| Scoring | `SCORE_WEIGHT_*`, `SENTIMENT_DECAY_HALF_LIFE_HOURS` | No |
+| Cache | `REDIS_URL` | No |
 | Notifications | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` | No |
 
-## API Overview
+Interactive API documentation is served at `/docs` when the backend is running.
 
-| Endpoint Group | Path | Description |
-|---|---|---|
-| Market Data | `/api/v1/market/*` | Prices, quotes, historical data |
-| Sentiment | `/api/v1/sentiment/*` | Multi-source sentiment scores |
-| Technical | `/api/v1/technical/*` | Indicators, patterns, signals |
-| Alerts | `/api/v1/alerts/*` | Alert management and history |
-| Portfolio | `/api/v1/portfolio/*` | Holdings, paper trades, P&L |
-| Macro | `/api/v1/macro/*` | VIX, DXY, yields, commodities |
-| AI / Explain | `/api/v1/ai/*` | LLM queries, reasoning, XAI |
-| Agent | `/api/v1/agent/*` | RL agent status and actions |
+## Repository structure
 
-Full API documentation is available at `/docs` (Swagger UI) when the backend is running.
+```
+MyInvestIA/
+├── backend/
+│   ├── app/
+│   │   ├── main.py              # FastAPI app and router registration
+│   │   ├── config.py            # pydantic-settings configuration
+│   │   ├── dependencies.py      # JWT auth and tenant resolution
+│   │   ├── routers/             # 24 route modules (portfolio, market, research, inbox, ...)
+│   │   ├── services/            # scoring, sentiment, macro, alerts, LLM clients, stores
+│   │   │   ├── data_providers/  # provider chains and normalisation
+│   │   │   └── quantitative/    # factors, backtesting, risk manager
+│   │   ├── agents/rl_agent/     # PPO trading agent and scheduler
+│   │   └── schemas/             # Pydantic v2 models
+│   ├── supabase/                # SQL migrations
+│   └── tests/                   # pytest suite
+├── frontend/
+│   └── src/
+│       ├── app/                 # Next.js app router
+│       ├── components/          # views, dashboard panels, charts
+│       ├── contexts/            # auth, theme, navigation shell
+│       ├── hooks/               # data hooks
+│       └── stores/              # Zustand (language, currency)
+├── openclaw/                    # profile for the self-hosted Telegram agent
+├── docs/                        # engine and architecture notes, screenshots
+├── docker-compose.yml
+└── Caddyfile
+```
 
-## Screenshots
-
-<!-- Screenshot: Dashboard Overview -->
-
-<!-- Screenshot: Sentiment Analysis Panel -->
-
-<!-- Screenshot: Technical Analysis Charts -->
-
-<!-- Screenshot: Alert Engine with Confidence Scores -->
-
-<!-- Screenshot: Portfolio Tracker -->
-
-<!-- Screenshot: Macro Intelligence View -->
-
-## Architecture Details
-
-### Provider Chain Pattern
-
-Data providers are organized in a priority chain with automatic failover. When Yahoo Finance is unavailable or rate-limited, the system falls back to CoinGecko, then FRED, then cached data. Each provider implements a common interface, making it straightforward to add new sources. Responses are normalized to a unified schema regardless of the originating provider.
-
-### Sentiment Engine Methodology
-
-The sentiment engine combines four signal sources with empirically tuned weights:
-
-- **Technical signals (45%):** Derived from indicator convergence/divergence across multiple timeframes. This receives the highest weight because price-derived signals have the most direct predictive relationship.
-- **Social sentiment (25%):** Aggregated from community discussions and social platforms. Processed through LLM-based classification for nuance beyond keyword matching.
-- **News analysis (20%):** Financial news headlines and articles scored for directional sentiment and magnitude.
-- **Price action (10%):** Recent price momentum and volume patterns as a confirming signal.
-
-The final score is a weighted composite normalized to a -1 to +1 range, accompanied by a confidence metric and a natural-language explanation generated by the AI layer.
-
-### Alert Scoring System
-
-Alerts are not binary triggers. Each alert carries a confidence score (0-100) computed from the strength and agreement of contributing signals. The scoring engine evaluates indicator alignment, historical accuracy of similar signal configurations, and current market regime. Alerts below a configurable confidence threshold are suppressed. Every alert includes a reasoning chain explaining which factors contributed to the score.
-
-### Explainable AI Approach
-
-Every AI-generated output (sentiment scores, alerts, trade suggestions) passes through an explanation layer. The system uses the dual-LLM architecture: a fast LLM handles classification and scoring, while a larger reasoning LLM generates detailed reasoning for high-stakes outputs. Explanations reference specific data points (indicator values, news sources, price levels) rather than generic statements. This makes the system auditable and helps users build intuition about market conditions.
-
-## Roadmap
-
-- **Options flow integration:** Add unusual options activity detection as an additional sentiment signal source.
-- **Multi-portfolio strategies:** Support distinct strategies per portfolio with independent risk parameters and alert configurations.
-- **Backtesting framework:** Historical strategy validation with configurable date ranges, slippage modeling, and performance attribution.
-- **Mobile companion:** Lightweight mobile client focused on alert consumption and quick portfolio checks.
+Deeper write-ups: [architecture](docs/ARCHITECTURE.md), [scoring engine](docs/SCORING_ENGINE.md), [sentiment engine](docs/SENTIMENT_ENGINE.md), [data providers](docs/DATA_PROVIDERS.md), [explanation layer](docs/AI_EXPLANATION_LAYER.md), [alerting](docs/ALERTING.md), [RL trading agent](docs/RL_TRADING_AGENT.md).
 
 ## Disclaimer
 
-MyInvestIA is an educational and research project. It is not financial advice. The outputs of this system (including sentiment scores, alerts, and trade suggestions) should not be used as the sole basis for investment decisions. Markets are inherently unpredictable, and past performance of any model or signal does not guarantee future results. Use at your own risk.
-
+MyInvestIA is a research and decision-support project, not financial advice. Its scores, alerts and suggestions should not be the sole basis for investment decisions.
 
 ## License
 
-Copyright (c) 2024-2026 Diego Perez Garcia. All rights reserved.
+Copyright (c) 2024-2026 Diego Pérez. All rights reserved.
 
-This repository is published for **portfolio and evaluation purposes only**. You may view and read the contents to evaluate the author's technical capabilities. Copying, modifying, distributing, or using any part of this codebase for any purpose is prohibited without explicit written permission. See [LICENSE](LICENSE) for full terms.
+Published for portfolio and evaluation purposes only. You may read the code to evaluate the author's work; copying, modifying, distributing or using it requires written permission. See [LICENSE](LICENSE).
