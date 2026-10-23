@@ -42,7 +42,7 @@ export default function Dashboard() {
       <MobileBottomNav />
 
       <div
-        className={`flex flex-col flex-1 min-h-screen transition-all duration-300 ${
+        className={`flex flex-col flex-1 min-w-0 min-h-screen transition-all duration-300 ${
           sidebarCollapsed ? "lg:ml-16" : "lg:ml-64"
         }`}
       >

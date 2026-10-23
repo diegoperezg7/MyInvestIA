@@ -13,7 +13,7 @@ import numpy as np
 import pandas as pd
 
 # Add tensortrade project to path
-TT_PATH = os.environ.get("TENSORTRADE_PATH", "/Users/darce/tensortrade-project")
+TT_PATH = os.environ.get("TENSORTRADE_PATH", os.path.expanduser("~/tensortrade-project"))
 sys.path.insert(0, TT_PATH)
 
 CHECKPOINT_DIR = os.path.join(TT_PATH, "models")

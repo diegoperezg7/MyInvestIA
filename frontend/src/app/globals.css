@@ -376,3 +376,10 @@ body {
   border-color: var(--oracle-border) !important;
   border-radius: var(--radius-md) !important;
 }
+
+/* Grid and flex children default to min-width: auto, so long news titles or
+   charts widen their track past the viewport. Let tracks shrink instead. */
+.grid > *,
+.flex-1 {
+  min-width: 0;
+}

@@ -543,25 +543,71 @@ export default function PredictionView() {
 
 /* Quantitative Score Card */
 
-const FACTOR_LABELS: Record<string, string> = {
-  trend: "Tendencia",
-  mean_reversion: "Reversión",
-  momentum: "Momentum",
-  volume: "Volumen",
-  support_resistance: "Soporte/Resist.",
-  candlestick: "Velas",
-  macro: "Macro",
-  sentiment: "Sentimiento",
+const FACTOR_LABELS: Record<"es" | "en", Record<string, string>> = {
+  es: {
+    trend: "Tendencia",
+    mean_reversion: "Reversión",
+    momentum: "Momentum",
+    volume: "Volumen",
+    support_resistance: "Soporte/Resist.",
+    candlestick: "Velas",
+    macro: "Macro",
+    sentiment: "Sentimiento",
+  },
+  en: {
+    trend: "Trend",
+    mean_reversion: "Mean reversion",
+    momentum: "Momentum",
+    volume: "Volume",
+    support_resistance: "Support/Resist.",
+    candlestick: "Candlesticks",
+    macro: "Macro",
+    sentiment: "Sentiment",
+  },
+};
+
+const QUANT_COPY = {
+  es: {
+    title: "Motor Cuantitativo",
+    trending: "Tendencial",
+    rangeBound: "Rango",
+    highConviction: "Alta Conviccion",
+    splitFactors: "Factores Divididos",
+    moderateConviction: "Conviccion Moderada",
+    composite: "Score Compuesto",
+    supportResistance: "Soporte / Resistencia",
+    support: "Soporte",
+    resistance: "Resistencia",
+    risk: "Riesgo",
+    patterns: "Patrones",
+    noPatterns: "Sin patrones detectados",
+  },
+  en: {
+    title: "Quant Engine",
+    trending: "Trending",
+    rangeBound: "Range-bound",
+    highConviction: "High conviction",
+    splitFactors: "Split factors",
+    moderateConviction: "Moderate conviction",
+    composite: "Composite score",
+    supportResistance: "Support / Resistance",
+    support: "Support",
+    resistance: "Resistance",
+    risk: "Risk",
+    patterns: "Patterns",
+    noPatterns: "No patterns detected",
+  },
 };
 
 function FactorBar({ name, value, weight }: { name: string; value: number; weight: number }) {
+  const language = useLanguageStore((state) => state.language);
   const color = value > 0.15 ? "bg-emerald-500" : value < -0.15 ? "bg-red-500" : "bg-yellow-500";
   const textColor = value > 0.15 ? "text-emerald-400" : value < -0.15 ? "text-red-400" : "text-yellow-400";
 
   return (
     <div className="flex items-center gap-2 text-xs">
       <span className="w-28 text-oracle-muted truncate" title={name}>
-        {FACTOR_LABELS[name] || name}
+        {FACTOR_LABELS[language][name] || name}
       </span>
       <div className="flex-1 h-2 bg-oracle-bg rounded-full overflow-hidden relative">
         <div className="absolute left-1/2 top-0 w-px h-full bg-oracle-border z-10" />
@@ -585,6 +631,8 @@ function FactorBar({ name, value, weight }: { name: string; value: number; weigh
 }
 
 function QuantScoreCard({ quant }: { quant: QuantScores }) {
+  const language = useLanguageStore((state) => state.language);
+  const c = QUANT_COPY[language];
   const composite = quant.composite_score;
   const compositeColor =
     composite > 0.25
@@ -608,7 +656,7 @@ function QuantScoreCard({ quant }: { quant: QuantScores }) {
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <BarChart3 size={18} className="text-oracle-accent" />
-          <h3 className="text-sm font-semibold text-oracle-text">Motor Cuantitativo</h3>
+          <h3 className="text-sm font-semibold text-oracle-text">{c.title}</h3>
         </div>
         <div className="flex items-center gap-2">
           <span
@@ -621,9 +669,9 @@ function QuantScoreCard({ quant }: { quant: QuantScores }) {
             }`}
           >
             {quant.regime === "trending"
-              ? "Tendencial"
+              ? c.trending
               : quant.regime === "range_bound"
-                ? "Rango"
+                ? c.rangeBound
                 : "—"}
           </span>
           <span className="text-[10px] text-oracle-muted font-mono">
@@ -640,10 +688,10 @@ function QuantScoreCard({ quant }: { quant: QuantScores }) {
               }`}
             >
               {quant.factor_agreement >= 1.15
-                ? "Alta Conviccion"
+                ? c.highConviction
                 : quant.factor_agreement <= 0.85
-                  ? "Factores Divididos"
-                  : "Conviccion Moderada"}
+                  ? c.splitFactors
+                  : c.moderateConviction}
             </span>
           )}
         </div>
@@ -653,7 +701,7 @@ function QuantScoreCard({ quant }: { quant: QuantScores }) {
       <div className="mb-4 p-3 bg-oracle-bg rounded-lg border border-oracle-border">
         <div className="flex items-center justify-between mb-1.5">
           <span className="text-xs text-oracle-muted font-semibold uppercase tracking-wide">
-            Score Compuesto
+            {c.composite}
           </span>
           <span className={`text-lg font-black font-mono ${compositeColor}`}>
             {composite > 0 ? "+" : ""}{composite.toFixed(4)}
@@ -694,17 +742,17 @@ function QuantScoreCard({ quant }: { quant: QuantScores }) {
         {/* Support/Resistance */}
         <div className="space-y-1">
           <p className="text-[10px] text-oracle-muted font-semibold uppercase tracking-wide">
-            Soporte / Resistencia
+            {c.supportResistance}
           </p>
           {sr.nearest_support != null && (
             <div className="flex justify-between text-xs">
-              <span className="text-oracle-muted">Soporte</span>
+              <span className="text-oracle-muted">{c.support}</span>
               <span className="text-green-400 font-mono">${sr.nearest_support}</span>
             </div>
           )}
           {sr.nearest_resistance != null && (
             <div className="flex justify-between text-xs">
-              <span className="text-oracle-muted">Resistencia</span>
+              <span className="text-oracle-muted">{c.resistance}</span>
               <span className="text-red-400 font-mono">${sr.nearest_resistance}</span>
             </div>
           )}
@@ -719,7 +767,7 @@ function QuantScoreCard({ quant }: { quant: QuantScores }) {
         {/* Risk Metrics */}
         <div className="space-y-1">
           <p className="text-[10px] text-oracle-muted font-semibold uppercase tracking-wide">
-            Riesgo
+            {c.risk}
           </p>
           <div className="flex justify-between text-xs">
             <span className="text-oracle-muted">Sharpe (63d)</span>
@@ -748,7 +796,7 @@ function QuantScoreCard({ quant }: { quant: QuantScores }) {
         {/* Candlestick Patterns */}
         <div className="space-y-1">
           <p className="text-[10px] text-oracle-muted font-semibold uppercase tracking-wide">
-            Patrones
+            {c.patterns}
           </p>
           {patterns.length > 0 ? (
             <div className="flex flex-wrap gap-1">
@@ -762,7 +810,7 @@ function QuantScoreCard({ quant }: { quant: QuantScores }) {
               ))}
             </div>
           ) : (
-            <span className="text-xs text-oracle-muted">Sin patrones detectados</span>
+            <span className="text-xs text-oracle-muted">{c.noPatterns}</span>
           )}
         </div>
       </div>
