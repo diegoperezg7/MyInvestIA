@@ -121,7 +121,7 @@ async def test_login_falls_back_to_aidentity_when_supabase_rejects_email(client)
 
 @pytest.mark.asyncio
 async def test_login_accepts_username_via_aidentity(client):
-    access_token = _make_aidentity_access_token(email="darce@example.com")
+    access_token = _make_aidentity_access_token(email="demo@example.com")
     mock_client = _QueuedAsyncClient(
         [
             _make_response(
@@ -131,7 +131,7 @@ async def test_login_accepts_username_via_aidentity(client):
                     "refresh_token": "refresh-token",
                     "user": {
                         "id": "aidentity-user-1",
-                        "email": "darce@example.com",
+                        "email": "demo@example.com",
                         "is_admin": True,
                     },
                 },
@@ -142,14 +142,14 @@ async def test_login_accepts_username_via_aidentity(client):
     with patch("app.routers.auth.httpx.AsyncClient", return_value=mock_client):
         response = await client.post(
             "/api/v1/auth/login",
-            json={"login": "darce", "password": "secret"},
+            json={"login": "demo", "password": "secret"},
         )
 
     assert response.status_code == 200
     payload = response.json()
     assert payload["user"]["role"] == "admin"
     assert len(mock_client.calls) == 1
-    assert mock_client.calls[0][1]["json"] == {"login": "darce", "password": "secret"}
+    assert mock_client.calls[0][1]["json"] == {"login": "demo", "password": "secret"}
     assert mock_client.calls[0][0].endswith("/auth/login")
 
 

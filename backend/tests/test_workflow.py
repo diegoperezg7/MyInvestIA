@@ -167,7 +167,7 @@ async def test_profile_includes_workflow_preferences(client):
     update_response = await client.put(
         "/api/v1/user/profile",
         json={
-            "display_name": "Darce",
+            "display_name": "Demo",
             "risk_tolerance": "moderate",
             "investment_horizon": "medium",
             "goals": ["Diversificación"],

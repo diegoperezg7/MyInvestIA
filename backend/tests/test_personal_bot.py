@@ -41,8 +41,8 @@ async def test_personal_bot_connect_verify_and_test(client):
                     {
                         "message": {
                             "text": f"/start {code}",
-                            "chat": {"id": 123456, "title": "Darce"},
-                            "from": {"id": 42, "username": "darce", "first_name": "Darce"},
+                            "chat": {"id": 123456, "title": "Demo"},
+                            "from": {"id": 42, "username": "demo", "first_name": "Demo"},
                         }
                     }
                 ]
@@ -97,8 +97,8 @@ async def test_personal_bot_run_and_provision_defaults(client):
                     {
                         "message": {
                             "text": f"/start {code}",
-                            "chat": {"id": 98765, "title": "Darce"},
-                            "from": {"id": 7, "username": "darce", "first_name": "Darce"},
+                            "chat": {"id": 98765, "title": "Demo"},
+                            "from": {"id": 7, "username": "demo", "first_name": "Demo"},
                         }
                     }
                 ]
